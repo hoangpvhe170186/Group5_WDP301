@@ -1,0 +1,34 @@
+[
+  {
+    "full_name": "System Admin",
+    "email": "admin@moving.com",
+    "phone": "0900000000",
+    "password_hash": "hashed_pw_admin",
+    "role": "Admin",
+    "status": "Active"
+  },
+
+  { "full_name": "Seller One", "email": "seller1@moving.com", "phone": "0901111111", "password_hash": "hashed_pw_seller1", "role": "Seller", "status": "Active" },
+  { "full_name": "Seller Two", "email": "seller2@moving.com", "phone": "0902222222", "password_hash": "hashed_pw_seller2", "role": "Seller", "status": "Active" },
+  { "full_name": "Seller Three", "email": "seller3@moving.com", "phone": "0903333333", "password_hash": "hashed_pw_seller3", "role": "Seller", "status": "Active" },
+
+  { "full_name": "Driver One", "email": "driver1@moving.com", "phone": "0904444444", "password_hash": "hashed_pw_driver1", "role": "Driver", "status": "Active" },
+  { "full_name": "Driver Two", "email": "driver2@moving.com", "phone": "0905555555", "password_hash": "hashed_pw_driver2", "role": "Driver", "status": "Active" },
+  { "full_name": "Driver Three", "email": "driver3@moving.com", "phone": "0906666666", "password_hash": "hashed_pw_driver3", "role": "Driver", "status": "Active" },
+  { "full_name": "Driver Four", "email": "driver4@moving.com", "phone": "0907777777", "password_hash": "hashed_pw_driver4", "role": "Driver", "status": "Active" },
+  { "full_name": "Driver Five", "email": "driver5@moving.com", "phone": "0908888888", "password_hash": "hashed_pw_driver5", "role": "Driver", "status": "Active" },
+  { "full_name": "Driver Six", "email": "driver6@moving.com", "phone": "0909999999", "password_hash": "hashed_pw_driver6", "role": "Driver", "status": "Active" },
+
+  { "full_name": "Carrier One", "email": "carrier1@moving.com", "phone": "0911111111", "password_hash": "hashed_pw_carrier1", "role": "Carrier", "status": "Active" },
+  { "full_name": "Carrier Two", "email": "carrier2@moving.com", "phone": "0912222222", "password_hash": "hashed_pw_carrier2", "role": "Carrier", "status": "Active" },
+  { "full_name": "Carrier Three", "email": "carrier3@moving.com", "phone": "0913333333", "password_hash": "hashed_pw_carrier3", "role": "Carrier", "status": "Active" },
+  { "full_name": "Carrier Four", "email": "carrier4@moving.com", "phone": "0914444444", "password_hash": "hashed_pw_carrier4", "role": "Carrier", "status": "Active" },
+  { "full_name": "Carrier Five", "email": "carrier5@moving.com", "phone": "0915555555", "password_hash": "hashed_pw_carrier5", "role": "Carrier", "status": "Active" },
+  { "full_name": "Carrier Six", "email": "carrier6@moving.com", "phone": "0916666666", "password_hash": "hashed_pw_carrier6", "role": "Carrier", "status": "Active" },
+  { "full_name": "Carrier Seven", "email": "carrier7@moving.com", "phone": "0917777777", "password_hash": "hashed_pw_carrier7", "role": "Carrier", "status": "Active" },
+  { "full_name": "Carrier Eight", "email": "carrier8@moving.com", "phone": "0918888888", "password_hash": "hashed_pw_carrier8", "role": "Carrier", "status": "Active" },
+  { "full_name": "Carrier Nine", "email": "carrier9@moving.com", "phone": "0919999999", "password_hash": "hashed_pw_carrier9", "role": "Carrier", "status": "Active" },
+  { "full_name": "Carrier Ten", "email": "carrier10@moving.com", "phone": "0920000000", "password_hash": "hashed_pw_carrier10", "role": "Carrier", "status": "Active" },
+  { "full_name": "Carrier Eleven", "email": "carrier11@moving.com", "phone": "0921111111", "password_hash": "hashed_pw_carrier11", "role": "Carrier", "status": "Active" },
+  { "full_name": "Carrier Twelve", "email": "carrier12@moving.com", "phone": "0922222222", "password_hash": "hashed_pw_carrier12", "role": "Carrier", "status": "Active" }
+]
