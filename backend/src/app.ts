@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import userRoutes from "./routes/user.route";
 
 const app = express();
 
@@ -14,6 +15,9 @@ app.use(morgan("dev"));
 app.get("/", (req, res) => {
   res.send("🚀 Backend running...");
 });
+
+// User routes
+app.use("/api/users", userRoutes);
 
 export default app;
  
