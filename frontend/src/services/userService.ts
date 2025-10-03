@@ -1,17 +1,27 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:4000/api';
+// Prefer env-based base URL; fallback to local dev server
+// Resolve base URL from Vite env if available (no 'any' usage)
+type EnvWithApi = { env?: { VITE_API_BASE_URL?: string } };
+const viteEnv = (import.meta as unknown as EnvWithApi).env;
+const API_BASE_URL = (viteEnv && viteEnv.VITE_API_BASE_URL) || 'http://localhost:4000/api';
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 15000,
+});
 
 // Định nghĩa interface cho User
 export interface User {
   _id: string;
   full_name: string;
   email: string;
-  phone: string;
+  phone?: string;
   role: 'Admin' | 'Seller' | 'Customer' | 'Driver' | 'Carrier';
   status: 'Active' | 'Inactive' | 'Suspended';
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
+  avatar?: string;
 }
 
 export interface ApiResponse<T> {
@@ -24,27 +34,16 @@ export interface ApiResponse<T> {
 class UserService {
   // Lấy danh sách tất cả users
   async getAllUsers(): Promise<ApiResponse<User[]>> {
-    const response = await axios.get(`${API_BASE_URL}/users`);
+    const response = await api.get('/users');
     return response.data;
   }
 
   // Lấy user theo ID
   async getUserById(id: string): Promise<ApiResponse<User>> {
-    const response = await axios.get(`${API_BASE_URL}/users/${id}`);
+    const response = await api.get(`/users/${id}`);
     return response.data;
   }
 
-  // Lấy users theo role
-  async getUsersByRole(role: string): Promise<ApiResponse<User[]>> {
-    const response = await axios.get(`${API_BASE_URL}/users/role/${role}`);
-    return response.data;
-  }
-
-  // Lấy users theo status
-  async getUsersByStatus(status: string): Promise<ApiResponse<User[]>> {
-    const response = await axios.get(`${API_BASE_URL}/users/status/${status}`);
-    return response.data;
-  }
 }
 
 export default new UserService();

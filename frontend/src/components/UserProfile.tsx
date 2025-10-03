@@ -1,17 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import userService, { type User } from '../services/userService';
-import { User as UserIcon, Mail, Phone, Calendar, Edit3, Save, X, Key, Trash2, Settings } from 'lucide-react';
+import { User as UserIcon, Mail, Phone, Edit3, Key, Trash2, Settings } from 'lucide-react';
 
 const UserProfile: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
-  // Sử dụng ID cứng cho trang profile chính
-  const actualUserId = userId || "68dd5b8b21d50ac94b841249";
+  const actualUserId = userId || "68dfd5144e122996f40a9b21";
+
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState<Partial<User>>({});
 
   const fetchUser = useCallback(async () => {
     try {
@@ -20,12 +18,18 @@ const UserProfile: React.FC = () => {
       const response = await userService.getUserById(actualUserId);
       if (response.success) {
         setUser(response.data);
-        setEditData(response.data);
       } else {
         setError(response.message || 'Không thể tải thông tin user');
       }
-    } catch (err) {
-      setError('Lỗi kết nối đến server');
+    } catch (err: unknown) {
+      let message = 'Lỗi kết nối đến server';
+      if (typeof err === 'object' && err !== null) {
+        const anyErr = err as { response?: { data?: { message?: string } } };
+        if (anyErr.response?.data?.message) {
+          message = anyErr.response.data.message;
+        }
+      }
+      setError(message);
       console.error('Error fetching user:', err);
     } finally {
       setLoading(false);
@@ -36,37 +40,6 @@ const UserProfile: React.FC = () => {
     fetchUser();
   }, [fetchUser]);
 
-  const handleEdit = () => {
-    setIsEditing(true);
-    setEditData(user || {});
-  };
-
-  const handleCancel = () => {
-    setIsEditing(false);
-    setEditData(user || {});
-  };
-
-  const handleSave = async () => {
-    try {
-      setLoading(true);
-      // Ở đây sẽ gọi API update user (chưa implement)
-      console.log('Saving user data:', editData);
-      
-      // Tạm thời update local state
-      if (user) {
-        setUser({ ...user, ...editData });
-      }
-      setIsEditing(false);
-    } catch (err) {
-      console.error('Error saving user:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleInputChange = (field: keyof User, value: string) => {
-    setEditData(prev => ({ ...prev, [field]: value }));
-  };
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -102,17 +75,15 @@ const UserProfile: React.FC = () => {
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-            <p className="font-bold">Lỗi!</p>
-            <p>{error}</p>
-            <button 
-              onClick={fetchUser}
-              className="mt-2 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-            >
-              Thử lại
-            </button>
-          </div>
+        <div className="bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded-lg shadow">
+          <p className="font-bold">Lỗi!</p>
+          <p>{error}</p>
+          <button 
+            onClick={fetchUser}
+            className="mt-3 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+          >
+            Thử lại
+          </button>
         </div>
       </div>
     );
@@ -121,9 +92,7 @@ const UserProfile: React.FC = () => {
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600">Không tìm thấy thông tin user</p>
-        </div>
+        <p className="text-gray-600">Không tìm thấy thông tin user</p>
       </div>
     );
   }
@@ -133,32 +102,31 @@ const UserProfile: React.FC = () => {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           
-          {/* Sidebar - Chức năng */}
+          {/* Sidebar */}
           <div className="lg:col-span-1">
-            <div className="bg-white shadow rounded-lg">
+            <div className="bg-white shadow rounded-xl">
               <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900">Chức năng</h3>
+                <h3 className="text-lg font-semibold text-gray-900">Chức năng</h3>
               </div>
-              <div className="px-6 py-4 space-y-2">
+              <div className="px-6 py-4 space-y-3">
                 <button
-                  onClick={handleEdit}
-                  className="w-full flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 rounded-md"
+                  className="w-full flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg"
                 >
                   <Edit3 className="h-4 w-4 mr-3" />
                   Chỉnh sửa thông tin
                 </button>
                 
-                <button className="w-full flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 rounded-md">
+                <button className="w-full flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg">
                   <Key className="h-4 w-4 mr-3" />
                   Đổi mật khẩu
                 </button>
                 
-                <button className="w-full flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 rounded-md">
+                <button className="w-full flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg">
                   <Settings className="h-4 w-4 mr-3" />
                   Cài đặt tài khoản
                 </button>
                 
-                <button className="w-full flex items-center px-4 py-2 text-sm font-medium text-red-700 bg-white hover:bg-red-50 border border-red-300 rounded-md">
+                <button className="w-full flex items-center px-4 py-2 text-sm font-medium text-red-700 bg-white hover:bg-red-50 border border-red-300 rounded-lg">
                   <Trash2 className="h-4 w-4 mr-3" />
                   Xóa tài khoản
                 </button>
@@ -166,182 +134,59 @@ const UserProfile: React.FC = () => {
             </div>
           </div>
 
-          {/* Main Content - Thông tin Profile */}
+          {/* Main Profile */}
           <div className="lg:col-span-3">
-            {/* Header với Avatar và Thông tin cơ bản */}
-            <div className="bg-white shadow rounded-lg mb-6">
-              <div className="px-6 py-8">
-                <div className="flex items-center">
-                  {/* Avatar */}
-                  <div className="flex-shrink-0">
-                    <div className="h-24 w-24 bg-blue-100 rounded-full flex items-center justify-center">
+            <div className="bg-white shadow rounded-xl mb-6">
+              <div className="px-6 py-8 flex flex-col sm:flex-row items-center sm:items-start">
+                
+                {/* Avatar */}
+                <div className="flex-shrink-0">
+                  {user.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={user.full_name}
+                      className="h-28 w-28 rounded-full border-4 border-white shadow-md object-cover"
+                    />
+                  ) : (
+                    <div className="h-28 w-28 rounded-full bg-blue-100 flex items-center justify-center shadow-md">
                       <UserIcon className="h-12 w-12 text-blue-600" />
                     </div>
-                  </div>
-                  
-                  {/* Thông tin cơ bản */}
-                  <div className="ml-6 flex-1">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={editData.full_name || ''}
-                          onChange={(e) => handleInputChange('full_name', e.target.value)}
-                          className="border border-gray-300 rounded px-3 py-2 text-3xl font-bold"
-                        />
-                      ) : (
-                        user.full_name
-                      )}
-                    </h1>
-                    
-                    <div className="flex items-center mb-4">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getRoleColor(user.role)}`}>
-                        {user.role}
-                      </span>
-                      <span className={`ml-3 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(user.status)}`}>
-                        {user.status}
-                      </span>
-                    </div>
-
-                    {/* Email và Phone */}
-                    <div className="space-y-2">
-                      <div className="flex items-center">
-                        <Mail className="h-5 w-5 text-gray-400 mr-3" />
-                        {isEditing ? (
-                          <input
-                            type="email"
-                            value={editData.email || ''}
-                            onChange={(e) => handleInputChange('email', e.target.value)}
-                            className="border border-gray-300 rounded px-3 py-1 flex-1"
-                          />
-                        ) : (
-                          <span className="text-gray-900 text-lg">{user.email}</span>
-                        )}
-                      </div>
-                      
-                      <div className="flex items-center">
-                        <Phone className="h-5 w-5 text-gray-400 mr-3" />
-                        {isEditing ? (
-                          <input
-                            type="tel"
-                            value={editData.phone || ''}
-                            onChange={(e) => handleInputChange('phone', e.target.value)}
-                            className="border border-gray-300 rounded px-3 py-1 flex-1"
-                          />
-                        ) : (
-                          <span className="text-gray-900 text-lg">{user.phone || 'Chưa cập nhật'}</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    {isEditing && (
-                      <div className="flex space-x-3 mt-4">
-                        <button
-                          onClick={handleSave}
-                          disabled={loading}
-                          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-                        >
-                          <Save className="h-4 w-4 mr-2" />
-                          Lưu thay đổi
-                        </button>
-                        <button
-                          onClick={handleCancel}
-                          className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                        >
-                          <X className="h-4 w-4 mr-2" />
-                          Hủy
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  )}
                 </div>
-              </div>
-            </div>
 
-            {/* Thông tin chi tiết */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Thông tin tài khoản */}
-              <div className="bg-white shadow rounded-lg">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-lg font-medium text-gray-900">Thông tin tài khoản</h3>
-                </div>
-                <div className="px-6 py-4 space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">ID người dùng</label>
-                    <div className="mt-1">
-                      <span className="text-sm text-gray-900 font-mono">{user._id}</span>
-                    </div>
-                  </div>
+                {/* Info */}
+                <div className="mt-6 sm:mt-0 sm:ml-8 flex-1 text-center sm:text-left">
+                  <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                    {user.full_name}
+                  </h1>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Ngày tạo</label>
-                    <div className="mt-1 flex items-center">
-                      <Calendar className="h-4 w-4 text-gray-400 mr-2" />
-                      <span className="text-gray-900">
-                        {new Date(user.createdAt).toLocaleDateString('vi-VN')}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Cập nhật lần cuối</label>
-                    <div className="mt-1 flex items-center">
-                      <Calendar className="h-4 w-4 text-gray-400 mr-2" />
-                      <span className="text-gray-900">
-                        {new Date(user.updatedAt).toLocaleDateString('vi-VN')}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Thời gian hoạt động</label>
-                    <div className="mt-1">
-                      <span className="text-gray-900">
-                        {Math.floor((Date.now() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24))} ngày
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Thống kê hoạt động */}
-              <div className="bg-white shadow rounded-lg">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-lg font-medium text-gray-900">Thống kê hoạt động</h3>
-                </div>
-                <div className="px-6 py-4 space-y-4">
-                  <div className="flex justify-between">
-                    <span className="text-gray-700">Trạng thái tài khoản</span>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(user.status)}`}>
+                  <div className="flex justify-center sm:justify-start items-center mb-4 space-x-3">
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getRoleColor(user.role)}`}>
+                      {user.role}
+                    </span>
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(user.status)}`}>
                       {user.status}
                     </span>
                   </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-gray-700">Vai trò hệ thống</span>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}>
-                      {user.role}
-                    </span>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-center sm:justify-start">
+                      <Mail className="h-5 w-5 text-gray-400 mr-3" />
+                      {user.email}
+                    </div>
+
+                    <div className="flex items-center justify-center sm:justify-start">
+                      <Phone className="h-5 w-5 text-gray-400 mr-3" />
+                      {user.phone}
+                    </div>
                   </div>
+
                   
-                  <div className="flex justify-between">
-                    <span className="text-gray-700">Số ngày sử dụng</span>
-                    <span className="text-gray-900 font-medium">
-                      {Math.floor((Date.now() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24))} ngày
-                    </span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-gray-700">Lần cập nhật cuối</span>
-                    <span className="text-gray-900 font-medium">
-                      {Math.floor((Date.now() - new Date(user.updatedAt).getTime()) / (1000 * 60 * 60))} giờ trước
-                    </span>
-                  </div>
                 </div>
               </div>
             </div>
           </div>
+
         </div>
       </div>
     </div>
