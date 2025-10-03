@@ -5,6 +5,7 @@ import ServiceSection from "../components/sections/ServiceSection";
 import VehicleSection from "../components/sections/VehicleSection";
 import BlogSection from "../components/sections/BlogSection";
 import FAQSection from "../components/sections/FAQSection";
+import ChatBotWidget from "../components/ChatBotWidget";
 
  import HomeHeader from "../components/HomeHeader";
  import HomeFooter from "../components/HomeFooter";
@@ -21,6 +22,7 @@ export default function HomePage() {
         <BlogSection />
         <FAQSection />
       </main>
+      <ChatBotWidget /> {/* ✅ Nút chat bot xuất hiện */}
      <HomeFooter />
     </>
   );
