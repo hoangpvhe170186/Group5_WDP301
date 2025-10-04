@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { config } from "../config";
+import { config } from "../configs";
 
 export async function connectMongo() {
   if (!/^mongodb(\+srv)?:\/\//.test(config.MONGO_URI)) {

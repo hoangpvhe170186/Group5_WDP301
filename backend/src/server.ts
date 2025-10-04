@@ -1,5 +1,5 @@
 import { connectMongo } from "./db/mongo";
-import { config } from "./config";
+import { config } from "./configs";
 import app from "./app";
 
 async function start() {
@@ -13,4 +13,5 @@ async function start() {
     process.exit(1);
   }
 }
+
 start();
