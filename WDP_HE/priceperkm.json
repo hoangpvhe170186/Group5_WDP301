@@ -1,16 +1,23 @@
 [
-  { "package_id": "68d75eb9c05da73601e1a813", "min_km": 5,  "max_km": 10, "price": 12273 },
-  { "package_id": "68d75eb9c05da73601e1a813", "min_km": 10, "max_km": 15, "price": 10309 },
-  { "package_id": "68d75eb9c05da73601e1a813", "min_km": 15, "max_km": 30, "price": 9327 },
-  { "package_id": "68d75eb9c05da73601e1a813", "min_km": 30, "max_km": null, "price": 7462 },
-
-  { "package_id": "68d75eb9c05da73601e1a814", "min_km": 5,  "max_km": 10, "price": 15218 },
-  { "package_id": "68d75eb9c05da73601e1a814", "min_km": 10, "max_km": 15, "price": 12764 },
-  { "package_id": "68d75eb9c05da73601e1a814", "min_km": 15, "max_km": 30, "price": 10800 },
-  { "package_id": "68d75eb9c05da73601e1a814", "min_km": 30, "max_km": null, "price": 8100 },
-
-  { "package_id": "68d75eb9c05da73601e1a815", "min_km": 5,  "max_km": 10, "price": 19636 },
-  { "package_id": "68d75eb9c05da73601e1a815", "min_km": 10, "max_km": 15, "price": 16200 },
-  { "package_id": "68d75eb9c05da73601e1a815", "min_km": 15, "max_km": 30, "price": 14236 },
-  { "package_id": "68d75eb9c05da73601e1a815", "min_km": 30, "max_km": null, "price": 10677 }
+  {
+    "_id": { "$oid": "652fa0d4f0aa5a1a1a1a1d11" },
+    "package_id": { "$oid": "652fa0c3f0aa5a1a1a1a1c11" },
+    "min_km": 0,
+    "max_km": 5,
+    "price": { "$numberDecimal": "15000" }
+  },
+  {
+    "_id": { "$oid": "652fa0d4f0aa5a1a1a1a1d12" },
+    "package_id": { "$oid": "652fa0c3f0aa5a1a1a1a1c11" },
+    "min_km": 6,
+    "max_km": 20,
+    "price": { "$numberDecimal": "12000" }
+  },
+  {
+    "_id": { "$oid": "652fa0d4f0aa5a1a1a1a1d13" },
+    "package_id": { "$oid": "652fa0c3f0aa5a1a1a1a1c13" },
+    "min_km": 21,
+    "max_km": null,
+    "price": { "$numberDecimal": "10000" }
+  }
 ]

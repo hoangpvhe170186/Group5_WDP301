@@ -1,0 +1,23 @@
+[
+  {
+    "_id": { "$oid": "652fa118f0aa5a1a1a1a1111" },
+    "order_id": { "$oid": "652fa0e5f0aa5a1a1a1a1e11" },
+    "amount": { "$numberDecimal": "200000" },
+    "payment_method": "Cash",
+    "payment_status": "Paid"
+  },
+  {
+    "_id": { "$oid": "652fa118f0aa5a1a1a1a1112" },
+    "order_id": { "$oid": "652fa0e5f0aa5a1a1a1a1e12" },
+    "amount": { "$numberDecimal": "300000" },
+    "payment_method": "Bank Transfer",
+    "payment_status": "Pending"
+  },
+  {
+    "_id": { "$oid": "652fa118f0aa5a1a1a1a1113" },
+    "order_id": { "$oid": "652fa0e5f0aa5a1a1a1a1e13" },
+    "amount": { "$numberDecimal": "500000" },
+    "payment_method": "Card",
+    "payment_status": "Refunded"
+  }
+]

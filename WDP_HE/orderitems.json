@@ -1,0 +1,26 @@
+[
+  {
+    "_id": { "$oid": "652fa0f6f0aa5a1a1a1a1f11" },
+    "order_id": { "$oid": "652fa0e5f0aa5a1a1a1a1e11" },
+    "description": "Tủ lạnh",
+    "quantity": 1,
+    "weight": { "$numberDecimal": "60.5" },
+    "fragile": true
+  },
+  {
+    "_id": { "$oid": "652fa0f6f0aa5a1a1a1a1f12" },
+    "order_id": { "$oid": "652fa0e5f0aa5a1a1a1a1e11" },
+    "description": "Ghế sofa",
+    "quantity": 2,
+    "weight": { "$numberDecimal": "40.0" },
+    "fragile": false
+  },
+  {
+    "_id": { "$oid": "652fa0f6f0aa5a1a1a1a1f13" },
+    "order_id": { "$oid": "652fa0e5f0aa5a1a1a1a1e12" },
+    "description": "Bàn ăn",
+    "quantity": 1,
+    "weight": { "$numberDecimal": "30.0" },
+    "fragile": false
+  }
+]

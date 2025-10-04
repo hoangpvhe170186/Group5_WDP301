@@ -1,0 +1,26 @@
+[
+  {
+    "_id": { "$oid": "652fa107f0aa5a1a1a1a1011" },
+    "order_id": { "$oid": "652fa0e5f0aa5a1a1a1a1e11" },
+    "seller_id": { "$oid": "652fa0a1f0aa5a1a1a1a1a12" },
+    "carrier_id": { "$oid": "652fa0a1f0aa5a1a1a1a1a11" },
+    "customer_confirmation": true,
+    "contract_file": "/contracts/contract1.pdf"
+  },
+  {
+    "_id": { "$oid": "652fa107f0aa5a1a1a1a1012" },
+    "order_id": { "$oid": "652fa0e5f0aa5a1a1a1a1e12" },
+    "seller_id": { "$oid": "652fa0a1f0aa5a1a1a1a1a12" },
+    "carrier_id": { "$oid": "652fa0a1f0aa5a1a1a1a1a11" },
+    "customer_confirmation": false,
+    "contract_file": "/contracts/contract2.pdf"
+  },
+  {
+    "_id": { "$oid": "652fa107f0aa5a1a1a1a1013" },
+    "order_id": { "$oid": "652fa0e5f0aa5a1a1a1a1e13" },
+    "seller_id": { "$oid": "652fa0a1f0aa5a1a1a1a1a12" },
+    "carrier_id": { "$oid": "652fa0a1f0aa5a1a1a1a1a11" },
+    "customer_confirmation": false,
+    "contract_file": "/contracts/contract3.pdf"
+  }
+]

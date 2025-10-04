@@ -1,0 +1,44 @@
+[
+  {
+    "_id": { "$oid": "652fa0e5f0aa5a1a1a1a1e11" },
+    "customer_id": { "$oid": "652fa0a1f0aa5a1a1a1a1a13" },
+    "seller_id": { "$oid": "652fa0a1f0aa5a1a1a1a1a12" },
+    "carrier_id": { "$oid": "652fa0a1f0aa5a1a1a1a1a11" },
+    "driver_id": { "$oid": "652fa0a1f0aa5a1a1a1a1a13" },
+    "vehicle_id": { "$oid": "652fa0b2f0aa5a1a1a1a1b11" },
+    "package_id": { "$oid": "652fa0c3f0aa5a1a1a1a1c11" },
+    "pickup_address": "123 Lê Lợi, Q1",
+    "delivery_address": "456 Trần Hưng Đạo, Q5",
+    "scheduled_time": { "$date": "2025-10-01T09:00:00Z" },
+    "status": "Pending",
+    "total_price": { "$numberDecimal": "200000" }
+  },
+  {
+    "_id": { "$oid": "652fa0e5f0aa5a1a1a1a1e12" },
+    "customer_id": { "$oid": "652fa0a1f0aa5a1a1a1a1a13" },
+    "seller_id": { "$oid": "652fa0a1f0aa5a1a1a1a1a12" },
+    "carrier_id": { "$oid": "652fa0a1f0aa5a1a1a1a1a11" },
+    "driver_id": { "$oid": "652fa0a1f0aa5a1a1a1a1a13" },
+    "vehicle_id": { "$oid": "652fa0b2f0aa5a1a1a1a1b12" },
+    "package_id": { "$oid": "652fa0c3f0aa5a1a1a1a1c12" },
+    "pickup_address": "789 Nguyễn Huệ, Q1",
+    "delivery_address": "101 Lý Tự Trọng, Q1",
+    "scheduled_time": { "$date": "2025-10-02T09:00:00Z" },
+    "status": "Confirmed",
+    "total_price": { "$numberDecimal": "300000" }
+  },
+  {
+    "_id": { "$oid": "652fa0e5f0aa5a1a1a1a1e13" },
+    "customer_id": { "$oid": "652fa0a1f0aa5a1a1a1a1a13" },
+    "seller_id": { "$oid": "652fa0a1f0aa5a1a1a1a1a12" },
+    "carrier_id": { "$oid": "652fa0a1f0aa5a1a1a1a1a11" },
+    "driver_id": { "$oid": "652fa0a1f0aa5a1a1a1a1a13" },
+    "vehicle_id": { "$oid": "652fa0b2f0aa5a1a1a1a1b13" },
+    "package_id": { "$oid": "652fa0c3f0aa5a1a1a1a1c13" },
+    "pickup_address": "202 Phan Xích Long, Q.PN",
+    "delivery_address": "303 Điện Biên Phủ, Q.BT",
+    "scheduled_time": { "$date": "2025-10-03T09:00:00Z" },
+    "status": "Draft",
+    "total_price": { "$numberDecimal": "500000" }
+  }
+]

@@ -1,0 +1,23 @@
+[
+  {
+    "_id": { "$oid": "652fa14bf0aa5a1a1a1a1411" },
+    "order_id": { "$oid": "652fa0e5f0aa5a1a1a1a1e11" },
+    "sender_id": { "$oid": "652fa0a1f0aa5a1a1a1a1a11" },
+    "receiver_id": { "$oid": "652fa0a1f0aa5a1a1a1a1a12" },
+    "content": "Vui lòng xác nhận đơn hàng."
+  },
+  {
+    "_id": { "$oid": "652fa14bf0aa5a1a1a1a1412" },
+    "order_id": { "$oid": "652fa0e5f0aa5a1a1a1a1e12" },
+    "sender_id": { "$oid": "652fa0a1f0aa5a1a1a1a1a12" },
+    "receiver_id": { "$oid": "652fa0a1f0aa5a1a1a1a1a13" },
+    "content": "Đơn của bạn đã được xác nhận."
+  },
+  {
+    "_id": { "$oid": "652fa14bf0aa5a1a1a1a1413" },
+    "order_id": { "$oid": "652fa0e5f0aa5a1a1a1a1e13" },
+    "sender_id": { "$oid": "652fa0a1f0aa5a1a1a1a1a13" },
+    "receiver_id": { "$oid": "652fa0a1f0aa5a1a1a1a1a11" },
+    "content": "Hỗ trợ xử lý đơn này giúp tôi."
+  }
+]

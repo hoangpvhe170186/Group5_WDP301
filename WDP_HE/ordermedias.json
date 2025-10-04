@@ -1,0 +1,26 @@
+[
+  {
+    "_id": { "$oid": "652fa17ef0aa5a1a1a1a1711" },
+    "order_id": { "$oid": "652fa0e5f0aa5a1a1a1a1e11" },
+    "uploaded_by": { "$oid": "652fa0a1f0aa5a1a1a1a1a13" },
+    "media_type": "Before_Loading",
+    "file_url": "/media/before1.jpg",
+    "description": "Ảnh chụp trước khi bốc xếp"
+  },
+  {
+    "_id": { "$oid": "652fa17ef0aa5a1a1a1a1712" },
+    "order_id": { "$oid": "652fa0e5f0aa5a1a1a1a1e12" },
+    "uploaded_by": { "$oid": "652fa0a1f0aa5a1a1a1a1a12" },
+    "media_type": "After_Delivery",
+    "file_url": "/media/after1.jpg",
+    "description": "Ảnh sau khi giao hàng"
+  },
+  {
+    "_id": { "$oid": "652fa17ef0aa5a1a1a1a1713" },
+    "order_id": { "$oid": "652fa0e5f0aa5a1a1a1a1e13" },
+    "uploaded_by": { "$oid": "652fa0a1f0aa5a1a1a1a1a11" },
+    "media_type": "Incident",
+    "file_url": "/media/incident1.jpg",
+    "description": "Ảnh sự cố"
+  }
+]
