@@ -19,7 +19,6 @@ export enum Status {
 interface IUser extends Document {
   full_name: string;
   email: string;
-  phone: string;
   password_hash: string;
   role: Role;
   avatar: string;
@@ -34,7 +33,7 @@ const UserSchema: Schema = new Schema(
   {
     full_name: { type: String, required: true, maxlength: 100 },
     email: { type: String, required: true, unique: true, maxlength: 100 },
-    phone: { type: String, unique: true, maxlength: 20, required: false },
+    phone: { type: String, required: false, maxlength: 20 },
     password_hash: { type: String, required: true, maxlength: 255 },
     role: { 
       type: String, 

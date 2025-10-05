@@ -35,6 +35,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       full_name,
       email,
       password_hash: hashedPassword,
+      phone: null,
       role: Role.Customer,
       status: Status.Inactive,
     });

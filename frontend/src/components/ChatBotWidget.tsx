@@ -7,6 +7,8 @@ type Message = {
   text: string;
 };
 
+
+
 export default function ChatBotWidget() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
