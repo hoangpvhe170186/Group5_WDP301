@@ -51,15 +51,6 @@ export default function ServiceSection() {
             </div>
           ))}
         </div>
-
-        <div className="mt-8 text-center">
-          <a
-            href="#vehicles"
-            className="inline-flex items-center rounded-md bg-[#FF6A00] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#e65f00]"
-          >
-            Tính cước phí
-          </a>
-        </div>
       </div>
     </section>
   );
