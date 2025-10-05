@@ -20,13 +20,76 @@
     "status": "Active"
   },
   {
-    "_id": { "$oid": "652fa0a1f0aa5a1a1a1a1a13" },
-    "full_name": "Tran Van C",
-    "email": "c@gmail.com",
-    "phone": "0900000003",
-    "password_hash": "$2b$10$c",
-    "role": "Customer",
-    "avatar": "/images/avatar3.png",
-    "status": "Inactive"
-  }
+  "_id": {
+    "$oid": "652fa0a1f0aa5a1a1a1a1a13"
+  },
+  "full_name": "Tran Van C",
+  "email": "c@gmail.com",
+  "phone": "0900000003",
+  "password_hash": "$2b$10$c",
+  "role": "Driver",
+  "avatar": "/images/avatar3.png",
+  "status": "Inactive"
+},
+  {
+  "_id": {
+    "$oid": "68e236f043b598cadadcc78a"
+  },
+  "full_name": "Tran Van D",
+  "email": "d@gmail.com",
+  "phone": "0900000004",
+  "password_hash": "$2b$10$d",
+  "role": "Customer",
+  "avatar": "/images/avatar4.png",
+  "status": "Active"
+},
+  {
+  "_id": {
+    "$oid": "68e2377243b598cadadcc78c"
+  },
+  "full_name": "Tran Van E",
+  "email": "e@gmail.com",
+  "phone": "0900000005",
+  "password_hash": "$2b$10$e",
+  "role": "Carrier",
+  "avatar": "/images/avatar5.png",
+  "status": "Active"
+},
+  {
+  "_id": {
+    "$oid": "68e237ec43b598cadadcc78f"
+  },
+  "full_name": "Tran Van F",
+  "email": "f@gmail.com",
+  "phone": "0900000006",
+  "password_hash": "$2b$10$f",
+  "role": "Carrier",
+  "avatar": "/images/avatar6.png",
+  "status": "Active"
+},
+  {
+  "_id": {
+    "$oid": "68e2380643b598cadadcc791"
+  },
+  "full_name": "Tran Van G",
+  "email": "g@gmail.com",
+  "phone": "0900000007",
+  "password_hash": "$2b$10$g",
+  "role": "Driver",
+  "avatar": "/images/avatar7.png",
+  "status": "Active"
+},
+  {
+  "_id": {
+    "$oid": "68e2382943b598cadadcc793"
+  },
+  "full_name": "Tran Van H",
+  "email": "h@gmail.com",
+  "phone": "0900000008",
+  "password_hash": "$2b$10$h",
+  "role": "Driver",
+  "avatar": "/images/avatar8.png",
+  "status": "Active"
+}
+
 ]
