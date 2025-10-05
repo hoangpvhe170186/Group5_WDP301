@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import PricingCard from "../PricingCard";
 
 type VehicleDb = {
   _id: string;
@@ -18,11 +19,12 @@ const mockFromDb: VehicleDb[] = [
 ];
 
 const imageByTypeCapacity: Record<string, string> = {
-  "Van-500":   "/public/van-500.png",
-  "Truck-500": "/public/truck-500.png",
-  "Truck-1000":"/public/truck-1000.png",
-  "Truck-1500":"/public/truck-1500.jpg",
-  "Truck-2000":"/public/truck-2000.jpg",
+  // files placed in the `public/` folder are served from the site root
+  "Van-500": "/van-500.png",
+  "Truck-500": "/truck-500.png",
+  "Truck-1000": "/truck-1000.png",
+  "Truck-1500": "/truck-1500.jpg",
+  "Truck-2000": "/truck-2000.jpg",
 };
 
 type Spec = {
@@ -196,6 +198,15 @@ export default function VehicleSection() {
                           </div>
                         );
                       })()}
+
+                      {/* Hiển thị bảng cước dưới mỗi xe */}
+                      <div className="mt-4">
+                        {/* map capacity to packageId demo: 500->small,1000->standard,2000->large */}
+                        <PricingCard
+                          packageId={card.capacity === 500 ? "small" : card.capacity === 1000 ? "standard" : "large"}
+                          title={`Bảng giá - ${card.title}`}
+                        />
+                      </div>
                     </div>
                   </div>
                 )}

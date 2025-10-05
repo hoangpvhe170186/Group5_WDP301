@@ -5,6 +5,7 @@ import morgan from "morgan";
 import userRoutes from "./routes/user.route";
 
 import chatRoutes from "./routes/chat"; // 👈 import route bạn vừa tạo
+import pricingRoutes from "./routes/pricing";
 
 const app = express();
 
@@ -15,6 +16,7 @@ app.use(morgan("dev"));
 
 // Gắn router vào prefix /api
 app.use("/api", chatRoutes);  // 👈 thêm dòng này
+app.use("/api/pricing", pricingRoutes);
 
 // Test route
 app.get("/", (req, res) => {
