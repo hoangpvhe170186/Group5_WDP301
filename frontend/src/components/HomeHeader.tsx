@@ -1,12 +1,83 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+/** Reusable Dropdown (hover to open, delayed close, items clickable) */
+function Dropdown({
+  label,
+  isScrolled,
+  openKey,
+  currentOpen,
+  setCurrentOpen,
+  children,
+  btnClass = "font-medium",
+}: {
+  label: string;
+  isScrolled: boolean;
+  openKey: "dichvu" | "tuyendung" | "vehe";
+  currentOpen: null | "dichvu" | "tuyendung" | "vehe";
+  setCurrentOpen: (k: null | "dichvu" | "tuyendung" | "vehe") => void;
+  children: React.ReactNode;
+  btnClass?: string;
+}) {
+  const baseText = isScrolled ? "text-gray-700 hover:text-purple-600" : "text-white hover:text-gray-200";
+  const closeTimer = useRef<number | null>(null);
+
+  const open = () => {
+    if (closeTimer.current) {
+      window.clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+    setCurrentOpen(openKey);
+  };
+
+  const scheduleClose = () => {
+    if (closeTimer.current) window.clearTimeout(closeTimer.current);
+    closeTimer.current = window.setTimeout(() => {
+      setCurrentOpen(null);
+      closeTimer.current = null;
+    }, 140); // nhỏ thôi để không “tắt sớm”
+  };
+
+  return (
+    <div
+      className="relative"
+      role="menu"
+      onMouseEnter={open}
+      onMouseLeave={scheduleClose}
+    >
+      <button
+        className={`${btnClass} text-lg ${baseText}`}
+        aria-haspopup="true"
+        aria-expanded={currentOpen === openKey}
+        // Click chỉ toggle mở/đóng menu, KHÔNG ngăn điều hướng của item bên trong
+        onClick={() => setCurrentOpen(currentOpen === openKey ? null : openKey)}
+        onKeyDown={(e) => {
+          if (["Enter", " ", "ArrowDown"].includes(e.key)) open();
+          if (["Escape"].includes(e.key)) setCurrentOpen(null);
+        }}
+      >
+        {label} ▾
+      </button>
+
+      {currentOpen === openKey && (
+        <div
+          className="absolute left-0 top-full mt-2 w-56 rounded-xl border bg-white p-2 text-sm shadow-xl"
+          role="menu"
+          // Giữ mở khi di vào menu; rời ra mới bắt đầu đếm giờ đóng
+          onMouseEnter={open}
+          onMouseLeave={scheduleClose}
+        >
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function HomeHeader() {
   const nav = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
-  const [openMenu, setOpenMenu] = useState<null | "dichvu" | "tuyendung" | "vehe">(
-    null
-  );
+  const [openMenu, setOpenMenu] = useState<null | "dichvu" | "tuyendung" | "vehe">(null);
 
   const isLoggedIn = Boolean(localStorage.getItem("role"));
 
@@ -30,9 +101,9 @@ export default function HomeHeader() {
 
   return (
     <header
-     className={`fixed top-0 z-50 w-full transition-all duration-300 ${
-    isScrolled ? "bg-white shadow-md" : "bg-transparent"
-  }`}
+      className={`fixed top-0 z-50 w-full transition-all duration-300 ${
+        isScrolled ? "bg-white shadow-md" : "bg-transparent"
+      }`}
     >
       <div className="flex w-full items-center justify-between px-12 py-6">
         <Link to="/" className="flex items-center gap-3 font-bold">
@@ -53,150 +124,63 @@ export default function HomeHeader() {
         {/* Nav */}
         <nav className="hidden items-center gap-6 md:flex">
           {/* Dịch vụ */}
-          <div
-            className="relative"
-            role="menu"
-            tabIndex={0}
-            onMouseEnter={() => setOpenMenu("dichvu")}
-            onMouseLeave={() => setOpenMenu(null)}
-            onFocus={() => setOpenMenu("dichvu")}
-            onBlur={() => setOpenMenu(null)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
-                setOpenMenu("dichvu");
-              }
-              if (e.key === "Escape" || e.key === "Tab") {
-                setOpenMenu(null);
-              }
-            }}
+          <Dropdown
+            label="Dịch vụ"
+            isScrolled={isScrolled}
+            openKey="dichvu"
+            currentOpen={openMenu}
+            setCurrentOpen={setOpenMenu}
+            btnClass="font-semibold"
           >
-            <button
-              className={`font-semibold text-lg ${baseText}`}
-              aria-haspopup="true"
-              aria-expanded={openMenu === "dichvu"}
-              onClick={() => setOpenMenu(openMenu === "dichvu" ? null : "dichvu")}
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  setOpenMenu(openMenu === "dichvu" ? null : "dichvu");
-                }
-              }}
-            >
-              Dịch vụ ▾
-            </button>
-            {openMenu === "dichvu" && (
-              <div
-                className="absolute left-0 top-full mt-2 w-56 rounded-xl border bg-white p-2 text-sm shadow-xl"
-                role="menu"
-                tabIndex={-1}
-              >
-                <Link to="/chuyen-nha" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem" tabIndex={0}>
-                  Chuyển nhà / Chuyển trọ
-                </Link>
-                <Link to="/chuyen-van-phong" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem" tabIndex={0}>
-                  Chuyển văn phòng
-                </Link>
-                <Link to="/doi-xe" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem" tabIndex={0}>
-                  Đội xe & Bảng xe (Van, Tải)
-                </Link>
-              </div>
-            )}
-          </div>
+            <Link to="/chuyen-nha" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">
+              Chuyển nhà / Chuyển trọ
+            </Link>
+            <Link to="/chuyen-van-phong" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">
+              Chuyển văn phòng
+            </Link>
+            <Link to="/doi-xe" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">
+              Đội xe & Bảng xe (Van, Tải)
+            </Link>
+          </Dropdown>
 
           {/* Tuyển dụng */}
-          <div
-            className="relative"
-            role="menu"
-            tabIndex={0}
-            onMouseEnter={() => setOpenMenu("tuyendung")}
-            onMouseLeave={() => setOpenMenu(null)}
-            onFocus={() => setOpenMenu("tuyendung")}
-            onBlur={() => setOpenMenu(null)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
-                setOpenMenu("tuyendung");
-              }
-              if (e.key === "Escape" || e.key === "Tab") {
-                setOpenMenu(null);
-              }
-            }}
+          <Dropdown
+            label="Tuyển dụng"
+            isScrolled={isScrolled}
+            openKey="tuyendung"
+            currentOpen={openMenu}
+            setCurrentOpen={setOpenMenu}
           >
-            <button
-              className={`font-medium ${baseText}`}
-              aria-haspopup="true"
-              aria-expanded={openMenu === "tuyendung"}
-              onClick={() => setOpenMenu(openMenu === "tuyendung" ? null : "tuyendung")}
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  setOpenMenu(openMenu === "tuyendung" ? null : "tuyendung");
-                }
-              }}
-            >
-              Tuyển dụng ▾
-            </button>
-            {openMenu === "tuyendung" && (
-              <div className="absolute left-0 top-full mt-2 w-56 rounded-xl border bg-white p-2 text-sm shadow-xl" role="menu" tabIndex={-1}>
-                <Link to="/tuyen-tai-xe" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem" tabIndex={0}>
-                  Tuyển tài xế
-                </Link>
-                <Link to="/tuyen-boc-xep" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem" tabIndex={0}>
-                  Tuyển người bốc xếp
-                </Link>
-              </div>
-            )}
-          </div>
+            <Link to="/tuyen-tai-xe" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">
+              Tuyển tài xế
+            </Link>
+            <Link to="/tuyen-boc-xep" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">
+              Tuyển người bốc xếp
+            </Link>
+          </Dropdown>
 
           <Link to="/bang-gia" className={`font-medium ${baseText}`}>
             Bảng giá
           </Link>
 
           {/* Về Home Express */}
-          <div
-            className="relative"
-            role="menu"
-            tabIndex={0}
-            onMouseEnter={() => setOpenMenu("vehe")}
-            onMouseLeave={() => setOpenMenu(null)}
-            onFocus={() => setOpenMenu("vehe")}
-            onBlur={() => setOpenMenu(null)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
-                setOpenMenu("vehe");
-              }
-              if (e.key === "Escape" || e.key === "Tab") {
-                setOpenMenu(null);
-              }
-            }}
+          <Dropdown
+            label="Về Home Express"
+            isScrolled={isScrolled}
+            openKey="vehe"
+            currentOpen={openMenu}
+            setCurrentOpen={setOpenMenu}
           >
-            <button
-              className={`font-medium ${baseText}`}
-              aria-haspopup="true"
-              aria-expanded={openMenu === "vehe"}
-              onClick={() => setOpenMenu(openMenu === "vehe" ? null : "vehe")}
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  setOpenMenu(openMenu === "vehe" ? null : "vehe");
-                }
-              }}
-            >
-              Về Home Express ▾
-            </button>
-            {openMenu === "vehe" && (
-              <div className="absolute left-0 top-full mt-2 w-56 rounded-xl border bg-white p-2 text-sm shadow-xl" role="menu" tabIndex={-1}>
-                <Link to="/gioi-thieu" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem" tabIndex={0}>
-                  Giới thiệu
-                </Link>
-                <Link to="/lien-he" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem" tabIndex={0}>
-                  Liên hệ
-                </Link>
-                <Link to="/ho-tro" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem" tabIndex={0}>
-                  Hỗ trợ & FAQ
-                </Link>
-              </div>
-            )}
-          </div>
+            <Link to="/gioi-thieu" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">
+              Giới thiệu
+            </Link>
+            <Link to="/lien-he" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">
+              Liên hệ
+            </Link>
+            <Link to="/ho-tro" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">
+              Hỗ trợ & FAQ
+            </Link>
+          </Dropdown>
 
           {/* Quốc gia / ngôn ngữ (tĩnh) */}
           <span className={`text-sm ${baseText}`}>Việt Nam · Tiếng Việt</span>
@@ -235,7 +219,7 @@ export default function HomeHeader() {
           )}
         </nav>
 
-        {/* Mobile trigger */}
+        {/* Mobile trigger giữ nguyên như bạn đang có */}
         <MobileMenu
           isScrolled={isScrolled}
           isLoggedIn={isLoggedIn}
@@ -246,7 +230,7 @@ export default function HomeHeader() {
   );
 }
 
-/** ————— Mobile menu ————— */
+/** ————— Mobile menu giữ nguyên code cũ của bạn ————— */
 function MobileMenu({
   isScrolled,
   isLoggedIn,
@@ -301,36 +285,36 @@ function MobileMenu({
               Hỗ trợ & FAQ
             </Link>
 
-            <div className="mt-3 border-t pt-3">
-              {isLoggedIn ? (
-                <>
-                  <Link to="/portal" className="block rounded-lg p-2 hover:bg-gray-50">
-                    Portal
-                  </Link>
-                  <Link to="/dashboard" className="block rounded-lg p-2 hover:bg-gray-50">
-                    Dashboard
-                  </Link>
-                  <button
-                    onClick={onLogout}
-                    className="mt-1 w-full rounded-lg border p-2 text-left hover:bg-gray-50"
-                  >
-                    Logout
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Link to="/login" className="block rounded-lg p-2 hover:bg-gray-50">
-                    Đăng nhập
-                  </Link>
-                  <Link
-                    to="/register"
-                    className="mt-1 block rounded-lg bg-orange-500 p-2 text-center font-semibold text-white hover:bg-orange-600"
-                  >
-                    Đăng ký
-                  </Link>
-                </>
-              )}
-            </div>
+              <div className="mt-3 border-t pt-3">
+                {isLoggedIn ? (
+                  <>
+                    <Link to="/portal" className="block rounded-lg p-2 hover:bg-gray-50">
+                      Portal
+                    </Link>
+                    <Link to="/dashboard" className="block rounded-lg p-2 hover:bg-gray-50">
+                      Dashboard
+                    </Link>
+                    <button
+                      onClick={onLogout}
+                      className="mt-1 w-full rounded-lg border p-2 text-left hover:bg-gray-50"
+                    >
+                      Logout
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link to="/login" className="block rounded-lg p-2 hover:bg-gray-50">
+                      Đăng nhập
+                    </Link>
+                    <Link
+                      to="/register"
+                      className="mt-1 block rounded-lg bg-orange-500 p-2 text-center font-semibold text-white hover:bg-orange-600"
+                    >
+                      Đăng ký
+                    </Link>
+                  </>
+                )}
+              </div>
           </div>
         </div>
       )}
