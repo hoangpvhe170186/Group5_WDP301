@@ -7,6 +7,7 @@ import uploadRoute from "./routes/upload.route";
 import chatRoutes from "./routes/chat"; // 👈 import route bạn vừa tạo
 import pricingRoutes from "./routes/pricing";
 import vehiclesRoute from "./routes/vehicles.route";
+import routes from "./routes/auth.route";
 const app = express();
 
 app.use(express.json());
@@ -22,6 +23,8 @@ app.use("/api/pricing", pricingRoutes);
 app.get("/", (req, res) => {
   res.send("🚀 Backend running...");
 });
+
+app.use("/api", routes);
 
 // User routes
 app.use("/api/users", userRoutes);
