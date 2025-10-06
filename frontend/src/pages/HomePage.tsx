@@ -3,6 +3,7 @@ import HeroSection from "../components/sections/HeroSection";
 import FeatureSection from "../components/sections/FeatureSection";
 import ServiceSection from "../components/sections/ServiceSection";
 import VehicleSection from "../components/sections/VehicleSection";
+
 import BlogSection from "../components/sections/BlogSection";
 import FAQSection from "../components/sections/FAQSection";
 import ChatBotWidget from "../components/ChatBotWidget";
@@ -19,6 +20,7 @@ export default function HomePage() {
         <FeatureSection />
         <ServiceSection />
         <VehicleSection />
+  
         <BlogSection />
         <FAQSection />
       </main>

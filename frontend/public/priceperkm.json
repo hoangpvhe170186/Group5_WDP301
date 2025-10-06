@@ -1,0 +1,23 @@
+[
+  {
+    "_id": { "$oid": "652fa0d4f0aa5a1a1a1a1d11" },
+    "package_id": { "$oid": "652fa0c3f0aa5a1a1a1a1c11" },
+    "min_km": 0,
+    "max_km": 5,
+    "price": { "$numberDecimal": "15000" }
+  },
+  {
+    "_id": { "$oid": "652fa0d4f0aa5a1a1a1a1d12" },
+    "package_id": { "$oid": "652fa0c3f0aa5a1a1a1a1c11" },
+    "min_km": 6,
+    "max_km": 20,
+    "price": { "$numberDecimal": "12000" }
+  },
+  {
+    "_id": { "$oid": "652fa0d4f0aa5a1a1a1a1d13" },
+    "package_id": { "$oid": "652fa0c3f0aa5a1a1a1a1c13" },
+    "min_km": 21,
+    "max_km": null,
+    "price": { "$numberDecimal": "10000" }
+  }
+]

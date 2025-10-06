@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 
 type Role = "user" | "bot";
 
@@ -12,6 +12,15 @@ export default function ChatBotWidget() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
 
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
+
+  // ✅ Tự động cuộn xuống cuối khi có tin nhắn mới
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
+
   const questions: string[] = [
     "Tôi muốn biết bảng giá dịch vụ?",
     "Làm sao để đặt xe chuyển nhà?",
@@ -19,8 +28,10 @@ export default function ChatBotWidget() {
     "Tôi có thể hẹn giờ chuyển đồ được không?",
   ];
 
+  // Gửi tin nhắn tới backend
   const sendMessage = async (text: string) => {
     if (!text.trim()) return;
+
     const newMessages: Message[] = [...messages, { role: "user", text }];
     setMessages(newMessages);
     setInput("");
@@ -32,114 +43,120 @@ export default function ChatBotWidget() {
         body: JSON.stringify({ message: text, userId: "guest" }),
       });
       const data = await res.json();
-      setMessages([...newMessages, { role: "bot", text: data.reply }]);
+
+      const botMsg: Message = { role: "bot", text: data.reply };
+      setMessages([...newMessages, botMsg]);
     } catch (err) {
-      setMessages([
-        ...newMessages,
-        { role: "bot", text: "❌ Không thể kết nối server." },
-      ]);
+      const errMsg: Message = {
+        role: "bot",
+        text: "❌ Không thể kết nối server.",
+      };
+      setMessages([...newMessages, errMsg]);
     }
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-8 right-8 z-50">
+      {/* Nút mở chat */}
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-r from-orange-500 to-pink-500 text-white shadow-lg hover:scale-105 transition-transform"
+          className="flex items-center justify-center w-16 h-16 rounded-full bg-[#FF6A00] text-white text-2xl shadow-xl hover:bg-[#e65f00] transition"
         >
           💬
         </button>
       )}
 
+      {/* Hộp chat */}
       {open && (
-        <div className="w-80 h-[480px] flex flex-col bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+        <div className="w-96 h-[500px] bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between bg-gradient-to-r from-orange-500 to-pink-500 text-white px-4 py-3">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">🤖</span>
-              <span className="font-semibold">Home Express Chat</span>
-            </div>
+          <div className="flex items-center justify-between bg-[#FF6A00] text-white px-5 py-3">
+            <span className="font-semibold text-base">Home Express Chat</span>
             <button
               onClick={() => setOpen(false)}
-              className="hover:text-gray-200 text-lg"
+              className="text-white hover:text-gray-200 text-lg"
             >
               ✖
             </button>
           </div>
 
-          {/* Body */}
-          <div className="flex-1 p-4 space-y-3 overflow-y-auto bg-gray-50">
+          {/* Lịch sử chat */}
+          <div className="flex-1 p-4 space-y-2 overflow-y-auto bg-orange-50/20">
             {messages.length === 0 && (
-              <div className="text-sm text-gray-500">
-                Xin chào 👋, hãy chọn câu hỏi hoặc nhập tin nhắn bên dưới.
-              </div>
+              <p className="text-sm text-gray-500">
+                Xin chào 👋, bạn có thể chọn nhanh một câu hỏi:
+              </p>
             )}
             {messages.map((m, idx) => (
               <div
                 key={m.text + idx}
-                className={`flex ${
-                  m.role === "user" ? "justify-end" : "justify-start"
+                className={`max-w-[80%] p-2 rounded-md text-sm break-words transition-all duration-200 ${
+                  m.role === "user"
+                    ? "bg-[#FFEDD5] text-gray-900 ml-auto animate-fadeIn"
+                    : "bg-white text-gray-800 border border-gray-100 shadow-sm animate-fadeIn"
                 }`}
               >
-                <div
-                  className={`max-w-[70%] px-3 py-2 rounded-lg text-sm shadow ${
-                    m.role === "user"
-                      ? "bg-orange-500 text-white rounded-br-none"
-                      : "bg-white text-gray-800 border border-gray-200 rounded-bl-none"
-                  }`}
-                >
-                  {m.text}
-                </div>
+                {m.role === "user" ? "Bạn: " : "Bot: "} {m.text}
               </div>
             ))}
 
-            {/* Quick questions */}
+            {/* Gợi ý nếu chưa chat */}
             {messages.length === 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
+              <div className="space-y-2 mt-2">
                 {questions.map((q) => (
                   <button
                     key={q}
                     onClick={() => sendMessage(q)}
-                    className="px-3 py-1.5 text-xs bg-white border border-gray-300 rounded-full shadow-sm hover:bg-orange-50"
+                    className="block w-full text-left rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50"
                   >
                     {q}
                   </button>
                 ))}
               </div>
             )}
+
+            {/* ✅ Cuộn xuống cuối */}
+            <div ref={chatEndRef} />
           </div>
 
-          {/* Input */}
-          <div className="border-t border-gray-200 p-2 bg-white flex gap-2">
+          {/* Ô nhập + gửi */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              sendMessage(input);
+            }}
+            className="border-t border-gray-200 p-3 flex gap-2"
+          >
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               type="text"
               placeholder="Nhập tin nhắn..."
-              className="flex-1 rounded-full border px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500"
+              className="flex-1 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#FF6A00]"
             />
             <button
-              onClick={() => sendMessage(input)}
-              className="px-4 py-2 rounded-full bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600"
+              type="submit"
+              className="rounded-md bg-[#FF6A00] text-white px-4 py-2 text-sm hover:bg-[#e65f00]"
             >
               Gửi
             </button>
-          </div>
+          </form>
 
-          {/* Footer: chuyển sang nhân viên */}
+          {/* Nút chuyển sang nhân viên */}
           <button
-            className="bg-gray-100 hover:bg-gray-200 text-sm py-2 text-gray-700"
+            className="bg-gray-100 hover:bg-gray-200 text-sm py-3 text-gray-700 font-medium"
             onClick={async () => {
               await fetch("http://localhost:4000/api/chat/handoff", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ userId: "guest" }),
               });
-              setMessages([
-                ...messages,
-                { role: "bot", text: "🔄 Đã chuyển sang nhân viên hỗ trợ." },
-              ]);
+              const notify: Message = {
+                role: "bot",
+                text: "🔄 Đã chuyển sang nhân viên hỗ trợ.",
+              };
+              setMessages([...messages, notify]);
             }}
           >
             🔄 Nói chuyện với nhân viên hỗ trợ
