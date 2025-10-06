@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 
 type Role = "user" | "bot";
 
@@ -11,6 +11,15 @@ export default function ChatBotWidget() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
+
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
+
+  // ✅ Tự động cuộn xuống cuối khi có tin nhắn mới
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
 
   const questions: string[] = [
     "Tôi muốn biết bảng giá dịch vụ?",
@@ -38,18 +47,21 @@ export default function ChatBotWidget() {
       const botMsg: Message = { role: "bot", text: data.reply };
       setMessages([...newMessages, botMsg]);
     } catch (err) {
-      const errMsg: Message = { role: "bot", text: "❌ Không thể kết nối server." };
+      const errMsg: Message = {
+        role: "bot",
+        text: "❌ Không thể kết nối server.",
+      };
       setMessages([...newMessages, errMsg]);
     }
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-8 right-8 z-50">
       {/* Nút mở chat */}
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="flex items-center justify-center w-14 h-14 rounded-full bg-[#FF6A00] text-white shadow-lg hover:bg-[#e65f00] transition"
+          className="flex items-center justify-center w-16 h-16 rounded-full bg-[#FF6A00] text-white text-2xl shadow-xl hover:bg-[#e65f00] transition"
         >
           💬
         </button>
@@ -57,15 +69,20 @@ export default function ChatBotWidget() {
 
       {/* Hộp chat */}
       {open && (
-        <div className="w-80 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden flex flex-col">
+        <div className="w-96 h-[500px] bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between bg-[#FF6A00] text-white px-4 py-3">
-            <span className="font-semibold">Home Express Chat</span>
-            <button onClick={() => setOpen(false)}>✖</button>
+          <div className="flex items-center justify-between bg-[#FF6A00] text-white px-5 py-3">
+            <span className="font-semibold text-base">Home Express Chat</span>
+            <button
+              onClick={() => setOpen(false)}
+              className="text-white hover:text-gray-200 text-lg"
+            >
+              ✖
+            </button>
           </div>
 
           {/* Lịch sử chat */}
-          <div className="flex-1 p-4 space-y-2 max-h-64 overflow-y-auto">
+          <div className="flex-1 p-4 space-y-2 overflow-y-auto bg-orange-50/20">
             {messages.length === 0 && (
               <p className="text-sm text-gray-500">
                 Xin chào 👋, bạn có thể chọn nhanh một câu hỏi:
@@ -73,18 +90,18 @@ export default function ChatBotWidget() {
             )}
             {messages.map((m, idx) => (
               <div
-                key={m.text + idx} // dùng text+idx tránh cảnh báo React
-                className={`p-2 rounded-md text-sm ${
+                key={m.text + idx}
+                className={`max-w-[80%] p-2 rounded-md text-sm break-words transition-all duration-200 ${
                   m.role === "user"
-                    ? "bg-gray-100 text-gray-800 self-end"
-                    : "bg-orange-50 text-gray-800"
+                    ? "bg-[#FFEDD5] text-gray-900 ml-auto animate-fadeIn"
+                    : "bg-white text-gray-800 border border-gray-100 shadow-sm animate-fadeIn"
                 }`}
               >
                 {m.role === "user" ? "Bạn: " : "Bot: "} {m.text}
               </div>
             ))}
 
-            {/* Câu hỏi gợi ý nếu chưa chat */}
+            {/* Gợi ý nếu chưa chat */}
             {messages.length === 0 && (
               <div className="space-y-2 mt-2">
                 {questions.map((q) => (
@@ -98,28 +115,37 @@ export default function ChatBotWidget() {
                 ))}
               </div>
             )}
+
+            {/* ✅ Cuộn xuống cuối */}
+            <div ref={chatEndRef} />
           </div>
 
           {/* Ô nhập + gửi */}
-          <div className="border-t border-gray-200 p-2 flex gap-2">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              sendMessage(input);
+            }}
+            className="border-t border-gray-200 p-3 flex gap-2"
+          >
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               type="text"
-              placeholder="Nhập câu hỏi..."
+              placeholder="Nhập tin nhắn..."
               className="flex-1 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#FF6A00]"
             />
             <button
-              onClick={() => sendMessage(input)}
-              className="rounded-md bg-[#FF6A00] text-white px-3 hover:bg-[#e65f00]"
+              type="submit"
+              className="rounded-md bg-[#FF6A00] text-white px-4 py-2 text-sm hover:bg-[#e65f00]"
             >
               Gửi
             </button>
-          </div>
+          </form>
 
           {/* Nút chuyển sang nhân viên */}
           <button
-            className="bg-gray-100 hover:bg-gray-200 text-sm py-2 text-gray-700"
+            className="bg-gray-100 hover:bg-gray-200 text-sm py-3 text-gray-700 font-medium"
             onClick={async () => {
               await fetch("http://localhost:4000/api/chat/handoff", {
                 method: "POST",
