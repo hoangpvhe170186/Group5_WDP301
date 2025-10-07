@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 const pricePackageSchema = new mongoose.Schema({
-  name: { type: String, required: true },
+  name: { type: String, required: true, unique: true }, // Dùng name làm định danh duy nhất
   vehicle: { type: String, required: true },
   workers: { type: String, required: true },
   max_floor: { type: Number, default: 1 },

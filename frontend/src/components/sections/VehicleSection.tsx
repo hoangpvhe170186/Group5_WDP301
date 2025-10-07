@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import PricingCard from "../PricingCard";
 
 type Vehicle = {
@@ -11,6 +12,7 @@ type Vehicle = {
     original?: string;
     thumb?: string;
     public_id?: string;
+    url?: string;
   };
 };
 
@@ -127,6 +129,7 @@ function UploadImageButton({
 }
 
 export default function VehicleSection() {
+  const navigate = useNavigate();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [error, setError] = useState<string>("");
@@ -166,7 +169,7 @@ export default function VehicleSection() {
   // Map gói giá
   const getPackageId = (cap: number) => {
     if (cap <= 500) return "small";
-    if (cap <= 1500) return "medium";
+    if (cap <= 1500) return "standard";
     return "large"; // 3000
   };
 
@@ -197,42 +200,45 @@ export default function VehicleSection() {
                 key={key}
                 className="relative rounded-xl bg-gray-50 ring-1 ring-gray-200 shadow-sm transition hover:shadow-md"
               >
-                <button
-                  className="flex w-full flex-col items-center px-6 pt-6 pb-4 text-left"
-                  onClick={() => setActiveKey(isOpen ? null : key)}
-                  aria-expanded={isOpen}
-                >
-                  <div className="mb-4 aspect-[4/3] w-full overflow-hidden rounded-md bg-white">
+                <div className="flex w-full flex-col items-center px-6 pt-6 pb-4 text-left">
+                  <div
+                    className="mb-4 aspect-[4/3] w-full overflow-hidden rounded-md bg-white cursor-pointer"
+                    onClick={() => navigate(`/vehicles/${first._id}/price`)}
+                  >
                     <img
                       src={image}
                       alt={title}
                       className="h-full w-full object-cover"
                       onError={(e) => {
-                         const img = e.currentTarget as HTMLImageElement;
-                          if (!img.dataset.fbk) {
-                            img.dataset.fbk = "1"; 
-                            img.src = "/images/fallback.jpg";
-                          }}
-                      }
+                        const img = e.currentTarget as HTMLImageElement;
+                        if (!img.dataset.fbk) {
+                          img.dataset.fbk = "1";
+                          img.src = "/images/fallback.jpg";
+                        }
+                      }}
                     />
                   </div>
 
                   <p className="text-base font-semibold">{title}</p>
 
-                  <svg
-                    className={`mt-2 h-5 w-5 transition-transform ${
-                      isOpen ? "rotate-180" : ""
-                    }`}
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
+                  <button
+                    aria-expanded={isOpen}
+                    className="mt-2"
+                    onClick={() => setActiveKey(isOpen ? null : key)}
                   >
-                    <path
-                      fillRule="evenodd"
-                      d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.25a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </button>
+                    <svg
+                      className={`h-5 w-5 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.25a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </button>
+                </div>
 
                 {isOpen && (
                   <div className="absolute left-0 right-0 top-full z-10 mt-2 px-0">
@@ -276,13 +282,6 @@ export default function VehicleSection() {
                             ))}
                           </ul>
                         </div>
-                      </div>
-
-                      <div className="mt-4">
-                        <PricingCard
-                          packageId={getPackageId(first.capacity)}
-                          title={`Bảng giá - ${title}`}
-                        />
                       </div>
 
                       <UploadImageButton plate={first.plate_number} onUploaded={fetchVehicles} />
