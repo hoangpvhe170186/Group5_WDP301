@@ -204,13 +204,13 @@ export default function HomeHeader() {
           ) : (
             <>
               <Link
-                to="/login"
+                to="/auth/login"
                 className={`rounded-xl border px-4 py-2 font-medium transition-all ${btnOutline}`}
               >
                 Đăng nhập
               </Link>
               <Link
-                to="/register"
+                to="/auth/register"
                 className="rounded-xl bg-orange-500 px-4 py-2 font-semibold text-white hover:bg-orange-600"
               >
                 Đăng ký
