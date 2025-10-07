@@ -65,6 +65,7 @@ export default function LoginPage() {
       localStorage.setItem("auth_token", token);
       sessionStorage.setItem("auth_email", user.email);
       localStorage.setItem("user_role", user.role);
+      localStorage.setItem("user_id", user._id);
 
       if (requiresVerification || user.status !== "Active") {
         navigate("/auth/verify-otp");
@@ -126,6 +127,7 @@ export default function LoginPage() {
       // ✅ Lưu token và role vào localStorage
       localStorage.setItem("auth_token", token);
       localStorage.setItem("user_role", user.role);
+      localStorage.setItem("user_id", user._id);
 
       // ✅ Điều hướng theo role
       switch (user.role.toLowerCase()) {

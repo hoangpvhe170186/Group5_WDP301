@@ -11,7 +11,9 @@ import {
   X,
   Check,
   Loader2,
+  Camera,
 } from "lucide-react";
+import { getCurrentUserId } from "../lib/auth";
 
 // ---- Interface & type ----
 type Role = "Admin" | "Seller" | "Customer" | "Driver" | "Carrier";
@@ -39,7 +41,8 @@ type ApiResponse<T> = {
 // ---- Main Component ----
 export default function UserProfile() {
   const { userId } = useParams<{ userId: string }>();
-  const actualUserId = userId || "68dfd5144e122996f40a9b21";
+  const currentUserId = getCurrentUserId();
+  const actualUserId = userId || currentUserId;
 
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,6 +58,15 @@ export default function UserProfile() {
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [editSuccess, setEditSuccess] = useState(false);
+  
+  // State cho avatar trong form chỉnh sửa
+  const [editAvatarFile, setEditAvatarFile] = useState<File | null>(null);
+  const [editAvatarPreview, setEditAvatarPreview] = useState<string | null>(null);
+
+  // State cho upload avatar
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
 
   // Gọi API lấy thông tin user
   const fetchUser = useCallback(async () => {
@@ -122,6 +134,40 @@ export default function UserProfile() {
     setEditError(null);
     setEditOpen(true);
     setEditSuccess(false);
+    // Reset avatar state
+    setEditAvatarFile(null);
+    setEditAvatarPreview(null);
+  };
+
+  // Xử lý upload avatar
+ 
+
+  // Xử lý chọn avatar trong form chỉnh sửa
+  const handleEditAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setEditError("Vui lòng chọn file hình ảnh.");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setEditError("File quá lớn. Vui lòng chọn file nhỏ hơn 5MB.");
+      return;
+    }
+
+    setEditAvatarFile(file);
+    setEditError(null);
+
+    // Tạo preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setEditAvatarPreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   // Xử lý cập nhật user
@@ -137,19 +183,51 @@ export default function UserProfile() {
       setEditLoading(false);
       return;
     }
-    if (!/^[\w-.]+@[\w-]+\.[a-z]{2,}$/i.test(editFields.email)) {
-      setEditError("Email không hợp lệ.");
-      setEditLoading(false);
-      return;
-    }
+    if (!/^[\w.-]+@[\w-]+(\.[\w-]+)+$/i.test(editFields.email)) {
+  setEditError("Email không hợp lệ.");
+  setEditLoading(false);
+  return;
+}
 
     try {
+      let avatarUrl = user?.avatar; // Giữ avatar cũ nếu không upload mới
+
+      // Nếu có avatar mới, upload lên Cloudinary trước
+      if (editAvatarFile) {
+        const formData = new FormData();
+        formData.append('file', editAvatarFile);
+        formData.append('user_id', actualUserId || '');
+
+        const uploadRes = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api"}/upload/avatar`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+        const uploadData = await uploadRes.json();
+        if (uploadData.success) {
+          avatarUrl = uploadData.url;
+        } else {
+          setEditError("Upload avatar thất bại: " + (uploadData.error || "Lỗi không xác định"));
+          setEditLoading(false);
+          return;
+        }
+      }
+
+      // Cập nhật thông tin user (bao gồm avatar mới nếu có)
+      const updateData = {
+        ...editFields,
+        ...(avatarUrl && { avatar: avatarUrl })
+      };
+
       const res = await fetch(
         `${import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api"}/users/${actualUserId}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(editFields),
+          body: JSON.stringify(updateData),
         }
       );
       const data: ApiResponse<User> = await res.json();
@@ -170,6 +248,17 @@ export default function UserProfile() {
   };
 
   // ---- Render ----
+  if (!currentUserId) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50 flex items-center justify-center pt-20">
+        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-6 py-4 rounded-lg shadow">
+          <p className="font-bold">Cần đăng nhập!</p>
+          <p>Vui lòng đăng nhập để xem thông tin profile.</p>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50 flex items-center justify-center pt-20">
@@ -211,7 +300,7 @@ export default function UserProfile() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
           <form
             onSubmit={handleEditSubmit}
-            className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-sm relative"
+            className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md relative"
           >
             <button
               type="button"
@@ -224,6 +313,54 @@ export default function UserProfile() {
             <h2 className="text-xl font-bold mb-6 text-orange-600 flex items-center gap-2">
               <Edit3 className="w-5 h-5" /> Chỉnh sửa thông tin
             </h2>
+            
+            {/* Avatar Upload Section */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium mb-3 text-gray-700">
+                Ảnh đại diện
+              </label>
+              <div className="flex items-center gap-4">
+                <div className="flex-shrink-0">
+                  {editAvatarPreview ? (
+                    <img
+                      src={editAvatarPreview}
+                      alt="Avatar preview"
+                      className="h-16 w-16 rounded-full border-2 border-gray-200 object-cover"
+                    />
+                  ) : user?.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt="Current avatar"
+                      className="h-16 w-16 rounded-full border-2 border-gray-200 object-cover"
+                    />
+                  ) : (
+                    <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center border-2 border-gray-200">
+                      <UserIcon className="h-8 w-8 text-gray-400" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <label className="cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleEditAvatarChange}
+                      className="hidden"
+                      disabled={editLoading}
+                    />
+                    <div className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                      <Camera className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-600">
+                        {editAvatarFile ? "Đã chọn ảnh mới" : "Chọn ảnh đại diện"}
+                      </span>
+                    </div>
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    JPG, PNG tối đa 5MB
+                  </p>
+                </div>
+              </div>
+            </div>
             <div className="mb-4">
               <label className="block text-sm font-medium mb-1 text-gray-700">
                 Họ tên <span className="text-red-500">*</span>
@@ -306,7 +443,7 @@ export default function UserProfile() {
                 </button>
                 <button className="w-full flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-orange-50 border border-gray-200 rounded-lg transition">
                   <Settings className="h-4 w-4 mr-3 text-blue-500" />
-                  Cài đặt tài khoản
+                  Đăng xuất
                 </button>
                 <button className="w-full flex items-center px-4 py-2 text-sm font-medium text-red-700 bg-white hover:bg-red-50 border border-red-300 rounded-lg transition">
                   <Trash2 className="h-4 w-4 mr-3 text-red-600" />
@@ -320,7 +457,7 @@ export default function UserProfile() {
             <div className="bg-white/95 shadow-xl rounded-2xl border border-gray-100 mb-8 overflow-hidden">
               <div className="px-8 py-10 flex flex-col sm:flex-row items-center sm:items-start bg-gradient-to-r from-blue-50 to-orange-50">
                 {/* Avatar */}
-                <div className="flex-shrink-0">
+                <div className="flex-shrink-0 relative">
                   {user.avatar ? (
                     <img
                       src={user.avatar}
@@ -332,6 +469,7 @@ export default function UserProfile() {
                       <UserIcon className="h-16 w-16 text-blue-600" />
                     </div>
                   )}
+                 
                 </div>
                 {/* Info */}
                 <div className="mt-8 sm:mt-0 sm:ml-12 flex-1 text-center sm:text-left">
@@ -375,6 +513,25 @@ export default function UserProfile() {
                   </div>
                 </div>
               </div>
+              
+              {/* Upload Avatar Messages */}
+              {uploadError && (
+                <div className="px-8 pb-4">
+                  <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2">
+                    <X className="w-4 h-4" />
+                    {uploadError}
+                  </div>
+                </div>
+              )}
+              {uploadSuccess && (
+                <div className="px-8 pb-4">
+                  <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg flex items-center gap-2">
+                    <Check className="w-4 h-4" />
+                    Cập nhật avatar thành công!
+                  </div>
+                </div>
+              )}
+              
               {/* Footer profile */}
             </div>
           </div>
