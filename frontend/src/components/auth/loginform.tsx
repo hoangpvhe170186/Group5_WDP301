@@ -161,7 +161,7 @@ export default function LoginPage() {
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-orange-50 to-orange-100 items-center justify-center p-12">
         <div className="relative w-full max-w-md">
           <img
-            src="img-auth/orange-delivery-vehicles-illustration-isometric.jpg"
+            src="/orange-delivery-vehicles-illustration-isometric.jpg"
             alt="Delivery vehicles"
             width={500}
             height={500}
