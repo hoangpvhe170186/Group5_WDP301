@@ -11,6 +11,7 @@ import RegisterPage from "./components/auth/registerform";
 import VerifyOtpPage from "./components/auth/verify-otp";
 import ForgotPasswordPage from "./components/auth/forgot-password";
 import VehiclePricingPage from "./pages/VehiclePricingPage";
+import AdminDashboard from "./pages/AdminDashboard";
 
 // ... các trang khác: /portal (role), /login, ...
 
@@ -22,6 +23,9 @@ export default function App() {
         <Route path="/vehicles/:vehicleId/price" element={<VehiclePricingPage />} />
         <Route path="/profile" element={<UserProfilePage />} />
         <Route path="/profile/:userId" element={<UserProfile />} />
+        
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        
         {/* <Route path="/portal" element={<RolePortal />} /> */}
         <Route path="/auth" element={<AuthPage />}>
           <Route path="login" element={<LoginPage />} />
