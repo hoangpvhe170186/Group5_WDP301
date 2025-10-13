@@ -20,8 +20,6 @@ import OrderManagement from "../components/admin/OrderManagement";
 import UserManagement from "../components/admin/UserManagement";
 import ComplaintManagement from "../components/admin/ComplaintManagement";
 import QualityManagement from "../components/admin/QualityManagement";
-import FinancialManagement from "../components/admin/FinancialManagement";
-// import VehicleManagement from "../components/admin/VehicleManagement";
 
 type AdminSection = 
   | "dashboard" 
@@ -41,10 +39,8 @@ export default function AdminDashboard() {
     { id: "dashboard" as AdminSection, label: "Tổng quan", icon: LayoutDashboard },
     { id: "orders" as AdminSection, label: "Quản lý đơn hàng", icon: Package },
     { id: "users" as AdminSection, label: "Quản lý tài khoản", icon: Users },
-    { id: "complaints" as AdminSection, label: "Xử lý khiếu nại", icon: MessageSquare },
-    { id: "quality" as AdminSection, label: "Quản lý chất lượng", icon: Star },
-    { id: "finance" as AdminSection, label: "Quản lý tài chính", icon: DollarSign },
-    { id: "vehicles" as AdminSection, label: "Quản lý xe", icon: Truck },
+    { id: "complaints" as AdminSection, label: "Xử lý sự cố", icon: MessageSquare },
+    { id: "quality" as AdminSection, label: "Quản lý chất lượng", icon: Star }
   ];
 
   const handleLogout = () => {
@@ -64,10 +60,6 @@ export default function AdminDashboard() {
         return <ComplaintManagement />;
       case "quality":
         return <QualityManagement />;
-      case "finance":
-        return <FinancialManagement />;
-      // case "vehicles":
-      //   return <VehicleManagement />;
       default:
         return <DashboardOverview />;
     }
