@@ -10,7 +10,7 @@ interface User {
 }
 
 // ===================================================================
-// Dropdown Component (Giữ nguyên code gốc của bạn vì nó không đổi)
+// Dropdown Component (Giữ nguyên)
 // ===================================================================
 function Dropdown({
   label,
@@ -73,7 +73,7 @@ function Dropdown({
 }
 
 // ===================================================================
-// MobileMenu Component (Được cập nhật để sử dụng state 'user')
+// MobileMenu Component (Giữ nguyên)
 // ===================================================================
 function MobileMenu({
   isScrolled,
@@ -81,7 +81,7 @@ function MobileMenu({
   onLogout,
 }: {
   isScrolled: boolean;
-  user: User | null; // ✅ Nhận vào object user thay vì boolean
+  user: User | null;
   onLogout: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -95,12 +95,12 @@ function MobileMenu({
       {open && (
         <div className="absolute left-0 top-full w-full bg-white/95 p-4 shadow-lg backdrop-blur">
           <div className="space-y-2 text-gray-800">
-            {/* Các link menu */}
+            {/* Các link menu (có thể thêm các link khác vào đây nếu cần) */}
+            <Link to="/chuyen-nha" className="block rounded-lg p-2 hover:bg-gray-50">Chuyển nhà / Chuyển trọ</Link>
             <Link to="/bang-gia" className="block rounded-lg p-2 hover:bg-gray-50">Bảng giá</Link>
-            {/* ...Thêm các link khác của bạn ở đây... */}
-
+            <Link to="/lien-he" className="block rounded-lg p-2 hover:bg-gray-50">Liên hệ</Link>
             <div className="mt-3 border-t pt-3">
-              {user ? ( // ✅ Hiển thị dựa trên state 'user'
+              {user ? (
                 <>
                   <div className="block rounded-lg p-2 font-semibold">
                     Hello, {user.full_name}
@@ -128,40 +128,40 @@ function MobileMenu({
 
 
 // ===================================================================
-// HomeHeader Component (Component chính đã được cập nhật)
+// HomeHeader Component (Component chính đã được tích hợp)
 // ===================================================================
 export default function HomeHeader() {
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
   const [openMenu, setOpenMenu] = useState<null | string>(null);
   
-  // ✅ Bước 2: Tạo state để lưu trữ thông tin người dùng
+  // ✅ State để lưu trữ thông tin người dùng
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    // Giữ lại logic lắng nghe sự kiện cuộn trang
+    // Lắng nghe sự kiện cuộn trang
     const onScroll = () => setIsScrolled(window.scrollY > 50);
     window.addEventListener("scroll", onScroll);
 
-    // ✅ Bước 3: Đọc thông tin người dùng từ localStorage khi component tải
+    // Đọc thông tin người dùng từ localStorage
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
       try {
         setUser(JSON.parse(storedUser));
       } catch (error) {
         console.error("Failed to parse user from localStorage", error);
-        localStorage.removeItem("user"); // Xóa dữ liệu lỗi
+        localStorage.removeItem("user");
       }
     }
 
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // ✅ Bước 4: Cập nhật hàm đăng xuất
+  // ✅ Hàm đăng xuất
   const onLogout = () => {
     localStorage.removeItem("user");
     localStorage.removeItem("auth_token");
-    setUser(null); // Cập nhật UI ngay lập tức
+    setUser(null);
     navigate("/");
   };
 
@@ -183,25 +183,42 @@ export default function HomeHeader() {
           </span>
         </Link>
 
-        {/* Navigation cho Desktop */}
+        {/* ⭐️ Navigation cho Desktop (ĐÃ ĐƯỢC CẬP NHẬT) ⭐️ */}
         <nav className="hidden items-center gap-6 md:flex">
-          {/* Các mục menu dropdown */}
+          {/* Dịch vụ */}
           <Dropdown label="Dịch vụ" isScrolled={isScrolled} openKey="dichvu" currentOpen={openMenu} setCurrentOpen={setOpenMenu} btnClass="font-semibold">
-            <Link to="/chuyen-nha" className="block rounded-lg px-3 py-2 hover:bg-gray-50">Chuyển nhà / Chuyển trọ</Link>
+            <Link to="/chuyen-nha" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">Chuyển nhà / Chuyển trọ</Link>
+            <Link to="/chuyen-van-phong" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">Chuyển văn phòng</Link>
+            <Link to="/doi-xe" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">Đội xe & Bảng xe (Van, Tải)</Link>
+          </Dropdown>
+
+          {/* Tuyển dụng */}
+          <Dropdown label="Tuyển dụng" isScrolled={isScrolled} openKey="tuyendung" currentOpen={openMenu} setCurrentOpen={setOpenMenu}>
+            <Link to="/tuyen-tai-xe" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">Tuyển tài xế</Link>
+            <Link to="/tuyen-boc-xep" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">Tuyển người bốc xếp</Link>
+          </Dropdown>
+
+          <Link to="/bang-gia" className={`font-medium ${baseText}`}>Bảng giá</Link>
+
+          {/* Về Home Express */}
+          <Dropdown label="Về Home Express" isScrolled={isScrolled} openKey="vehe" currentOpen={openMenu} setCurrentOpen={setOpenMenu}>
+            <Link to="/gioi-thieu" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">Giới thiệu</Link>
+            <Link to="/lien-he" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">Liên hệ</Link>
+            <Link to="/ho-tro" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">Hỗ trợ & FAQ</Link>
           </Dropdown>
           
-
-          {/* ✅ Bước 5: Khối hiển thị Đăng nhập/Thông tin người dùng */}
+          {/* ✅ Khối hiển thị Đăng nhập/Thông tin người dùng */}
           <div className="flex items-center gap-4">
             {user ? (
               // --- Khi đã đăng nhập ---
               <>
-                <span className={`font-semibold ${baseText}`}>
-                  Hello, {user.full_name}
-                </span>
-                <button onClick={onLogout} className={`rounded-xl border px-4 py-2 font-medium transition-all ${btnOutline}`}>
-                  Đăng xuất
-                </button>
+                <Dropdown label={`Hello, ${user.full_name}`} isScrolled={isScrolled} openKey="userMenu" currentOpen={openMenu} setCurrentOpen={setOpenMenu} btnClass="font-semibold">
+                   <Link to="/dashboard" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">Dashboard</Link>
+                   <Link to="/portal" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">Portal</Link>
+                   <button onClick={onLogout} className="w-full text-left rounded-lg px-3 py-2 text-red-600 hover:bg-red-50" role="menuitem">
+                     Đăng xuất
+                   </button>
+                </Dropdown>
               </>
             ) : (
               // --- Khi chưa đăng nhập ---

@@ -8,6 +8,8 @@ import chatRoutes from "./routes/chat"; // 👈 import route bạn vừa tạo
 import pricingRoute from "./routes/pricing";  
 import vehiclesRoute from "./routes/vehicles.route";
 import routes from "./routes/auth.route";
+
+import carrierRoutes from "./routes/carrier.routes"; // ✅ THÊM DÒNG NÀY
 const app = express();
 
 app.use(express.json());
@@ -21,6 +23,8 @@ app.use("/api", chatRoutes);  // 👈 thêm dòng này
 // mount API routes
 app.use("/api/pricing", pricingRoute);      // <-- mount pricing routes
 app.use("/api/vehicles", vehiclesRoute);
+app.use("/api/carrier", carrierRoutes); // ✅ Ở đây
+
 // Test route
 app.get("/", (req, res) => {
   res.send("🚀 Backend running...");

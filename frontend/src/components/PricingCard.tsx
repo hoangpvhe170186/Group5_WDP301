@@ -23,6 +23,7 @@ function fmt(v?: number | string) {
   return num.toLocaleString("vi-VN") + "đ";
 }
 
+
 export default function PricingCard({
   packageName,
   title,
@@ -128,6 +129,7 @@ export default function PricingCard({
     return <div className="p-4 text-center text-red-500 bg-red-50 rounded-lg">{error}</div>;
   }
 
+  // Giao diện đã được cập nhật với màu sắc chủ đạo
   return (
     <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
       <div className="bg-primary text-white px-6 py-4 text-center">
