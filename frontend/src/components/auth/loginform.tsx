@@ -63,7 +63,9 @@ export default function LoginPage() {
       }
 
       localStorage.setItem("auth_token", token);
-      localStorage.setItem("user", JSON.stringify(user));
+      sessionStorage.setItem("auth_email", user.email);
+      localStorage.setItem("user_role", user.role);
+      localStorage.setItem("user_id", user._id);
 
       if (requiresVerification || user.status !== "Active") {
         navigate("/auth/verify-otp");
@@ -81,7 +83,7 @@ export default function LoginPage() {
           navigate("/carrier/home");
           break;
         case "customer":
-          navigate("/");
+          navigate("/user/home");
           break;
         default:
           navigate("/");
@@ -109,7 +111,7 @@ export default function LoginPage() {
       const response = await loginGoogle(credentialResponse.credential);
       console.log("Google login response:", response.data);
       const { success, data, message } = response.data;
-
+      
 
       if (!success || !data) {
         setError(message || "Đăng nhập Google thất bại.");
@@ -224,10 +226,11 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className={`w-full h-12 rounded-md text-white font-semibold text-base transition ${isLoading
-                ? "bg-orange-300 cursor-not-allowed"
-                : "bg-orange-500 hover:bg-orange-600"
-                }`}
+              className={`w-full h-12 rounded-md text-white font-semibold text-base transition ${
+                isLoading
+                  ? "bg-orange-300 cursor-not-allowed"
+                  : "bg-orange-500 hover:bg-orange-600"
+              }`}
             >
               {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
             </button>
