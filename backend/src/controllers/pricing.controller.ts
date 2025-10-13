@@ -2,39 +2,69 @@ import { Request, Response } from "express";
 import PricePackage from "../models/PricePackage";
 import PricePerKm from "../models/PricePerKm";
 
-// [MỚI] GET /api/pricing/details/:packageName
-// Lấy toàn bộ thông tin chi tiết của 1 gói cước (dựa vào name)
-export const getPricingDetailsByName = async (req: Request, res: Response) => {
+/**
+ * @route   GET /api/pricing
+ * @desc    Lấy danh sách tất cả các gói cước, có đính kèm thông tin xe.
+ */
+export const getAllPricePackages = async (req: Request, res: Response) => {
   try {
-    const { packageName } = req.params;
-    // Tìm gói cước theo tên
-    const pkg = await PricePackage.findOne({ name: packageName }).lean();
-
-    if (!pkg) {
-      return res.status(404).json({ message: "Không tìm thấy gói cước" });
-    }
-
-    const tiers = await PricePerKm.find({ package_id: pkg._id }).sort({ min_km: 1 }).lean();
-
-    res.status(200).json({ package: pkg, tiers });
-
+    const packages = await PricePackage.find({})
+      .populate({
+        path: 'vehicle',
+        select: 'name capacity image' 
+      })
+      .sort({ name: 1 })
+      .lean();
+      
+    res.status(200).json({ success: true, packages });
   } catch (error) {
-    res.status(500).json({ message: "Lỗi khi lấy chi tiết gói cước." });
+    console.error("Lỗi khi tải danh sách gói cước:", error);
+    res.status(500).json({ success: false, message: "Lỗi server khi tải danh sách gói cước." });
   }
 };
 
-// [SỬA LẠI] POST /api/pricing/calc
+/**
+ * @route   GET /api/pricing/details/:packageName
+ * @desc    Lấy chi tiết của một gói cước.
+ */
+export const getPricingDetailsByName = async (req: Request, res: Response) => {
+  try {
+    const { packageName } = req.params;
+    const pkg = await PricePackage.findOne({ name: packageName })
+      .populate({
+        path: 'vehicle',
+        select: 'name capacity image'
+      })
+      .lean();
+
+    if (!pkg) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy gói cước" });
+    }
+
+    const tiers = await PricePerKm.find({ package_id: pkg._id }).sort({ min_km: 1 }).lean();
+    res.status(200).json({ success: true, package: pkg, tiers });
+  } catch (error) {
+    console.error("Lỗi khi lấy chi tiết gói cước:", error);
+    res.status(500).json({ success: false, message: "Lỗi server khi lấy chi tiết gói cước." });
+  }
+};
+
+/**
+ * @route   POST /api/pricing/calc
+ * @desc    Tính toán chi phí.
+ */
 export const calcPrice = async (req: Request, res: Response) => {
   try {
-    const { packageId, distanceKm } = req.body; // packageId bây giờ là ObjectID
+    const { packageId, distanceKm } = req.body;
 
+    // Chặn số âm ngay từ đầu
     if (!packageId || typeof distanceKm !== "number" || distanceKm < 0) {
-      return res.status(400).json({ success: false, message: "packageId và distanceKm là bắt buộc và hợp lệ" });
+      return res.status(400).json({ success: false, message: "Dữ liệu không hợp lệ hoặc khoảng cách là số âm." });
     }
 
     const pkg = await PricePackage.findById(packageId).lean();
     if (!pkg) {
-      return res.status(404).json({ success: false, message: "Không tìm thấy package" });
+      return res.status(404).json({ success: false, message: "Không tìm thấy gói cước." });
     }
     
     const tiers = await PricePerKm.find({ package_id: pkg._id }).sort({ min_km: 1 }).lean();
@@ -45,13 +75,12 @@ export const calcPrice = async (req: Request, res: Response) => {
     });
 
     if (!matched) {
-      return res.status(400).json({ success: false, message: "Khoảng cách không nằm trong bất kỳ mức giá nào" });
+      return res.status(400).json({ success: false, message: "Khoảng cách không nằm trong bất kỳ mức giá nào." });
     }
 
     const basePrice = Number(pkg.base_price.toString());
     const perKmPrice = Number(matched.price.toString());
     
-    // Sửa lại công thức tính toán cho đúng
     const totalFee = Math.round(basePrice + (distanceKm * perKmPrice));
 
     res.json({
@@ -64,7 +93,7 @@ export const calcPrice = async (req: Request, res: Response) => {
       },
     });
   } catch (err) {
-    console.error("calcPrice error:", err);
-    res.status(500).json({ success: false, message: "Lỗi server khi tính giá" });
+    console.error("Lỗi khi tính giá:", err);
+    res.status(500).json({ success: false, message: "Lỗi server khi tính giá." });
   }
 };

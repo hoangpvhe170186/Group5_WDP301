@@ -27,7 +27,7 @@ function getPackageName(cap: number): string {
 export default function VehiclePricingPage() {
   const { vehicleId } = useParams();
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
-  const [allVehicles, setAllVehicles] = useState<NavVehicle[]>([]); // 👈 State mới để chứa danh sách xe
+  const [allVehicles, setAllVehicles] = useState<NavVehicle[]>([]); 
   const [error, setError] = useState<string | null>(null);
 
   const API_BASE = (import.meta as any).env?.VITE_API_BASE || "";
@@ -35,7 +35,7 @@ export default function VehiclePricingPage() {
   // useEffect để lấy thông tin xe hiện tại (giữ nguyên)
   useEffect(() => {
     if (!vehicleId) return;
-    setVehicle(null); // Reset vehicle khi ID thay đổi để hiển thị loading
+    setVehicle(null); 
     setError(null);
     fetch(`${API_BASE}/api/vehicles/${vehicleId}`)
       .then((r) => {
@@ -49,7 +49,7 @@ export default function VehiclePricingPage() {
       });
   }, [vehicleId]); // Thêm vehicleId làm dependency để fetch lại khi URL thay đổi
 
-  // 👇 useEffect mới để lấy danh sách xe cho việc điều hướng
+  
   useEffect(() => {
     fetch(`${API_BASE}/api/vehicles/navigation-list`)
       .then(res => res.json())

@@ -244,8 +244,7 @@ export default function VehicleSection() {
                   <div className="absolute left-0 right-0 top-full z-10 mt-2 px-0">
                     <div className="mx-0 rounded-lg bg-white p-4 ring-1 ring-gray-200 shadow-lg">
                       <div className="grid gap-4 md:grid-cols-2">
-                        <div>
-                          <p className="text-sm text-gray-500">Cước phí ban đầu:</p>
+                        <div>                         
                           {spec?.baseFareNoteUrl ? (
                             <a
                               href={spec.baseFareNoteUrl}
@@ -253,7 +252,10 @@ export default function VehicleSection() {
                               target="_blank"
                               rel="noopener noreferrer"
                             >
-                              {spec?.baseFareNote ?? "Tham khảo Bảng giá dịch vụ"}
+                           <div>
+                          <p className="text-sm text-gray-500">Tải trọng tối đa:</p>
+                          <p className="font-medium">{spec?.maxPayload ?? "-"}</p>
+                        </div>
                             </a>
                           ) : (
                             <p className="font-medium">
@@ -262,10 +264,7 @@ export default function VehicleSection() {
                           )}
                         </div>
 
-                        <div>
-                          <p className="text-sm text-gray-500">Tải trọng tối đa:</p>
-                          <p className="font-medium">{spec?.maxPayload ?? "-"}</p>
-                        </div>
+                        
 
                         <div>
                           <p className="text-sm text-gray-500">
