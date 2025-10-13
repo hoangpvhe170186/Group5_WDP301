@@ -12,7 +12,10 @@
     "strict": true,
     "skipLibCheck": true,
 
-    // ⚠️ Tắt những cái gây conflict
+    // ✅ Quan trọng thêm vào đây
+    "types": ["node"],
+
+    // ⚠ Tắt mấy cái Vite config để tránh conflict với backend
     "isolatedModules": false,
     "noUncheckedSideEffectImports": false
   },
