@@ -79,6 +79,9 @@ export default function LoginPage() {
         case "driver":
           navigate("/driver/home");
           break;
+        case "seller":
+          navigate("/seller/home");
+          break;  
         case "carrier":
           navigate("/carrier/home");
           break;
@@ -140,6 +143,9 @@ export default function LoginPage() {
         case "carrier":
           navigate("/carrier/home");
           break;
+        case "seller":
+          navigate("/seller/home");
+          break; 
         case "customer":
           navigate("/user/home");
           break;

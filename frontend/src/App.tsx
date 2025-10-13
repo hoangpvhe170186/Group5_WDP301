@@ -10,6 +10,7 @@ import VerifyOtpPage from "./components/auth/verify-otp";
 import ForgotPasswordPage from "./components/auth/forgot-password";
 import VehiclePricingPage from "./pages/VehiclePricingPage";
 import AdminDashboard from "./pages/AdminDashboard";
+import Seller from "./pages/SellerPage";
 
 // ✅ IMPORT CARRIER PAGE
 import CarrierHomePage from "./pages/carrier/CarrierHomePage";
@@ -29,6 +30,9 @@ export default function App() {
           <Route path="register" element={<RegisterPage />} />
           <Route path="verify-otp" element={<VerifyOtpPage />} />
           <Route path="forgot-password" element={<ForgotPasswordPage />} />
+        </Route>
+        <Route path="/seller/home" element={<Seller />}>
+          
         </Route>
       </Routes>
     </BrowserRouter>
