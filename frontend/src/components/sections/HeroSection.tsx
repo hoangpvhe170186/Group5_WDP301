@@ -1,3 +1,6 @@
+// frontend/src/components/sections/HeroSection.tsx
+import { Button } from "../ui/button";
+import { Link } from "react-router-dom";
 export default function HeroSection() {
   return (
     <section className="relative min-h-[72vh] w-full">
@@ -17,14 +20,15 @@ export default function HeroSection() {
           Đa dạng từ xe van đến xe tải. Tiết kiệm – Chuyên nghiệp – Nhanh chóng.
         </p>
         <div className="mt-8">
-          <a
-            href="#services"
-            className="inline-flex items-center rounded-md bg-[#FF6A00] px-6 py-3 text-base font-semibold text-white shadow-lg transition hover:bg-[#e65f00]"
-          >
-            Tính Giá Cước Ngay
-          </a>
+          <Link to="/dat-hang">
+            <Button>Đặt hàng ngay</Button>
+          </Link>
         </div>
+        <Link to="/tra-cuu-don-hang" className="text-blue-600 hover:underline">
+  🔍 Tra cứu đơn hàng
+</Link>
       </div>
+      
     </section>
   );
 }

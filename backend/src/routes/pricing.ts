@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { calcPrice, getPricingDetailsByName } from "../controllers/pricing.controller";
+import { calcPrice, getPricingDetailsByName , estimatePriceByAddress, estimatePriceByAddress2 ,getAllPricePackages } from "../controllers/pricing.controller";
 
 const router = Router();
 
@@ -7,6 +7,8 @@ const router = Router();
 router.get("/details/:packageName", getPricingDetailsByName);
 
 // Route cũ để tính giá
+router.get("/", getAllPricePackages);
 router.post("/calc", calcPrice);
-
+router.post("/estimate", estimatePriceByAddress);
+router.post("/estimate2", estimatePriceByAddress2);
 export default router;

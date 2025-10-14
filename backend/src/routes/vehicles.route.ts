@@ -1,5 +1,5 @@
 // routes/vehicles.route.ts
-
+import { getVehicles } from "../controllers/vehicle.controller";
 import { Router } from "express";
 import Vehicle from "../models/Vehicle";
 import { cldUrl } from "../utils/cloudinaryUrl";
@@ -11,7 +11,7 @@ const router = Router();
 // Route mới để lấy danh sách xe cho việc điều hướng
 // 👇 2. Thêm route mới vào đây
 router.get("/navigation-list", getVehicleNavigationList);
-
+router.get("/", getVehicles);
 router.get("/", async (_req, res) => {
   const docs = await Vehicle.find().lean();
   const withUrls = docs.map((v: any) => {

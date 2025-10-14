@@ -9,9 +9,10 @@
     "useDefineForClassFields": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
-    "types": ["vite/client", "node"],
-    "skipLibCheck": true,
 
+    "types": ["vite/client", "node", "google.maps"],  // ✅ GỘP VÀO CHUNG
+
+    "skipLibCheck": true,
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,

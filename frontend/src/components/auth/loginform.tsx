@@ -63,6 +63,7 @@ export default function LoginPage() {
       }
 
       localStorage.setItem("auth_token", token);
+      localStorage.setItem("user", JSON.stringify(user));
       sessionStorage.setItem("auth_email", user.email);
       localStorage.setItem("user_role", user.role);
       localStorage.setItem("user_id", user._id);
@@ -86,7 +87,7 @@ export default function LoginPage() {
           navigate("/carrier/home");
           break;
         case "customer":
-          navigate("/user/home");
+          navigate("/");
           break;
         default:
           navigate("/");
@@ -147,7 +148,7 @@ export default function LoginPage() {
           navigate("/seller/home");
           break; 
         case "customer":
-          navigate("/user/home");
+          navigate("/");
           break;
         default:
           navigate("/");
