@@ -61,7 +61,7 @@ export default function SignupPage() {
       const { success, message } = response.data;
 
       if (!success) {
-        setError(message || "Đăng ký thất bại, vui lòng thử lại.");
+        setError(message || "Đăng ký không thành công, vui lòng thử lại.");
         return;
       }
 
@@ -69,7 +69,7 @@ export default function SignupPage() {
       navigate("/auth/verify-otp");
     } catch (err) {
       console.error("Register error:", err);
-      setError("Đăng ký lỗi, vui lòng thử lại.");
+      setError("Đăng ký không thành công , vui lòng thử lại.");
     } finally {
       setIsLoading(false);
     }

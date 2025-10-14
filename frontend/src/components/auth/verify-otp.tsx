@@ -76,7 +76,10 @@ export default function VerifyOtpPage() {
     }
   };
 
-  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (
+    index: number,
+    e: React.KeyboardEvent<HTMLInputElement>
+  ) => {
     if (e.key === "Backspace" && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
@@ -100,34 +103,40 @@ export default function VerifyOtpPage() {
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const otpCode = otp.join("");
+  e.preventDefault();
+  const otpCode = otp.join("");
 
-    if (otpCode.length !== 6) {
-      setError("Vui lòng nhập đủ 6 chữ số OTP");
-      return;
-    }
+  if (otpCode.length !== 6) {
+    setError("Vui lòng nhập đủ 6 chữ số OTP");
+    return;
+  }
 
-    setIsLoading(true);
-    setError(null);
+  setIsLoading(true);
+  setError(null);
 
-    const verifyData: VerifyOtpData = { email, otp_code: otpCode };
+  const verifyData: VerifyOtpData = { email, otp_code: otpCode };
 
-    try {
-      const response = await verifyOtp(verifyData);
-      if (response.data.token) {
-        localStorage.setItem("auth_token", response.data.token); // Lưu token nếu có
-        sessionStorage.removeItem("auth_email");
-        navigate("/auth/login"); // Điều hướng về trang login khi xác thực thành công
-      } else {
-        setError(response.data.message || "Xác thực OTP không thành công.");
-      }
-    } catch (err) {
-      setError("Đã xảy ra lỗi khi xác thực OTP, vui lòng thử lại.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  try {
+    const response = await verifyOtp(verifyData);
+    console.log("Verify OTP response:", response.data);
+    localStorage.setItem("auth_token", response.data.token);
+    navigate("/");
+    // if (response.data.token) {
+    //   // Lưu token vào localStorage
+    //   localStorage.setItem("auth_token", response.data.token);
+    //   // sessionStorage.removeItem("auth_email");
+    //   console.log("OTP verified successfully.");
+    //   navigate("/auth/login");
+    // } else {
+    //   setError(response.data.message || "Xác thực OTP không thành công.");
+    // }
+  } catch (err) {
+    setError("Đã xảy ra lỗi khi xác thực OTP, vui lòng thử lại.");
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   const handleResend = async () => {
     if (!canResend) return;
@@ -137,7 +146,7 @@ export default function VerifyOtpPage() {
     setError(null);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500)); // Giả lập API call
+      await new Promise((resolve) => setTimeout(resolve, 500));
       const timer = setInterval(() => {
         setCountdown((prev) => {
           if (prev <= 1) {
@@ -156,7 +165,6 @@ export default function VerifyOtpPage() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left side - Illustration */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-orange-50 to-orange-100 items-center justify-center p-12">
         <div className="relative w-full max-w-md">
           <img
@@ -169,34 +177,36 @@ export default function VerifyOtpPage() {
         </div>
       </div>
 
-      {/* Right side - OTP form */}
       <div className="flex-1 flex items-center justify-center p-6 bg-white">
         <div className="w-full max-w-md space-y-8">
-          {/* Logo */}
           <div className="flex justify-center">
             <div className="flex items-center gap-2">
-              <svg viewBox="0 0 24 24" className="w-10 h-10 text-orange-500" fill="currentColor" aria-hidden="true">
+              <svg
+                viewBox="0 0 24 24"
+                className="w-10 h-10 text-orange-500"
+                fill="currentColor"
+                aria-hidden="true"
+              >
                 <path d="M13 2L3 14h8l-2 8 10-12h-8l2-8z" />
               </svg>
-              <span className="text-3xl font-bold text-orange-500">Home Express</span>
+              <span className="text-3xl font-bold text-orange-500">
+                Home Express
+              </span>
             </div>
           </div>
 
-          {/* Header */}
           <div className="text-center space-y-2">
             <h1 className="text-2xl font-bold text-gray-900">Xác thực email</h1>
             <p className="text-gray-600">Chúng tôi đã gửi mã OTP đến email</p>
             <p className="text-orange-500 font-semibold">{email}</p>
           </div>
 
-          {/* Error Message */}
           {error && (
             <div className="text-center text-sm text-red-600 bg-red-50 p-3 rounded-md">
               {error}
             </div>
           )}
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-4">
               <div className="flex justify-center gap-3">
@@ -224,7 +234,10 @@ export default function VerifyOtpPage() {
                   </button>
                 ) : (
                   <span>
-                    Gửi lại mã sau <span className="font-semibold text-orange-500">{countdown}s</span>
+                    Gửi lại mã sau{" "}
+                    <span className="font-semibold text-orange-500">
+                      {countdown}s
+                    </span>
                   </span>
                 )}
               </div>
@@ -243,7 +256,6 @@ export default function VerifyOtpPage() {
             </button>
           </form>
 
-          {/* Back to login */}
           <div className="text-center">
             <button
               onClick={() => navigate("/auth/login")}
@@ -255,7 +267,6 @@ export default function VerifyOtpPage() {
             </button>
           </div>
 
-          {/* Footer links */}
           <div className="flex justify-center gap-4 text-xs text-gray-500">
             <a href="#" className="hover:text-orange-500">
               Điều khoản và điều kiện
