@@ -230,7 +230,23 @@ export default function PricingCard({
             <div className="text-2xl font-bold text-green-700">
               {fmt(calcResult.totalFee)}
             </div>
-            
+            <div className="mt-4">
+              <Link 
+                to="/thanh-toan" 
+                // Gửi dữ liệu qua 'state' để trang Checkout có thể nhận
+                state={{ 
+                  bookingDetails: {
+                    packageId: pkgDetails?._id,
+                    packageName: pkgDetails?.name,
+                    distance: distance,
+                    totalFee: calcResult.totalFee
+                  }
+                }}
+                className="inline-block w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg transition"
+              >
+                Tiến hành Thanh toán
+              </Link>
+            </div>
           </div>
           
         )}      

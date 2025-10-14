@@ -13,11 +13,11 @@ export const getAllPricePackages = async (req: Request, res: Response) => {
     const packages = await PricePackage.find({})
       .populate({
         path: 'vehicle',
-        select: 'name capacity image'
+        select: 'name capacity image' 
       })
       .sort({ name: 1 })
       .lean();
-
+      
     res.status(200).json({ success: true, packages });
   } catch (error) {
     console.error("Lỗi khi tải danh sách gói cước:", error);
@@ -82,7 +82,6 @@ export const calcPrice = async (req: Request, res: Response) => {
 
     const basePrice = Number(pkg.base_price.toString());
     const perKmPrice = Number(matched.price.toString());
-
     const totalFee = Math.round(basePrice + (distanceKm * perKmPrice));
 
     res.json({

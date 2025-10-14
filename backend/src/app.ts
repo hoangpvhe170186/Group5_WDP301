@@ -8,7 +8,9 @@ import chatRoutes from "./routes/chat"; // 👈 import route bạn vừa tạo
 import pricingRoute from "./routes/pricing";
 import vehiclesRoute from "./routes/vehicles.route";
 import routes from "./routes/auth.route";
+
 import orderRoutes from "./routes/order.route";
+
 import carrierRoutes from "./routes/carrier.routes"; // ✅ THÊM DÒNG NÀY
 const app = express();
 
@@ -26,7 +28,7 @@ app.use("/api/vehicles", vehiclesRoute);
 app.use("/api/carrier", carrierRoutes); // ✅ Ở đây
 
 app.use("/api/orders", orderRoutes);
-// Test route
+
 app.get("/", (req, res) => {
   res.send("🚀 Backend running...");
 });
