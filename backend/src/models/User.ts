@@ -1,18 +1,18 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document } from "mongoose";
 
 // Enum cho role và status
 export enum Role {
-  Admin = 'Admin',
-  Seller = 'Seller',
-  Customer = 'Customer',
-  Driver = 'Driver',
-  Carrier = 'Carrier'
+  Admin = "Admin",
+  Seller = "Seller",
+  Customer = "Customer",
+  Driver = "Driver",
+  Carrier = "Carrier",
 }
 
 export enum Status {
-  Active = 'Active',
-  Inactive = 'Inactive',
-  Suspended = 'Suspended'
+  Active = "Active",
+  Inactive = "Inactive",
+  Suspended = "Suspended",
 }
 
 // Định nghĩa interface cho User Document
@@ -33,31 +33,36 @@ const UserSchema: Schema = new Schema(
   {
     full_name: { type: String, required: true, maxlength: 100 },
     email: { type: String, required: true, unique: true, maxlength: 100 },
-    phone: { type: String, required: false, maxlength: 20 },
+    phone: {
+      type: String,
+      maxlength: 20,
+      unique: false, 
+      match: [/^\d+$/, "Please use a valid phone number."], 
+    },
     password_hash: { type: String, maxlength: 255 },
-    role: { 
-      type: String, 
-      enum: Object.values(Role), 
-      default: Role.Customer, 
-      required: true 
+    role: {
+      type: String,
+      enum: Object.values(Role),
+      default: Role.Customer,
+      required: true,
     },
     avatar: { type: String, required: false },
-    status: { 
-      type: String, 
-      enum: Object.values(Status), 
-      default: Status.Active, 
-      required: true 
+    status: {
+      type: String,
+      enum: Object.values(Status),
+      default: Status.Active,
+      required: true,
     },
     created_by: { type: Number, required: false },
     created_at: { type: Date, default: Date.now },
-    updated_at: { type: Date, default: Date.now }
+    updated_at: { type: Date, default: Date.now },
   },
   {
-    timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
+    timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
   }
 );
 
 // Tạo Model từ Schema
-const User = mongoose.model<IUser>('User', UserSchema);
+const User = mongoose.model<IUser>("User", UserSchema);
 
 export default User;

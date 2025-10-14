@@ -15,7 +15,7 @@ const client = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID as string);
 // ==================================================
 const generateToken = (userId: string, role: Role) =>
   jwt.sign({ userId, role }, process.env.JWT_SECRET as string, {
-    expiresIn: "7d",
+    expiresIn: "1d",
   });
 
 // ==================================================
@@ -34,7 +34,7 @@ const sendResponse = (
 // ==================================================
 export const register = async (req: Request, res: Response) => {
   try {
-    const { full_name, email, password, confirmPassword } = req.body;
+    const { full_name, email, password, confirmPassword, phone } = req.body;
 
     if (password !== confirmPassword)
       return sendResponse(res, false, "Mật khẩu xác nhận không khớp", null, 400);
@@ -48,7 +48,7 @@ export const register = async (req: Request, res: Response) => {
       full_name,
       email,
       password_hash: hashedPassword,
-      phone: null,
+      phone: phone,
       role: Role.Customer,
       status: Status.Inactive,
     });
@@ -108,6 +108,7 @@ export const verifyOtp = async (req: Request, res: Response) => {
     sendResponse(res, true, "Xác thực thành công", {
       token,
       user: {
+        full_name: user.full_name,
         _id: user._id,
         email: user.email,
         role: user.role,
@@ -192,6 +193,7 @@ export const login = async (req: Request, res: Response) => {
     sendResponse(res, true, "Đăng nhập thành công", {
       token,
       user: {
+        full_name: user.full_name,
         _id: user._id,
         full_name : user.full_name,
         email: user.email,
@@ -289,7 +291,7 @@ export const loginGoogle = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("Google Login Error:", error);
-    sendResponse(res, false, "Lỗi máy chủ: " + error.message, null, 500);
+    sendResponse(res, false, "Đăng nhập thất bại: " + error.message, null, 500);
   }
 };
 

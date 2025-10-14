@@ -58,7 +58,7 @@ export default function LoginPage() {
 
       const { token, user, requiresVerification } = data;
       if (!token || !user) {
-        setError("Phản hồi từ máy chủ không hợp lệ.");
+        setError("Đăng nhập không thành công, vui lòng thử lại.");
         return;
       }
 
@@ -130,6 +130,7 @@ export default function LoginPage() {
 
       // ✅ Lưu token và role vào localStorage
       localStorage.setItem("auth_token", token);
+      localStorage.setItem("user", JSON.stringify(user));
       localStorage.setItem("user_role", user.role);
       localStorage.setItem("user_id", user._id);
 

@@ -14,10 +14,11 @@ import orderRoutes from "./routes/order.route";
 import carrierRoutes from "./routes/carrier.routes"; // ✅ THÊM DÒNG NÀY
 const app = express();
 
+
 app.use(express.json());
-app.use(cors());
 app.use(helmet());
 app.use(morgan("dev"));
+app.use(cors());
 
 // Gắn router vào prefix /api
 app.use("/api", chatRoutes);  // 👈 thêm dòng này
