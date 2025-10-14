@@ -1,22 +1,26 @@
 import mongoose, { Schema, Document } from "mongoose";
 
+export type ChatSender = "guest" | "seller" | "bot";
 export interface IChatMessage extends Document {
-  userId: string;
-  role: "user" | "bot" | "agent";
+  roomId: string;                  
+  userId?: string;                 
+  sender: ChatSender;              
+  senderName?: string;             
   text: string;
   createdAt: Date;
 }
 
 const ChatMessageSchema = new Schema<IChatMessage>(
   {
-    userId: { type: String, required: true },
-    role: { type: String, enum: ["user", "bot", "agent"], required: true },
+    roomId: { type: String, index: true, required: true },
+    userId: { type: String },
+    sender: { type: String, enum: ["guest", "seller", "bot"], required: true },
+    senderName: { type: String },
     text: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now, index: true },
   },
-  { timestamps: { createdAt: true, updatedAt: false } }
+  { versionKey: false }
 );
 
-export const ChatMessage = mongoose.model<IChatMessage>(
-  "ChatMessage",
-  ChatMessageSchema
-);
+export default mongoose.models.ChatMessage ||
+  mongoose.model<IChatMessage>("ChatMessage", ChatMessageSchema);

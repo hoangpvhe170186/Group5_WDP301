@@ -15,6 +15,14 @@
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.3",
+<<<<<<< HEAD
+=======
+    "reactstrap": "^9.2.3",
+    "socket.io-client": "^4.8.1",
+    "tailwind-merge": "^3.3.1",
+    "tailwindcss-animate": "^1.0.7",
+    "ui": "^0.2.4",
+>>>>>>> 6fb95fb (mess realtime: customer with seller)
     "zustand": "^5.0.8"
   },
   "devDependencies": {
