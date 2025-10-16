@@ -1,96 +1,180 @@
-// backend/src/routes/chat.ts
+// src/routes/chat.ts
 import { Router } from "express";
 import ChatMessage from "../models/ChatMessage";
+import FAQCache, { makeFAQKey } from "../models/FAQCache";
 
 const router = Router();
 
-// Lấy lịch sử chat theo roomId (dùng cho chế độ "agent")
-router.get("/history", async (req, res) => {
-  try {
-    const roomId = String(req.query.roomId || "");
-    const limit = Math.min(Number(req.query.limit || 100), 200);
-
-    if (!roomId) {
-      return res.status(400).json({ success: false, message: "Thiếu roomId" });
-    }
-
-    const docs = await ChatMessage.find({ roomId })
-      .sort({ createdAt: 1 })
-      .limit(limit)
-      .lean();
-
-    return res.json({
-      success: true,
-      messages: docs.map((m) => ({
-        sender: m.sender,           // "guest" | "seller"
-        text: m.text,
-        name: (m as any).senderName,
-        createdAt: m.createdAt,
-      })),
-    });
-  } catch (e: any) {
-    console.error("GET /api/chat/history error:", e?.message || e);
-    return res.status(500).json({ success: false, message: "Không tải được lịch sử." });
-  }
-});
-
-// Chatbot đơn giản (FE đang gọi POST /api/chat)
+/** POST /api/chat
+ * body: { message: string, userId?: string } // userId = roomId của bạn
+ */
 router.post("/", async (req, res) => {
   try {
     const { message, userId } = req.body || {};
-    if (!message) {
-      return res.status(400).json({ success: false, message: "Thiếu message." });
+    if (!message) return res.status(400).json({ error: "message required" });
+
+    const roomId = userId || "guest_public";
+    const key = makeFAQKey(message);
+
+    // 1) tra cache
+    const cached = await FAQCache.findOne({ qKey: key });
+    if (cached) {
+      cached.hits += 1;
+      await cached.save();
+
+      // ghi log chat
+      await ChatMessage.create({ roomId, sender: "guest", senderName: "Khách", text: message });
+      await ChatMessage.create({ roomId, sender: "bot", senderName: "Home Express Bot", text: cached.aText });
+
+      return res.json({ reply: cached.aText, cached: true });
     }
-    const roomId = String(userId || `guest_${Date.now()}`);
 
-    // Lưu câu hỏi của khách
-    await ChatMessage.create({
-      roomId,
-      userId: roomId,
-      sender: "guest",
-      senderName: "Khách",
-      text: message,
-      createdAt: new Date(),
-    });
+    // 2) gọi bot thực sự (placeholder)
+    const reply = await generateReply(message); 
 
-    // Trả lời bot (FAQ tối giản — bạn có thể thay bằng AI sau)
-    const reply = getBotReply(String(message));
+    // 3) lưu chat + lưu cache
+    await ChatMessage.create({ roomId, sender: "guest", senderName: "Khách", text: message });
+    await ChatMessage.create({ roomId, sender: "bot", senderName: "Home Express Bot", text: reply });
+    await FAQCache.updateOne(
+      { qKey: key },
+      { $set: { qKey: key, qText: message, aText: reply }, $inc: { hits: 1 } },
+      { upsert: true }
+    );
 
-    // Lưu câu trả lời bot (ghi vào sender "seller" để giao diện đang có nhìn giống agent)
-    await ChatMessage.create({
-      roomId,
-      userId: roomId,
-      sender: "seller",
-      senderName: "Bot",
-      text: reply,
-      createdAt: new Date(),
-    });
-
-    return res.json({ success: true, reply });
-  } catch (e: any) {
-    console.error("POST /api/chat error:", e?.message || e);
-    return res.status(500).json({ success: false, message: "Bot bị lỗi." });
+    return res.json({ reply, cached: false });
+  } catch (err: any) {
+    console.error("POST /api/chat error:", err);
+    return res.status(500).json({ error: "internal_error", detail: err?.message });
   }
 });
 
-// FAQ tối giản
-function getBotReply(q: string): string {
-  const s = q.toLowerCase();
+router.get("/rooms", async (req, res) => {
+  const limit = Number(req.query.limit ?? 100);
 
-  if (s.includes("bảng giá") || s.includes("giá")) {
-    return "Bảng giá tham khảo: Gói Nhỏ từ 450.000đ, Gói Tiêu Chuẩn từ 800.000đ, Gói Lớn từ 1.204.364đ. Bạn có thể vào trang 'Bảng giá' hoặc bấm 'Tính giá tự động'.";
-  }
-  if (s.includes("đặt xe") || s.includes("đặt đơn") || s.includes("đặt hàng")) {
-    return "Bạn bấm 'Tạo đơn hàng', nhập địa chỉ lấy/giao, chọn gói rồi xác nhận. Hệ thống sẽ ước tính chi phí và kết nối tài xế gần nhất.";
-  }
-  if (s.includes("đóng gói") || s.includes("bốc xếp")) {
-    return "Tụi mình có gói kèm 1–3 nhân công bốc xếp và dịch vụ đóng gói. Bạn chọn ở bước 'Chọn gói giá'.";
-  }
-  if (s.includes("hẹn giờ") || s.includes("lịch") || s.includes("thời gian")) {
-    return "Có nhé! Bạn có thể đặt lịch trước theo khung giờ mong muốn. Tài xế sẽ liên hệ xác nhận trước khi đến.";
-  }
+  const docs = await ChatMessage.aggregate([
+    { $sort: { createdAt: -1 } },
 
-  return "Mình đã ghi nhận câu hỏi. Bạn có thể nhấn 'Nói chuyện với nhân viên' để được hỗ trợ trực tiếp nhé!";
-}
+    // lấy bản ghi mới nhất của từng room
+    {
+      $group: {
+        _id: "$roomId",
+        lastText: { $first: "$text" },
+        lastAt: { $first: "$createdAt" },
+      },
+    },
+
+    // tìm bản ghi GUEST mới nhất cho từng room
+    {
+      $lookup: {
+        from: ChatMessage.collection.name,
+        let: { rid: "$_id" },
+        pipeline: [
+          { $match: { $expr: { $and: [
+            { $eq: ["$roomId", "$$rid"] },
+            { $eq: ["$sender", "guest"] },
+            { $ne: ["$senderName", null] },
+          ]}}},
+          { $sort: { createdAt: -1 } },
+          { $limit: 1 },
+          { $project: { _id: 0, senderName: 1 } },
+        ],
+        as: "guestLast",
+      }
+    },
+
+    // build output
+    {
+      $project: {
+        _id: 0,
+        roomId: "$_id",
+        preview: "$lastText",
+        at: "$lastAt",
+        name: {
+          $ifNull: [
+            { $arrayElemAt: ["$guestLast.senderName", 0] },
+            "Khách"
+          ]
+        }
+      }
+    },
+
+    { $sort: { at: -1 } },
+    { $limit: limit },
+  ]);
+
+  res.json({ rooms: docs });
+});
+
+// load lịch sử theo room
+router.get("/history", async (req, res) => {
+  try {
+    const { roomId, limit = 200 } = req.query as any;
+    if (!roomId) return res.status(400).json({ error: "roomId required" });
+    const messages = await ChatMessage.find({ roomId }).sort({ createdAt: 1 }).limit(Number(limit));
+    res.json({ messages });
+  } catch (err: any) {
+    console.error("GET /api/chat/history error:", err);
+    res.status(500).json({ error: "internal_error", detail: err?.message });
+  }
+});
+
+// thêm 1 endpoint lưu tay (nếu FE muốn gọi trực tiếp)
+router.post("/append", async (req, res) => {
+  try {
+    const { roomId, sender, senderName, text } = req.body || {};
+    if (!roomId || !sender || !text) return res.status(400).json({ error: "roomId/sender/text required" });
+    const doc = await ChatMessage.create({ roomId, sender, senderName, text });
+    res.json({ ok: true, id: doc._id });
+  } catch (err: any) {
+    console.error("POST /api/chat/append error:", err);
+    res.status(500).json({ error: "internal_error", detail: err?.message });
+  }
+});
 
 export default router;
+
+function norm(s: string) {
+  return (s || "")
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function generateReply(q: string): Promise<string> {
+  const t = norm(q);
+
+  // giá / bảng giá
+  if (/(gia|bang gia|bao gia|chi phi|cuoc phi|gia ca)/.test(t)) {
+    return [
+      "Bảng giá tham khảo Home Express:",
+      "• Truck 500kg: từ 200.000đ/chuyến (≤10km nội thành).",
+      "• Truck 1500kg: từ 450.000đ/chuyến.",
+      "• Truck 3000kg: từ 800.000đ/chuyến.",
+      "Giá thực tế tuỳ quãng đường, số tầng, có thang máy/đóng gói. Bạn có thể gửi địa chỉ để mình ước tính nhanh."
+    ].join("\n");
+  }
+
+  // đóng gói
+  if (/(dong goi|dong goi do|dong thung|bao bi)/.test(t)) {
+    return "Có ạ! Bên mình có dịch vụ đóng gói trọn gói (thùng, băng keo, chống sốc), tính theo khối lượng & số thùng. Bạn cần số lượng ước tính không?";
+  }
+
+  // hẹn giờ
+  if (/(hen gio|dat lich|gio nao|khung gio|bao lau)/.test(t)) {
+    return "Bạn có thể đặt lịch trước và chọn khung giờ. Thời gian phục vụ 08:00–21:00 hằng ngày. Xe đến sớm hơn 10–15 phút để hỗ trợ.";
+  }
+
+  // khu vực
+  if (/(khu vuc|pham vi|noi thanh|ngoai thanh|tinh)/.test(t)) {
+    return "Hiện hỗ trợ nội thành và liên tỉnh lân cận. Vui lòng cho biết điểm đi/điểm đến để mình check nhanh phí đường dài nhé.";
+  }
+
+  // hotline
+  if (/(sdt|so dien thoai|hotline|lien he)/.test(t)) {
+    return "Hotline Home Express: 08xx xxx xxx (8:00–21:00). Bạn cũng có thể để lại số, nhân viên sẽ gọi lại.";
+  }
+
+  // fallback thân thiện
+  return "Mình chưa chắc câu này. Bạn có thể mô tả rõ hơn (địa chỉ, loại đồ, thời gian)?";
+}
