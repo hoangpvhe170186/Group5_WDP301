@@ -34,6 +34,9 @@ export interface UserData {
   email: string;
   role: string;
   status: string;
+    fullName?: string;
+  username?: string;
+  name?: string;
 }
 
 // Kiểu response chuẩn từ backend

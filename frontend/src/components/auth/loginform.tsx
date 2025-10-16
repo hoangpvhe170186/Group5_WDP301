@@ -3,7 +3,11 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
-import { login, loginGoogle, type LoginData } from "../../services/auth.service";
+import {
+  login,
+  loginGoogle,
+  type LoginData,
+} from "../../services/auth.service";
 
 const InputField: React.FC<{
   id: string;
@@ -67,6 +71,8 @@ export default function LoginPage() {
       sessionStorage.setItem("auth_email", user.email);
       localStorage.setItem("user_role", user.role);
       localStorage.setItem("user_id", user._id);
+      localStorage.setItem("fullName", user.fullName || user.name || "");
+      localStorage.setItem("username", user.username || user.email || "");
 
       if (requiresVerification || user.status !== "Active") {
         navigate("/auth/verify-otp");
@@ -82,7 +88,7 @@ export default function LoginPage() {
           break;
         case "seller":
           navigate("/seller/home");
-          break;  
+          break;
         case "carrier":
           navigate("/carrier/home");
           break;
@@ -115,7 +121,6 @@ export default function LoginPage() {
       const response = await loginGoogle(credentialResponse.credential);
       console.log("Google login response:", response.data);
       const { success, data, message } = response.data;
-      
 
       if (!success || !data) {
         setError(message || "Đăng nhập Google thất bại.");
@@ -133,6 +138,8 @@ export default function LoginPage() {
       localStorage.setItem("user", JSON.stringify(user));
       localStorage.setItem("user_role", user.role);
       localStorage.setItem("user_id", user._id);
+      localStorage.setItem("fullName", user.fullName || user.name || "");
+      localStorage.setItem("username", user.username || user.email || "");
 
       // ✅ Điều hướng theo role
       switch (user.role.toLowerCase()) {
@@ -147,7 +154,7 @@ export default function LoginPage() {
           break;
         case "seller":
           navigate("/seller/home");
-          break; 
+          break;
         case "customer":
           navigate("/");
           break;
@@ -194,12 +201,16 @@ export default function LoginPage() {
               >
                 <path d="M13 2L3 14h8l-2 8 10-12h-8l2-8z" />
               </svg>
-              <span className="text-3xl font-bold text-orange-500">Home Express</span>
+              <span className="text-3xl font-bold text-orange-500">
+                Home Express
+              </span>
             </div>
           </div>
 
           {error && (
-            <div className="text-center text-sm text-red-600 bg-red-50 p-3 rounded-md">{error}</div>
+            <div className="text-center text-sm text-red-600 bg-red-50 p-3 rounded-md">
+              {error}
+            </div>
           )}
 
           {/* Form */}
@@ -255,16 +266,24 @@ export default function LoginPage() {
           </div>
 
           {/* Google Login */}
-          <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID!}>
+          <GoogleOAuthProvider
+            clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID!}
+          >
             <div className="flex justify-center">
-              <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError} />
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+              />
             </div>
           </GoogleOAuthProvider>
 
           {/* Footer */}
           <div className="text-center text-sm text-gray-600">
             <span>Bạn mới sử dụng Home Express? </span>
-            <a href="/auth/register" className="text-orange-500 font-semibold hover:underline">
+            <a
+              href="/auth/register"
+              className="text-orange-500 font-semibold hover:underline"
+            >
               Tạo tài khoản miễn phí ngay
             </a>
           </div>
