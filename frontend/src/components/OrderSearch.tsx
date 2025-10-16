@@ -27,10 +27,10 @@ export default function OrderSearch() {
 
       const res = await axios.get(url);
 
-      if (!res.data.success || !res.data.orders) {
-        alert(res.data.message || "Không tìm thấy đơn hàng!");
-        return;
-      }
+      if (!res.data.success || !Array.isArray(res.data.orders) || res.data.orders.length === 0) {
+  alert(res.data.message || "Không tìm thấy đơn hàng!");
+  return;
+}
 
       setOrders(res.data.orders);
     } catch (err) {
