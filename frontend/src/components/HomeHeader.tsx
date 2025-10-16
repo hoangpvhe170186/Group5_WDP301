@@ -105,7 +105,7 @@ function MobileMenu({
                   <div className="block rounded-lg p-2 font-semibold">
                     Hello, {user.full_name}
                   </div>
-                  <Link to="/dashboard" className="block rounded-lg p-2 hover:bg-gray-50">Dashboard</Link>
+                  <Link to="/profile" className="block rounded-lg p-2 hover:bg-gray-50">Profile</Link>
                   <button onClick={onLogout} className="mt-1 w-full rounded-lg border p-2 text-left text-red-600 hover:bg-red-50">
                     Đăng xuất
                   </button>
@@ -213,7 +213,7 @@ export default function HomeHeader() {
               // --- Khi đã đăng nhập ---
               <>
                 <Dropdown label={`Hello, ${user.full_name}`} isScrolled={isScrolled} openKey="userMenu" currentOpen={openMenu} setCurrentOpen={setOpenMenu} btnClass="font-semibold">
-                   <Link to="/dashboard" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">Dashboard</Link>
+                   <Link to="/profile" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">Profile</Link>
                    <Link to="/portal" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">Portal</Link>
                    <button onClick={onLogout} className="w-full text-left rounded-lg px-3 py-2 text-red-600 hover:bg-red-50" role="menuitem">
                      Đăng xuất

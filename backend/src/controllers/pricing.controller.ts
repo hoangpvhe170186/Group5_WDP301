@@ -3,6 +3,7 @@ import PricePackage from "../models/PricePackage";
 import PricePerKm from "../models/PricePerKm";
 import { getDistanceMatrix } from "../utils/getDistanceMatrix";
 import Vehicle from "../models/Vehicle";
+import mongoose from "mongoose";
 
 /**
  * @route   GET /api/pricing
@@ -10,18 +11,30 @@ import Vehicle from "../models/Vehicle";
  */
 export const getAllPricePackages = async (req: Request, res: Response) => {
   try {
-    const packages = await PricePackage.find({})
-      .populate({
-        path: 'vehicle',
-        select: 'name capacity image' 
-      })
-      .sort({ name: 1 })
-      .lean();
-      
-    res.status(200).json({ success: true, packages });
+    // 🟢 Lấy toàn bộ gói giá
+    const packages = await PricePackage.find({}).lean();
+
+    // 🟢 Lấy toàn bộ xe để biết capacity + package_id
+    const vehicles = await Vehicle.find({}, "capacity package_id").lean();
+
+    // 🟢 Ghép capacity vào từng gói
+    const packagesWithCapacity = packages.map((pkg) => {
+      const vehicle = vehicles.find(
+        (v) => v.package_id?.toString() === pkg._id.toString()
+      );
+
+      return {
+        ...pkg,
+        capacity: vehicle ? vehicle.capacity : null,
+      };
+    });
+
+    res.status(200).json({ success: true, packages: packagesWithCapacity });
   } catch (error) {
-    console.error("Lỗi khi tải danh sách gói cước:", error);
-    res.status(500).json({ success: false, message: "Lỗi server khi tải danh sách gói cước." });
+    console.error("❌ Lỗi khi tải danh sách gói cước:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Lỗi server khi tải danh sách gói cước." });
   }
 };
 
@@ -193,86 +206,92 @@ export const estimatePriceByAddress = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-  console.error("❌ estimatePriceByAddress error:", error); // in toàn bộ object
-  return res.status(500).json({
-    success: false,
-    message: error.message || "Không thể tính giá tự động.",
-  });
-}
+    console.error("❌ estimatePriceByAddress error:", error); // in toàn bộ object
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Không thể tính giá tự động.",
+    });
+  }
 };
 
 export const estimatePriceByAddress2 = async (req: Request, res: Response) => {
   try {
     const { pickup_address, delivery_address, pricepackage_id } = req.body || {};
 
-    // 1️⃣ Kiểm tra dữ liệu đầu vào
+    // 1) Validate input
     if (!pickup_address || !delivery_address) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Thiếu địa chỉ lấy/giao." });
+      return res.status(400).json({ success: false, message: "Thiếu địa chỉ lấy/giao." });
     }
     if (!pricepackage_id) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Thiếu pricepackage_id." });
+      return res.status(400).json({ success: false, message: "Thiếu pricepackage_id." });
     }
 
-    // 2️⃣ Tìm gói giá (PricePackage)
+    // 2) Tìm gói cước
     const pkg = await PricePackage.findById(pricepackage_id).lean();
     if (!pkg) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy gói giá." });
+    }
+
+    // 3) Gọi Map (bắt lỗi riêng để trả 502 thay vì 500 mù)
+    let dist: {
+      distanceKm: number;
+      durationMin: number;
+      text?: { distance?: string; duration?: string };
+      geometry?: any;
+    };
+    try {
+      dist = await getDistanceMatrix(pickup_address, delivery_address);
+      if (dist == null || typeof dist.distanceKm !== "number") {
+        throw new Error("distanceKm undefined");
+      }
+    } catch (e: any) {
+      console.error("❌ getDistanceMatrix error:", e?.response?.data || e?.message || e);
       return res
-        .status(404)
-        .json({ success: false, message: "Không tìm thấy gói giá." });
+        .status(502)
+        .json({ success: false, message: "Không tính được quãng đường (dịch vụ bản đồ)." });
     }
 
-    // 3️⃣ Tính khoảng cách & thời gian
-    const { distanceKm, durationMin, text } = await getDistanceMatrix(
-      pickup_address,
-      delivery_address
-    );
+    // 4) Lấy bảng giá theo km cho gói
+    const tiers = await PricePerKm.find({ package_id: pkg._id }).sort({ min_km: 1 }).lean();
+    if (!tiers?.length) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Gói giá chưa cấu hình bảng giá theo km." });
+    }
 
-    // 4️⃣ Lấy các mức giá theo km của gói đó
-    const tiers = await PricePerKm.find({ package_id: pkg._id })
-      .sort({ min_km: 1 })
-      .lean();
-
+    // 5) Chọn tier phù hợp
+    const km = Number(dist.distanceKm);
     const matched = tiers.find((t) => {
-      if (t.max_km == null) return distanceKm >= t.min_km;
-      return distanceKm >= t.min_km && distanceKm <= t.max_km;
+      const min = Number(t.min_km ?? 0);
+      const max = t.max_km == null ? null : Number(t.max_km);
+      return max == null ? km >= min : km >= min && km <= max;
     });
-
     if (!matched) {
-      return res.status(400).json({
-        success: false,
-        message: "Khoảng cách không nằm trong bất kỳ mức giá nào.",
-      });
+      return res
+        .status(400)
+        .json({ success: false, message: "Khoảng cách không nằm trong bất kỳ mức giá nào." });
     }
 
-    // 5️⃣ Tính giá
-    const basePrice = Number(pkg.base_price);
-    const perKmPrice = Number(matched.price);
-    const totalFee = Math.round(basePrice + distanceKm * perKmPrice);
+    // 6) Tính tiền
+    const basePrice = Number((pkg as any).base_price ?? 0);
+    const perKmPrice = Number((matched as any).price ?? 0);
+    const totalFee = Math.round(basePrice + km * perKmPrice);
 
-    // 6️⃣ Trả kết quả
-    return res.json({
+    // 7) Trả kết quả
+    return res.status(200).json({
       success: true,
       data: {
-        package: {
-          id: pkg._id,
-          name: pkg.name,
-          base_price: basePrice,
-        },
-        distance: { km: distanceKm, text: text.distance },
-        duration: { minutes: durationMin, text: text.duration },
+        package: { id: (pkg as any)._id, name: (pkg as any).name, base_price: basePrice },
+        distance: { km, text: dist.text?.distance },
+        duration: { minutes: dist.durationMin, text: dist.text?.duration },
         matchedTier: matched,
         perKmPrice,
         totalFee,
+        geometry: dist.geometry ?? null,
       },
     });
   } catch (error: any) {
-    console.error("❌ estimatePriceByAddress2 error:", error?.message || error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Không thể tính giá tự động." });
+    console.error("❌ estimatePriceByAddress2 error:", error?.stack || error);
+    return res.status(500).json({ success: false, message: "Không thể tính giá tự động." });
   }
 };

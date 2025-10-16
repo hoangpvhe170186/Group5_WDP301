@@ -15,8 +15,10 @@ import AdminDashboard from "./pages/AdminDashboard";
 import Seller from "./pages/SellerPage";
 import OrderCreatePage from "./pages/OrderCreatePage";
 import OrderSearchPage from "./pages/OrderSearchPage";
+
 // ✅ IMPORT CARRIER PAGE
 import CarrierHomePage from "./pages/carrier/CarrierHomePage";
+import OrderPreviewPage from "./components/OrderPreviewPage";
 
 export default function App() {
   return (
@@ -25,6 +27,7 @@ export default function App() {
         {/* ✅ ROUTE MỚI CHO TRA CỨU ĐƠN HÀNG */}
         <Route path="/tra-cuu-don-hang" element={<OrderSearchPage />} />
         <Route path="/" element={<HomePage />} />
+        <Route path="/order-preview" element={<OrderPreviewPage />} />
         <Route path="/dat-hang" element={<OrderCreatePage />} />
         <Route path="/vehicles/:vehicleId/price" element={<VehiclePricingPage />} />
         <Route path="/profile" element={<UserProfilePage />} />
