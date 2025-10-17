@@ -8,8 +8,8 @@ interface AssignModalProps {
 }
 
 const AssignModal: React.FC<AssignModalProps> = ({ orderId, onClose }) => {
-  const [drivers, setDrivers] = useState([]);
-  const [carriers, setCarriers] = useState([]);
+  const [drivers, setDrivers] = useState<any[]>([]);
+  const [carriers, setCarriers] = useState<any[]>([]);
   const [selectedDriver, setSelectedDriver] = useState("");
   const [selectedCarrier, setSelectedCarrier] = useState("");
   const [message, setMessage] = useState("");
@@ -22,7 +22,6 @@ const AssignModal: React.FC<AssignModalProps> = ({ orderId, onClose }) => {
           axios.get("http://localhost:4000/api/users/drivers"),
           axios.get("http://localhost:4000/api/users/carriers"),
         ]);
-
         setDrivers(driverRes.data.data);
         setCarriers(carrierRes.data.data);
       } catch (error) {
@@ -33,30 +32,54 @@ const AssignModal: React.FC<AssignModalProps> = ({ orderId, onClose }) => {
     fetchLists();
   }, []);
 
-  const handleAssign = async () => {
-  if (!selectedDriver || !selectedCarrier) {
-    setMessage("⚠️ Vui lòng chọn đầy đủ Driver và Carrier!");
-    return;
-  }
+  // ✅ Lấy chi tiết đơn hàng sau khi danh sách có dữ liệu
+  useEffect(() => {
+    if (!orderId || drivers.length === 0 || carriers.length === 0) return;
+    const fetchOrderDetail = async () => {
+      try {
+        const res = await axios.get(`http://localhost:4000/api/users/orders/${orderId}`);
+        const order = res.data;
+        setSelectedDriver(String(order.driver_id?._id || order.driver_id || ""));
+        setSelectedCarrier(String(order.carrier_id?._id || order.carrier_id || ""));
+      } catch (error) {
+        console.error("Lỗi khi tải chi tiết đơn hàng:", error);
+      }
+    };
+    fetchOrderDetail();
+  }, [orderId, drivers, carriers]);
 
-  try {
-    const res = await axios.post(`http://localhost:4000/api/users/orders/${orderId}/assign`, {
-      driver_id: selectedDriver,
-      carrier_id: selectedCarrier,
-    });
-
-    if (res.data.success) {
-      setMessage("✅ Giao việc thành công!");
-      console.log("🟢 Dữ liệu trả về:", res.data.data);
-      setTimeout(() => onClose(), 1000);
-    } else {
-      setMessage("❌ Có lỗi khi giao việc!");
+  // ✅ Reset khi đóng modal
+  useEffect(() => {
+    if (!orderId) {
+      setSelectedDriver("");
+      setSelectedCarrier("");
+      setMessage("");
     }
-  } catch (error) {
-    console.error("❌ Lỗi khi gửi yêu cầu giao việc:", error);
-    setMessage("🚨 Lỗi kết nối server!");
-  }
-};
+  }, [orderId]);
+
+  const handleAssign = async () => {
+    if (!selectedDriver || !selectedCarrier) {
+      setMessage("⚠️ Vui lòng chọn đầy đủ Driver và Carrier!");
+      return;
+    }
+
+    try {
+      const res = await axios.post(`http://localhost:4000/api/users/orders/${orderId}/assign`, {
+        driver_id: selectedDriver,
+        carrier_id: selectedCarrier,
+      });
+
+      if (res.data.success) {
+        setMessage("✅ Giao việc thành công!");
+        setTimeout(() => onClose(), 1000);
+      } else {
+        setMessage("❌ Có lỗi khi giao việc!");
+      }
+    } catch (error) {
+      console.error("❌ Lỗi khi gửi yêu cầu giao việc:", error);
+      setMessage("🚨 Lỗi kết nối server!");
+    }
+  };
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
@@ -78,7 +101,7 @@ const AssignModal: React.FC<AssignModalProps> = ({ orderId, onClose }) => {
             className="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
           >
             <option value="">-- Chọn driver --</option>
-            {drivers.map((d: any) => (
+            {drivers.map((d) => (
               <option key={d._id} value={d._id}>
                 {d.full_name}
               </option>
@@ -95,7 +118,7 @@ const AssignModal: React.FC<AssignModalProps> = ({ orderId, onClose }) => {
             className="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
           >
             <option value="">-- Chọn carrier --</option>
-            {carriers.map((c: any) => (
+            {carriers.map((c) => (
               <option key={c._id} value={c._id}>
                 {c.full_name}
               </option>

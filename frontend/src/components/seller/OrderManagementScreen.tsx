@@ -1,17 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Eye, Truck, UserCog } from "lucide-react";
+import { Eye, Truck, Edit } from "lucide-react";
 import AssignModal from "./AssignModal";
+import OrderDetailModal from "./OrderDetailModal";
+import UpdateOrderModal from './UpdateOrderModal';
 const OrderManagementScreen = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [selectedOrderDetailId, setSelectedOrderDetailId] = useState<string | null>(null);
 
   const handleOpenAssignModal = (orderId: number) => {
     setSelectedOrderId(orderId);
     setIsAssignOpen(true);
   };
+  const handleOpenUpdateModal = (id: string) => {
+  setSelectedOrderId(id);
+  setIsUpdateModalOpen(true);
+};
 
   const StatusBadge = ({ text }) => {
     const colors = {
@@ -61,17 +70,20 @@ const OrderManagementScreen = () => {
             <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 w-28">
               Mã Đơn
             </th>
-            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 w-32">
-              Seller
-            </th>
-            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 w-32">
-              Khách hàng
-            </th>
             <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 w-60">
               Địa chỉ lấy hàng
             </th>
             <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 w-60">
               Địa chỉ giao hàng
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 w-60">
+              Gói
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 w-60">
+              Thời gian
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 w-60">
+              Chi phí
             </th>
             <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 w-32">
               Trạng thái
@@ -98,30 +110,36 @@ const OrderManagementScreen = () => {
                 <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
                   #{order._id}
                 </td>
-                <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
-                  {order.seller_id?.full_name || '—'}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
-                  {order.customer_id?.full_name || '—'}
-                </td>
                 <td className="px-4 py-3 text-sm text-gray-500 truncate max-w-[14rem]">
                   {order.pickup_address}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-500 truncate max-w-[14rem]">
                   {order.delivery_address}
                 </td>
+                <td className="px-4 py-3 text-sm text-gray-500 truncate max-w-[14rem]">
+                  {order.package_id?.name}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-500 truncate max-w-[14rem]">
+                  {order.scheduled_time}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-500 truncate max-w-[14rem]">
+                  
+                </td>
                 <td className="whitespace-nowrap px-4 py-3 text-sm">
                   <StatusBadge text={order.status} />
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium flex justify-end gap-3">
                   {/* Xem chi tiết */}
-                  <a
-                    href={`/orders/${order._id}`}
-                    className="text-orange-600 hover:text-orange-900"
-                    title="Xem chi tiết"
-                  >
-                    <Eye className="w-5 h-5 cursor-pointer" />
-                  </a>
+                  <button
+  onClick={() => {
+    setSelectedOrderDetailId(order._id);
+    setIsDetailOpen(true);
+  }}
+  className="text-orange-600 hover:text-orange-900"
+  title="Xem chi tiết"
+>
+  <Eye className="w-5 h-5 cursor-pointer" />
+</button>
 
                   {order.status === "Pending" && (
   <button
@@ -131,7 +149,16 @@ const OrderManagementScreen = () => {
   >
     <Truck className="w-5 h-5 cursor-pointer" />
   </button>
+  
+  
 )}
+<button
+  onClick={() => handleOpenUpdateModal(order._id)}
+  className="text-green-600 hover:text-green-900"
+  title="Cập nhật đơn hàng"
+>
+  <Edit className="w-5 h-5 cursor-pointer" />
+</button>
                 </td>
               </tr>
             ))
@@ -145,6 +172,21 @@ const OrderManagementScreen = () => {
       <AssignModal
         orderId={selectedOrderId}
         onClose={() => setIsAssignOpen(false)}
+      />
+    )}
+
+    {isDetailOpen && selectedOrderDetailId && (
+      <OrderDetailModal
+        orderId={selectedOrderDetailId}
+        onClose={() => setIsDetailOpen(false)}
+      />
+    )}
+
+    {isUpdateModalOpen && selectedOrderId && (
+      <UpdateOrderModal
+        isOpen={isUpdateModalOpen}
+        onClose={() => setIsUpdateModalOpen(false)}
+        orderId={selectedOrderId}
       />
     )}
   </div>

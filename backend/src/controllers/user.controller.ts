@@ -77,10 +77,11 @@ export const updateUser = async (req: Request, res: Response) => {
 export const getAllOrders = async (req: Request, res: Response) => {
   try {
     const orders = await Order.find()
+      .populate("seller_id")
       .populate("carrier_id")
-      .populate("vehicle_id")
-      .populate("seller_id", "full_name")     // ✅ thêm dòng này
-      .populate("customer_id", "full_name");  // ✅ thêm dòng này
+      .populate("package_id")
+      .populate("driver_id")
+      .populate("customer_id");  
 
     if (!orders || orders.length === 0) {
       return res.status(404).json({ message: "No orders found" });
@@ -132,6 +133,26 @@ export const getCarriers = async (req: Request, res: Response) => {
   }
 };
 
+export const getSellers = async (req: Request, res: Response) => {
+  try {
+    const carriers = await User.find({ role: "Seller", status: "Active" }).select(
+      "_id full_name email phone"
+    );
+
+    res.status(200).json({
+      success: true,
+      data: carriers,
+      total: carriers.length,
+    });
+  } catch (error) {
+    console.error("Error getting carriers:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server khi lấy danh sách carrier",
+    });
+  }
+};
+
 export const assignOrder = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -163,5 +184,37 @@ export const assignOrder = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("❌ Lỗi khi giao việc:", error);
     res.status(500).json({ success: false, message: "Lỗi server khi giao việc" });
+  }
+};
+
+export const getOrderById = async (req: Request, res: Response) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate("seller_id")
+      .populate("carrier_id")
+      .populate("package_id")
+      .populate("driver_id")
+      .populate("customer_id");  
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    res.json(order);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error });
+  }
+};
+export const updateOrder = async (req: Request, res: Response) => {
+  try {
+    const { seller_id, status, scheduled_time } = req.body;
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      { seller_id, status, scheduled_time },
+      { new: true }
+    );
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng" });
+    }
+    res.status(200).json({ success: true, data: order });
+  } catch (error) {
+    console.error("Error updating order:", error);
+    res.status(500).json({ success: false, message: "Lỗi server khi cập nhật đơn hàng" });
   }
 };
