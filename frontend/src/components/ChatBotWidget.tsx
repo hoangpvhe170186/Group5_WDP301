@@ -12,9 +12,7 @@ const API_BASE =
   "http://localhost:4000";
 
 const SOCKET_URL =
-  import.meta.env.VITE_SOCKET_URL ||
-  API_BASE ||
-  "http://localhost:4000";
+  import.meta.env.VITE_SOCKET_URL || API_BASE || "http://localhost:4000";
 
 // --- RoomID duy trì theo trình duyệt ---
 function useRoomId() {
@@ -28,7 +26,25 @@ function useRoomId() {
     return id;
   }, []);
 }
-
+async function persistMessage({
+  roomId,
+  sender,
+  senderName,
+  text,
+}: {
+  roomId: string;
+  sender: "guest" | "seller" | "bot";
+  senderName?: string;
+  text: string;
+}) {
+  try {
+    await fetch(`${API_BASE}/api/chat/append`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomId, sender, senderName, text }),
+    });
+  } catch {}
+}
 // --- Component chính ---
 export default function ChatBotWidget() {
   const [open, setOpen] = useState(false);
@@ -68,9 +84,19 @@ export default function ChatBotWidget() {
     s.emit("join_room", roomId);
 
     // Nhận tin nhắn realtime
-    s.on("receive_message", (data: UiMessage) => {
-      setMessages((prev) => [...prev, data]);
-    });
+    s.on(
+      "receive_message",
+      (data: UiMessage & { roomId?: string; name?: string }) => {
+        setMessages((prev) => [...prev, data]);
+        // ✅ lưu DB khi nhận tin từ seller/bot qua socket
+        persistMessage({
+          roomId,
+          sender: (data.sender as any) || "seller",
+          senderName: data?.name,
+          text: data.text,
+        });
+      }
+    );
 
     return () => {
       s.off("receive_message");
@@ -123,17 +149,19 @@ export default function ChatBotWidget() {
   const sendMessage = async () => {
     const text = input.trim();
     if (!text) return;
+    const name = displayName;
 
+    // ✅ append UI + lưu DB (khách)
     setMessages((prev) => [...prev, { sender: "guest", text }]);
     setInput("");
+    persistMessage({ roomId, sender: "guest", senderName: name, text });
 
     if (mode === "agent") {
-      // Realtime với seller
       socketRef.current?.emit("send_message", {
         roomId,
         sender: "guest",
-        text,
         name: displayName,
+        text,
       });
       return;
     }
@@ -146,19 +174,25 @@ export default function ChatBotWidget() {
         body: JSON.stringify({ message: text, userId: roomId }),
       });
       const data = await res.json();
-      if (data.reply) {
-        setMessages((prev) => [...prev, { sender: "bot", text: data.reply }]);
-      } else {
-        setMessages((prev) => [
-          ...prev,
-          { sender: "bot", text: "❌ Bot chưa trả lời được." },
-        ]);
-      }
+      const reply = data.reply || "❌ Bot chưa trả lời được.";
+      setMessages((prev) => [...prev, { sender: "bot", text: reply }]);
+
+      // ✅ lưu DB (bot)
+      persistMessage({
+        roomId,
+        sender: "bot",
+        senderName: "Bot HE",
+        text: reply,
+      });
     } catch {
-      setMessages((prev) => [
-        ...prev,
-        { sender: "bot", text: "❌ Không thể kết nối server." },
-      ]);
+      const fallback = "❌ Không thể kết nối server.";
+      setMessages((prev) => [...prev, { sender: "bot", text: fallback }]);
+      persistMessage({
+        roomId,
+        sender: "bot",
+        senderName: "Bot HE",
+        text: fallback,
+      });
     }
   };
 
@@ -215,7 +249,8 @@ export default function ChatBotWidget() {
           <div className="flex-1 p-4 space-y-2 overflow-y-auto bg-orange-50/20">
             {connErr && (
               <div className="text-xs text-red-600 mb-2">
-                ⚠️ {connErr} — kiểm tra backend có đang chạy ở {SOCKET_URL} không.
+                ⚠️ {connErr} — kiểm tra backend có đang chạy ở {SOCKET_URL}{" "}
+                không.
               </div>
             )}
 
@@ -265,13 +300,18 @@ export default function ChatBotWidget() {
             className="border-t border-gray-200 p-3 flex gap-2"
           >
             <input
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent resize-none"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              type="text"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  sendMessage(); // <- hàm bạn đang dùng để gửi
+                }
+              }}
               placeholder={
-                mode === "bot" ? "Hỏi bot..." : "Nhắn cho nhân viên..."
+                mode === "agent" ? "Nhắn cho nhân viên..." : "Hỏi bot..."
               }
-              className="flex-1 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#FF6A00]"
             />
             <button
               type="submit"
