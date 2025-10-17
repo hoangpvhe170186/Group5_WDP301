@@ -167,7 +167,7 @@ export const assignOrder = async (req: Request, res: Response) => {
       {
         driver_id,
         carrier_id,
-        status: "In Transit", // ✅ Cập nhật trạng thái luôn
+        status: "Assigned", // ✅ CHỈ ĐÁNH DẤU ĐÃ GIAO VIỆC
       },
       { new: true }
     ).populate("driver_id carrier_id");
@@ -178,7 +178,7 @@ export const assignOrder = async (req: Request, res: Response) => {
 
     res.status(200).json({
       success: true,
-      message: "Giao việc thành công!",
+      message: "✅ Giao việc thành công!",
       data: updatedOrder,
     });
   } catch (error) {
@@ -186,6 +186,7 @@ export const assignOrder = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: "Lỗi server khi giao việc" });
   }
 };
+
 
 export const getOrderById = async (req: Request, res: Response) => {
   try {
