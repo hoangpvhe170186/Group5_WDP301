@@ -1,5 +1,6 @@
 import React from 'react';
 import { PackageIcon, AlertOctagonIcon, HistoryIcon, SettingsIcon, BellIcon } from './Icons';
+import SupportInbox from "./SupportInbox";
 
 const Navbar = ({ currentPage, setPage }) => {
   const navItems = [
@@ -35,6 +36,7 @@ const Navbar = ({ currentPage, setPage }) => {
         <div className="h-9 w-9 cursor-pointer rounded-full bg-gray-200">
           <img src="https://placehold.co/100x100/orange/white?text=S" alt="Seller Avatar" className="h-full w-full rounded-full object-cover" />
         </div>
+        <SupportInbox />
       </div>
     </nav>
   );

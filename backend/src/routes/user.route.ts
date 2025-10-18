@@ -3,12 +3,25 @@ import {
   getAllUsers,
   getUserById,
   updateUser,
+  getAllOrders,
+  getDrivers,
+  getCarriers,
+  getSellers,
+  assignOrder,
+  getOrderById,
+  updateOrder
 } from "../controllers/user.controller";
+import { get } from "http";
 
 const router = express.Router();
-
+router.get("/orders", getAllOrders);
+router.get("/orders/:id", getOrderById);
+router.put("/orders/:id", updateOrder);
+router.get("/drivers", getDrivers);   // ✅ thêm
+router.get("/carriers", getCarriers);
+router.get("/sellers", getSellers);
 router.get("/", getAllUsers);
 router.get("/:id", getUserById);
 router.put("/:id", updateUser);
-
+router.post("/orders/:id/assign", assignOrder);
 export default router;

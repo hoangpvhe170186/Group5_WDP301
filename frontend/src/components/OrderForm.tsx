@@ -37,6 +37,7 @@ export default function OrderForm({
   const [loading, setLoading] = useState(false);
   const [distanceText, setDistanceText] = useState("");
   const [durationText, setDurationText] = useState("");
+  const user_id = localStorage.getItem("user_id");
   const navigate = useNavigate();
 
   const pickupGeoRef = useRef<HTMLDivElement | null>(null);
@@ -115,53 +116,56 @@ export default function OrderForm({
       setForm((prev) => ({ ...prev, total_price: String(data.totalFee) }));
       setDistanceText(data.distance.text);
       setDurationText(data.duration.text);
-      onEstimate?.(data.distance.text, data.duration.text, Number(data.totalFee));
+      
     } catch (err) {
       console.error("❌ Lỗi khi tính giá:", err);
       alert("Không thể tính giá tự động");
     }
+    console.log("Estimate price triggered");
   };
 
   // 🧾 Gửi đơn hàng
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    const phoneRegex = /^(0|\+84)[0-9]{9,10}$/;
-    if (!phoneRegex.test(form.phone)) {
-      alert("Vui lòng nhập số điện thoại hợp lệ (VD: 090xxxxxxx)");
-      return;
+  const phoneRegex = /^(0|\+84)[0-9]{9,10}$/;
+  if (!phoneRegex.test(form.phone)) {
+    alert("Vui lòng nhập số điện thoại hợp lệ!");
+    return;
+  }
+
+  setLoading(true);
+  try {
+    const token = localStorage.getItem("auth_token");
+    if (!token) return alert("Bạn cần đăng nhập trước khi đặt hàng!");
+
+    const res = await axios.post(
+      "http://localhost:4000/api/orders/temporary",
+      {
+        customer_id: user_id,
+        pickup_address: form.pickup_address,
+        delivery_address: form.delivery_address,
+        total_price: parseFloat(form.total_price),
+        package_id: selectedPackage,
+        phone: form.phone,
+      },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    if (res.data?.success) {
+      const orderId = res.data.order._id;
+      // alert("✅ Tạo đơn tạm thành công!");
+      navigate(`/order-preview?orderId=${orderId}`);
     }
+  } catch (err) {
+    console.error("❌ Lỗi khi tạo đơn:", err);
+    alert("Không thể tạo đơn hàng.");
+  } finally {
+    setLoading(false);
+  }
+};
 
-    setLoading(true);
-    try {
-      const token = localStorage.getItem("auth_token");
-      if (!token) return alert("Bạn cần đăng nhập trước khi đặt hàng!");
 
-      const res = await axios.post(
-        "http://localhost:4000/api/orders",
-        {
-          pickup_address: form.pickup_address,
-          delivery_address: form.delivery_address,
-          total_price: parseFloat(form.total_price),
-          pricepackage_id: selectedPackage,
-          phone: form.phone,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      console.log("✅ Order created:", res.data);
-      alert("🎉 Đặt hàng thành công!");
-      setForm({ pickup_address: "", delivery_address: "", total_price: "", phone: "" });
-      setSelectedPackage("");
-      setDistanceText("");
-      setDurationText("");
-    } catch (err) {
-      console.error("❌ Lỗi khi tạo đơn hàng:", err);
-      alert("Đặt hàng thất bại!");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <Card className="w-full max-w-lg mx-auto shadow-2xl border rounded-2xl bg-white overflow-hidden">
@@ -235,7 +239,7 @@ export default function OrderForm({
                       : Number(pkg.base_price);
                   return (
                     <option key={pkg._id} value={pkg._id}>
-                      {pkg.name} — {basePrice.toLocaleString("vi-VN")}₫
+                      🚚 {pkg.name} — {Number(pkg.base_price.$numberDecimal || pkg.base_price).toLocaleString("vi-VN")}₫ — {pkg.capacity ? `${pkg.capacity} kg` : "Không rõ kg"}
                     </option>
                   );
                 })
@@ -258,7 +262,7 @@ export default function OrderForm({
 
                   return (
                     <>
-                      <p><strong>📦 Gói:</strong> {selected.name}</p>
+                      <p><strong>📦 Gói:</strong> {selected.name}</p>                     
                       <p><strong>👷 Nhân công:</strong> {selected.workers}</p>
                       <p><strong>🏢 Tầng tối đa:</strong> {selected.max_floor}</p>
                       <p><strong>⏱ Thời gian chờ:</strong> {selected.wait_time} phút</p>
