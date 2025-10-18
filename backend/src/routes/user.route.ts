@@ -3,7 +3,6 @@ import {
   getAllUsers,
   getUserById,
   updateUser,
-  getUserByName
 } from "../controllers/user.controller";
 
 const router = express.Router();
