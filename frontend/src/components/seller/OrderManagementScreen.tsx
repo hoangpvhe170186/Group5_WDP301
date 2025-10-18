@@ -1,54 +1,196 @@
-import React from 'react';
-
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import { Eye, Truck, Edit } from "lucide-react";
+import AssignModal from "./AssignModal";
+import OrderDetailModal from "./OrderDetailModal";
+import UpdateOrderModal from './UpdateOrderModal';
 const OrderManagementScreen = () => {
-  const orders = [
-    { id: 'HE-84261', seller: 'Shop A', date: '2025-10-12', status: 'Đang vận chuyển', statusColor: 'blue' },
-    { id: 'HE-84260', seller: 'Shop B', date: '2025-10-12', status: 'Đã giao hàng', statusColor: 'green' },
-    { id: 'HE-84259', seller: 'Shop A', date: '2025-10-11', status: 'Chờ lấy hàng', statusColor: 'yellow' },
-    { id: 'HE-84258', seller: 'Shop C', date: '2025-10-10', status: 'Đã hủy', statusColor: 'red' },
-  ];
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isAssignOpen, setIsAssignOpen] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [selectedOrderDetailId, setSelectedOrderDetailId] = useState<string | null>(null);
 
-  const StatusBadge = ({ text, color }) => {
+  const handleOpenAssignModal = (orderId: number) => {
+    setSelectedOrderId(orderId);
+    setIsAssignOpen(true);
+  };
+  const handleOpenUpdateModal = (id: string) => {
+  setSelectedOrderId(id);
+  setIsUpdateModalOpen(true);
+};
+
+  const StatusBadge = ({ text }) => {
     const colors = {
-      green: 'bg-green-100 text-green-800',
-      blue: 'bg-blue-100 text-blue-800',
-      yellow: 'bg-yellow-100 text-yellow-800',
-      red: 'bg-red-100 text-red-800',
+      Draft: 'bg-gray-100 text-gray-800',
+      Pending: 'bg-yellow-100 text-yellow-800',
+      Confirmed: 'bg-blue-100 text-blue-800',
+      'In Transit': 'bg-indigo-100 text-indigo-800',
+      Completed: 'bg-green-100 text-green-800',
+      Canceled: 'bg-red-100 text-red-800',
     };
-    return <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${colors[color]}`}>{text}</span>;
+    const colorClass = colors[text] || 'bg-gray-100 text-gray-800';
+    return (
+      <span
+        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${colorClass}`}
+      >
+        {text}
+      </span>
+    );
   };
 
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const res = await axios.get('http://localhost:4000/api/users/orders/');
+        setOrders(res.data || []);
+      } catch (err) {
+        console.error('❌ Lỗi khi tải danh sách đơn hàng:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrders();
+  }, []);
+
+  if (loading) {
+    return <p className="text-gray-500">Đang tải dữ liệu...</p>;
+  }
+
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900">Quản lý Đơn hàng</h1>
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+  <div className="space-y-6">
+    <h1 className="text-3xl font-bold text-gray-900">Quản lý Đơn hàng</h1>
+
+    <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 w-28">
+              Mã Đơn
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 w-60">
+              Địa chỉ lấy hàng
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 w-60">
+              Địa chỉ giao hàng
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 w-60">
+              Gói
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 w-60">
+              Thời gian
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 w-60">
+              Chi phí
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 w-32">
+              Trạng thái
+            </th>
+            <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 w-32">
+              Hành động
+            </th>
+          </tr>
+        </thead>
+
+        <tbody className="divide-y divide-gray-200 bg-white">
+          {orders.length === 0 ? (
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Mã Đơn</th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Người bán</th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Ngày đặt</th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Trạng thái</th>
-              <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Hành động</th>
+              <td
+                colSpan={7}
+                className="px-6 py-4 text-center text-sm text-gray-500"
+              >
+                Không có đơn hàng nào.
+              </td>
             </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 bg-white">
-            {orders.map(order => (
-              <tr key={order.id}>
-                <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">{order.id}</td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{order.seller}</td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{order.date}</td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm"><StatusBadge text={order.status} color={order.statusColor} /></td>
-                <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                  <a href="#" className="text-orange-600 hover:text-orange-900">Xem chi tiết</a>
+          ) : (
+            orders.map((order) => (
+              <tr key={order._id} className="hover:bg-gray-50 transition">
+                <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
+                  #{order._id}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-500 truncate max-w-[14rem]">
+                  {order.pickup_address}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-500 truncate max-w-[14rem]">
+                  {order.delivery_address}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-500 truncate max-w-[14rem]">
+                  {order.package_id?.name}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-500 truncate max-w-[14rem]">
+                  {order.scheduled_time}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-500 truncate max-w-[14rem]">
+                  
+                </td>
+                <td className="whitespace-nowrap px-4 py-3 text-sm">
+                  <StatusBadge text={order.status} />
+                </td>
+                <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium flex justify-end gap-3">
+                  {/* Xem chi tiết */}
+                  <button
+  onClick={() => {
+    setSelectedOrderDetailId(order._id);
+    setIsDetailOpen(true);
+  }}
+  className="text-orange-600 hover:text-orange-900"
+  title="Xem chi tiết"
+>
+  <Eye className="w-5 h-5 cursor-pointer" />
+</button>
+
+                  {order.status === "Pending" && (
+  <button
+    onClick={() => handleOpenAssignModal(order._id)}
+    className="text-blue-600 hover:text-blue-900"
+    title="Giao việc"
+  >
+    <Truck className="w-5 h-5 cursor-pointer" />
+  </button>
+  
+  
+)}
+<button
+  onClick={() => handleOpenUpdateModal(order._id)}
+  className="text-green-600 hover:text-green-900"
+  title="Cập nhật đơn hàng"
+>
+  <Edit className="w-5 h-5 cursor-pointer" />
+</button>
                 </td>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            ))
+          )}
+        </tbody>
+      </table>
     </div>
-  );
+
+    {/* ✅ Modal giao việc đặt ngoài bảng */}
+    {isAssignOpen && selectedOrderId && (
+      <AssignModal
+        orderId={selectedOrderId}
+        onClose={() => setIsAssignOpen(false)}
+      />
+    )}
+
+    {isDetailOpen && selectedOrderDetailId && (
+      <OrderDetailModal
+        orderId={selectedOrderDetailId}
+        onClose={() => setIsDetailOpen(false)}
+      />
+    )}
+
+    {isUpdateModalOpen && selectedOrderId && (
+      <UpdateOrderModal
+        isOpen={isUpdateModalOpen}
+        onClose={() => setIsUpdateModalOpen(false)}
+        orderId={selectedOrderId}
+      />
+    )}
+  </div>
+);
 };
 
 export default OrderManagementScreen;
