@@ -17,7 +17,7 @@ router.post("/items", addOrderItems);            // thêm hàng hóa & xác nh�
 router.use(requireAuth);
 router.get("/search", searchOrder);
 router.post("/", createOrder);
-router.get("/my", getMyOrders);
+router.get("/myorder", getMyOrders);
 router.get("/:id", getOrderById);
 router.put("/:id", updateOrderStatus);
 router.delete("/:id", deleteOrder); // ✅ đúng cú pháp
