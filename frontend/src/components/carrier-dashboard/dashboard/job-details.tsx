@@ -1,11 +1,12 @@
-// src/pages/carrier/dashboard/job-details.tsx
 "use client";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom"; // ⬅️ thêm
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  ArrowLeft, MapPin, Calendar, Package, FileText, Camera, AlertTriangle, CheckCircle2, Clock,
+  ArrowLeft, MapPin, Calendar, Package, FileText,
+  Camera, AlertTriangle, CheckCircle2, Clock,
 } from "lucide-react";
 import { carrierApi } from "@/services/carrier.service";
 import type { JobItem, JobStatus } from "@/types/carrier";
@@ -32,10 +33,30 @@ const statusText: Record<string, string> = {
   CANCELLED: "Đã huỷ",
 };
 
-export function JobDetails({ jobId, onBack, onUploadBefore, onUploadAfter, onReportIncident }: JobDetailsProps) {
+export function JobDetails({
+  jobId, onBack, onUploadBefore, onUploadAfter, onReportIncident,
+}: JobDetailsProps) {
+  const navigate = useNavigate(); // ⬅️ thêm
   const [job, setJob] = useState<JobItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  const [before, setBefore] = useState<any[]>([]);
+  const [after, setAfter] = useState<any[]>([]);
+
+  async function loadMedias() {
+    if (!jobId) return;
+    try {
+      const [b, a] = await Promise.all([
+        carrierApi.listEvidence(jobId, "BEFORE"),
+        carrierApi.listEvidence(jobId, "AFTER"),
+      ]);
+      setBefore(b.items || []);
+      setAfter(a.items || []);
+    } catch (e) {
+      console.error("load medias error:", e);
+      setBefore([]); setAfter([]);
+    }
+  }
 
   const load = async () => {
     if (!jobId) return;
@@ -55,14 +76,14 @@ export function JobDetails({ jobId, onBack, onUploadBefore, onUploadAfter, onRep
 
   useEffect(() => {
     load();
-  }, [jobId]);
+    loadMedias();
+  }, [jobId]); // ⬅️ chỉ 1 effect là đủ
 
   const advance = async (next: JobStatus) => {
     if (!job) return;
     await carrierApi.updateProgress(job.id, next);
     await load();
   };
-
   const accept = async () => { if (!job) return; await carrierApi.acceptJob(job.id); await load(); };
   const decline = async () => { if (!job) return; await carrierApi.declineJob(job.id); onBack(); };
   const confirmContract = async () => { if (!job) return; await carrierApi.confirmContract(job.id); await load(); };
@@ -72,8 +93,10 @@ export function JobDetails({ jobId, onBack, onUploadBefore, onUploadAfter, onRep
     return (
       <Card>
         <CardContent className="p-6">
-          <p className="text-sm text-muted-foreground mb-4">Chưa chọn đơn hàng.</p>
-          <Button variant="outline" className="bg-transparent" onClick={onBack}>Quay lại danh sách</Button>
+          <p className="text-sm text-muted-foreground">Chưa chọn đơn hàng.</p>
+          <Button variant="outline" className="mt-3 bg-transparent" onClick={onBack}>
+            Quay lại danh sách
+          </Button>
         </CardContent>
       </Card>
     );
@@ -82,7 +105,9 @@ export function JobDetails({ jobId, onBack, onUploadBefore, onUploadAfter, onRep
   if (loading) {
     return (
       <Card>
-        <CardContent className="p-6 text-sm text-muted-foreground">Đang tải chi tiết đơn hàng...</CardContent>
+        <CardContent className="p-6 text-sm text-muted-foreground">
+          Đang tải chi tiết đơn hàng...
+        </CardContent>
       </Card>
     );
   }
@@ -92,7 +117,9 @@ export function JobDetails({ jobId, onBack, onUploadBefore, onUploadAfter, onRep
       <Card>
         <CardContent className="p-6">
           <p className="text-sm text-destructive">{err || "Không tìm thấy đơn hàng."}</p>
-          <Button variant="outline" className="mt-3 bg-transparent" onClick={onBack}>Quay lại danh sách</Button>
+          <Button variant="outline" className="mt-3 bg-transparent" onClick={onBack}>
+            Quay lại danh sách
+          </Button>
         </CardContent>
       </Card>
     );
@@ -110,7 +137,9 @@ export function JobDetails({ jobId, onBack, onUploadBefore, onUploadAfter, onRep
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2"><MapPin className="h-5 w-5" /> Lộ trình</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><MapPin className="h-5 w-5" /> Lộ trình</CardTitle>
+        </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-3">
             <div className="text-sm font-semibold">Điểm lấy</div>
@@ -126,17 +155,47 @@ export function JobDetails({ jobId, onBack, onUploadBefore, onUploadAfter, onRep
           </div>
           <div className="space-y-3">
             <div className="text-sm font-semibold">Điểm giao</div>
-            <div className="ml-1">
-              <p className="text-sm">{job.dropoff?.address || "—"}</p>
-            </div>
+            <div className="ml-1"><p className="text-sm">{job.dropoff?.address || "—"}</p></div>
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader><CardTitle className="flex items-center gap-2"><Package className="h-5 w-5" /> Hàng hoá</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          <p className="text-sm">{job.goodsSummary || "—"}</p>
+        <CardContent className="space-y-2"><p className="text-sm">{job.goodsSummary || "—"}</p></CardContent>
+      </Card>
+
+      {/* ẢNH ĐỐI CHIẾU — render đúng chỗ khi đã có job */}
+      <Card>
+        <CardHeader><CardTitle>Ảnh đối chiếu</CardTitle></CardHeader>
+        <CardContent className="space-y-6">
+          <div>
+            <div className="text-sm font-semibold mb-2">Trước khi lấy</div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {before.map(m => (
+                <a key={m._id} href={m.file_url} target="_blank" className="block">
+                  <img src={m.thumb_url || m.file_url} className="w-full rounded-lg border" />
+                </a>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="text-sm font-semibold mb-2">Sau khi giao</div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {after.map(m => (
+                <a key={m._id} href={m.file_url} target="_blank" className="block">
+                  <img src={m.thumb_url || m.file_url} className="w-full rounded-lg border" />
+                </a>
+              ))}
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            className="gap-2 bg-transparent"
+            onClick={() => navigate(`/carrier/compare/${job.id}`)}
+          >
+            <Camera className="h-4 w-4" /> Xem ảnh đối chiếu (trang riêng)
+          </Button>
         </CardContent>
       </Card>
 
@@ -155,12 +214,16 @@ export function JobDetails({ jobId, onBack, onUploadBefore, onUploadAfter, onRep
                 <FileText className="h-4 w-4" /> Xác nhận hợp đồng
               </Button>
             )}
-
             <Button className="gap-2" onClick={onUploadBefore}><Camera className="h-4 w-4" /> Chụp trước khi lấy</Button>
-            <Button variant="outline" className="gap-2 bg-transparent" onClick={onUploadAfter}><Camera className="h-4 w-4" /> Chụp sau khi giao</Button>
-            <Button variant="outline" className="gap-2 bg-transparent" onClick={onReportIncident}><AlertTriangle className="h-4 w-4" /> Báo cáo sự cố</Button>
-
-            <Button variant="outline" className="gap-2 bg-transparent" onClick={() => advance("ON_THE_WAY")}><Clock className="h-4 w-4" /> Cập nhật tiến độ</Button>
+            <Button variant="outline" className="gap-2 bg-transparent" onClick={onUploadAfter}>
+              <Camera className="h-4 w-4" /> Chụp sau khi giao
+            </Button>
+            <Button variant="outline" className="gap-2 bg-transparent" onClick={onReportIncident}>
+              <AlertTriangle className="h-4 w-4" /> Báo cáo sự cố
+            </Button>
+            <Button variant="outline" className="gap-2 bg-transparent" onClick={() => advance("ON_THE_WAY")}>
+              <Clock className="h-4 w-4" /> Cập nhật tiến độ
+            </Button>
           </div>
           <Separator />
           <Button className="w-full gap-2 bg-success hover:bg-success/90 text-white" onClick={confirmDelivery}>

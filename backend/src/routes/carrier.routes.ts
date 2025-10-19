@@ -5,11 +5,14 @@ import {
   confirmContract,
   confirmDelivery,
   declineOrder,
+  getCarrierOrderDetail,
+  getCarrierOrders,
   getMe,
   getOrder,
   listOrders,
   reportIncident,
   updateMe,
+  updateOrderProgress,
   updateProgress,
   uploadEvidence,
 } from "../controllers/carrier.controller";
@@ -22,7 +25,10 @@ router.use(requireAuth);
 
 router.get("/me", getMe);
 router.put("/me", updateMe);
-
+router.get("/orders", getCarrierOrders);
+router.get("/orders/:orderId", getCarrierOrderDetail);
+router.post("/orders/:orderId/accept", acceptOrder);
+router.post("/orders/:orderId/progress", updateOrderProgress);
 router.get("/orders", listOrders);
 router.get("/orders/:id", getOrder);
 router.post("/orders/:id/accept", acceptOrder);
