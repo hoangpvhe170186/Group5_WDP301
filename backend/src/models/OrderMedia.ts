@@ -1,11 +1,17 @@
-import mongoose from "mongoose";
+import { Schema, model, Types } from "mongoose";
 
-const orderMediaSchema = new mongoose.Schema({
-  order_id: { type: mongoose.Schema.Types.ObjectId, ref: "Order" },
-  uploaded_by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-  media_type: { type: String, enum: ["Before_Loading","After_Delivery","Incident","Other"] },
-  file_url: { type: String },
-  description: { type: String }
-}, { timestamps: true });
+const OrderMediaSchema = new Schema(
+  {
+    order_id: { type: Types.ObjectId, ref: "orders", required: true, index: true },
+    uploaded_by: { type: Types.ObjectId, ref: "users" },
+    media_type: { type: String, enum: ["Before_Loading", "After_Delivery", "Incident"], required: true },
+    resource_type: { type: String, enum: ["image", "video"], default: "image" },
+    file_url: { type: String, required: true },
+    thumb_url: { type: String },
+    public_id: { type: String, required: true },
+    description: { type: String, default: "" }
+  },
+  { timestamps: true }
+);
 
-export default mongoose.model("OrderMedia", orderMediaSchema);
+export default model("orderMedia", OrderMediaSchema);

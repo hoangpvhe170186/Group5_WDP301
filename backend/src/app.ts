@@ -4,27 +4,37 @@ import helmet from "helmet";
 import morgan from "morgan";
 import userRoutes from "./routes/user.route";
 import uploadRoute from "./routes/upload.route";
-import chatRoutes from "./routes/chat"; // 👈 import route bạn vừa tạo
+import chatRoutes from "./routes/chat";
 import pricingRoute from "./routes/pricing";  
 import vehiclesRoute from "./routes/vehicles.route";
 import routes from "./routes/auth.route";
-import carrierRoutes from "./routes/carrier.routes"; // ✅ THÊM DÒNG NÀY
+import carrierRoutes from "./routes/carrier.routes"; 
 import orderRoutes from "./routes/order.route";
 const app = express();
 
 app.use(express.json());
-app.use(cors());
+const FRONTEND = process.env.FRONTEND_URL || "http://localhost:5173";
+
+app.use(cors({
+  origin: [FRONTEND, "http://127.0.0.1:5173"],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  exposedHeaders: ["Content-Length"]
+}));
+
 app.use(helmet());
 app.use(morgan("dev"));
+app.use("/api/carrier", carrierRoutes);
+app.use("/api", uploadRoute); 
 
-// Gắn router vào prefix /api
-app.use("/api", chatRoutes);  // 👈 thêm dòng này
+app.use("/api", chatRoutes);  
 
-// mount API routes
-app.use("/api/pricing", pricingRoute);      // <-- mount pricing routes
+
+app.use("/api/pricing", pricingRoute);     
 app.use("/api/vehicles", vehiclesRoute);
-app.use("/api/carrier", carrierRoutes); // ✅ Ở đây
-// Test route
+app.use("/api/carrier", carrierRoutes); 
+
 app.get("/", (req, res) => {
   res.send("🚀 Backend running...");
 });

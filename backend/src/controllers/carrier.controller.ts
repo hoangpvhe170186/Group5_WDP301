@@ -3,7 +3,109 @@ import Order from "../models/Order";
 import Incident from "../models/Incident";
 import UploadEvidence from "../models/UploadEvidence";
 import { uploadToCloudinary } from "../lib/cloudinary";
+import { Types } from "mongoose";
 
+function getCarrierId(req: Request): string | null {
+  return (req as any)?.user?._id || (req as any)?.user?.id || null;
+}
+function carrierFilter(userId: string) {
+  const id = new Types.ObjectId(userId);
+  return {
+    $or: [
+      { carrier_id: id },
+      { carrier: id },
+      { driver_id: id },
+      { assigned_to: id },
+    ],
+  };
+}
+
+export const getCarrierOrders = async (req, res) => {
+  try {
+    const userId = (req as any)?.user?._id || (req as any)?.user?.id;
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    const id = new Types.ObjectId(userId);
+    const where = { $or: [{ carrier_id: id }, { carrier: id }, { driver_id: id }, { assigned_to: id }] };
+
+    const orders = await Order.find(where)
+      .sort({ updatedAt: -1 })
+      // .populate("customer", "name email phone") // ❌ gây lỗi — bỏ
+      .lean();
+
+    return res.json({ orders });
+  } catch (err) {
+    console.error("getCarrierOrders error:", err);
+    return res.status(500).json({ message: "Error fetching carrier orders" });
+  }
+};
+
+export const getCarrierOrderDetail = async (req, res) => {
+  try {
+    const userId = (req as any)?.user?._id || (req as any)?.user?.id;
+    const { orderId } = req.params;
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    if (!Types.ObjectId.isValid(orderId)) return res.status(400).json({ message: "Invalid ID" });
+
+    const id = new Types.ObjectId(userId);
+    const order = await Order.findOne({
+      _id: new Types.ObjectId(orderId),
+      $or: [{ carrier_id: id }, { carrier: id }, { driver_id: id }, { assigned_to: id }],
+    })
+      // .populate("customer", "name email phone") // ❌ bỏ
+      .lean();
+
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    return res.json(order);
+  } catch (err) {
+    console.error("getCarrierOrderDetail error:", err);
+    return res.status(500).json({ message: "Error fetching order detail" });
+  }
+};
+
+export const acceptOrder = async (req: Request, res: Response) => {
+  try {
+    const userId = getCarrierId(req);
+    const { orderId } = req.params;
+
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    const updated = await Order.findByIdAndUpdate(
+      orderId,
+      { carrier_id: userId, status: "ACCEPTED" },
+      { new: true }
+    ).lean();
+
+    if (!updated) return res.status(404).json({ message: "Order not found" });
+
+    return res.json(updated);
+  } catch (err: any) {
+    console.error("❌ acceptOrder error:", err);
+    return res.status(500).json({ message: "Error accepting order" });
+  }
+};
+export const updateOrderProgress = async (req: Request, res: Response) => {
+  try {
+    const userId = getCarrierId(req);
+    const { orderId } = req.params;
+    const { status } = req.body;
+
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    const updated = await Order.findOneAndUpdate(
+      { _id: orderId, ...carrierFilter(userId) },
+      { $set: { status } },
+      { new: true }
+    ).lean();
+
+    if (!updated) return res.status(404).json({ message: "Order not found" });
+
+    return res.json(updated);
+  } catch (err: any) {
+    console.error("❌ updateOrderProgress error:", err);
+    return res.status(500).json({ message: "Error updating progress" });
+  }
+};
 // ✅ Kiểm tra thông tin Carrier hiện tại
 export const getMe = async (req: Request, res: Response) => {
   const user = (req as any).user;
@@ -79,12 +181,6 @@ export const getOrder = async (req: Request, res: Response) => {
   });
 };
 
-// ✅ Carrier chấp nhận đơn
-export const acceptOrder = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const o = await Order.findByIdAndUpdate(id, { status: "ACCEPTED" }, { new: true });
-  res.json(o);
-};
 
 // ✅ Carrier từ chối đơn
 export const declineOrder = async (req: Request, res: Response) => {
