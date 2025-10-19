@@ -1,12 +1,13 @@
 // src/pages/carrier/dashboard/orders-list.tsx
 "use client";
+
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Package, MapPin, Calendar, ArrowRight, Search, Filter, RefreshCw } from "lucide-react";
+import { MapPin, Calendar, ArrowRight, Search, Filter, RefreshCw } from "lucide-react";
 import { carrierApi } from "@/services/carrier.service";
 import type { JobItem } from "@/types/carrier";
 
@@ -61,7 +62,8 @@ export function OrdersList({ onViewJob }: OrdersListProps) {
       setLoading(true);
       setError(null);
       const res = await carrierApi.listOrders();
-      setOrders(res.orders || []);
+      // Ẩn đơn bị từ chối/huỷ khỏi danh sách giao việc
+      setOrders((res.orders || []).filter((o: JobItem) => !["DECLINED", "CANCELLED"].includes(o.status)));
     } catch (e: any) {
       console.error("Load orders error:", e);
       setError("Không thể tải danh sách đơn hàng từ server.");
@@ -101,9 +103,7 @@ export function OrdersList({ onViewJob }: OrdersListProps) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Đơn hàng được giao</h2>
-          <p className="text-sm text-muted-foreground">
-            Quản lý và xem chi tiết các đơn hàng bạn được phân công
-          </p>
+          <p className="text-sm text-muted-foreground">Quản lý và xem chi tiết các đơn hàng bạn được phân công</p>
         </div>
         <Button variant="outline" onClick={fetchOrders} className="gap-2">
           <RefreshCw className="h-4 w-4" /> Làm mới
@@ -112,9 +112,7 @@ export function OrdersList({ onViewJob }: OrdersListProps) {
 
       {error && (
         <Card className="border-destructive/40 bg-destructive/10">
-          <CardContent className="p-4 text-sm text-destructive">
-            {error}
-          </CardContent>
+          <CardContent className="p-4 text-sm text-destructive">{error}</CardContent>
         </Card>
       )}
 
@@ -144,6 +142,7 @@ export function OrdersList({ onViewJob }: OrdersListProps) {
                 <SelectItem value="delivering">Đang giao</SelectItem>
                 <SelectItem value="delivered">Đã giao</SelectItem>
                 <SelectItem value="completed">Hoàn thành</SelectItem>
+                {/* cancelled/declined đã bị ẩn, vẫn giữ option nếu sau này muốn bật include=all */}
                 <SelectItem value="cancelled">Đã huỷ</SelectItem>
               </SelectContent>
             </Select>
@@ -153,9 +152,7 @@ export function OrdersList({ onViewJob }: OrdersListProps) {
 
       {filtered.length === 0 ? (
         <Card>
-          <CardContent className="p-6 text-center text-muted-foreground">
-            Không có đơn hàng nào phù hợp.
-          </CardContent>
+          <CardContent className="p-6 text-center text-muted-foreground">Không có đơn hàng nào phù hợp.</CardContent>
         </Card>
       ) : (
         filtered.map((o) => (
@@ -164,9 +161,7 @@ export function OrdersList({ onViewJob }: OrdersListProps) {
               <div className="flex items-start justify-between">
                 <div>
                   <div className="text-lg font-semibold">{o.orderCode}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {o.customerName || "Khách hàng"}
-                  </div>
+                  <div className="text-sm text-muted-foreground">{o.customerName || "Khách hàng"}</div>
                 </div>
                 <Badge className={statusClass(o.status)}>{statusLabel[o.status] ?? o.status}</Badge>
               </div>
@@ -208,10 +203,23 @@ export function OrdersList({ onViewJob }: OrdersListProps) {
                 {o.status === "ASSIGNED" && (
                   <>
                     <Button onClick={() => onViewJob(o.id)}>Xem chi tiết</Button>
-                    <Button variant="outline" onClick={async () => { await carrierApi.acceptJob(o.id); fetchOrders(); }}>
+                    <Button
+                      variant="outline"
+                      onClick={async () => {
+                        await carrierApi.acceptJob(o.id);
+                        fetchOrders();
+                      }}
+                    >
                       Chấp nhận
                     </Button>
-                    <Button variant="outline" onClick={async () => { await carrierApi.declineJob(o.id); fetchOrders(); }}>
+                    <Button
+                      variant="outline"
+                      onClick={async () => {
+                        const reason = window.prompt("Nhập lý do từ chối (không bắt buộc):") || undefined;
+                        await carrierApi.declineJob(o.id, reason);
+                        fetchOrders();
+                      }}
+                    >
                       Từ chối
                     </Button>
                   </>
