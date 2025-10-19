@@ -5,11 +5,13 @@ import morgan from "morgan";
 import userRoutes from "./routes/user.route";
 import uploadRoute from "./routes/upload.route";
 import chatRoutes from "./routes/chat";
-import pricingRoute from "./routes/pricing";  
+import pricingRoute from "./routes/pricing";
 import vehiclesRoute from "./routes/vehicles.route";
 import routes from "./routes/auth.route";
-import carrierRoutes from "./routes/carrier.routes"; 
+import carrierRoutes from "./routes/carrier.routes";
 import orderRoutes from "./routes/order.route";
+import orderTrackingRoute from "./routes/order-tracking.route";
+
 const app = express();
 
 app.use(express.json());
@@ -28,26 +30,20 @@ app.use(morgan("dev"));
 app.use("/api/carrier", carrierRoutes);
 app.use("/api", uploadRoute); 
 
-app.use("/api", chatRoutes);  
-
-
-app.use("/api/pricing", pricingRoute);     
+// ✅ Mount đúng thứ tự
+app.use("/api/pricing", pricingRoute);
 app.use("/api/vehicles", vehiclesRoute);
-app.use("/api/carrier", carrierRoutes); 
-
-app.get("/", (req, res) => {
-  res.send("🚀 Backend running...");
-});
-
-app.use("/api", routes);
-
-// User routes
+app.use("/api/carrier", carrierRoutes);
+app.use("/api/orders", orderRoutes);
+app.use("/api/order-tracking", orderTrackingRoute);
 app.use("/api/users", userRoutes);
 app.use("/api/upload", uploadRoute);
 app.use("/api/chat", chatRoutes);
-app.use("/api/pricing", pricingRoute);
-app.use("/api/vehicles", vehiclesRoute);
-app.use("/api/orders", orderRoutes);
-app.use("/api/carrier", carrierRoutes);
+app.use("/api/auth", routes);
+
+// ✅ Test
+app.get("/", (req, res) => {
+  res.send("🚀 Backend running...");
+});
 
 export default app;
