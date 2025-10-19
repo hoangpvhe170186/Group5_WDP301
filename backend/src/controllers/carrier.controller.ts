@@ -1,160 +1,330 @@
-import { Request, Response } from "express";
+// backend/src/controllers/carrier.controller.ts
+import { Request, Response, NextFunction } from "express";
 import Order from "../models/Order";
-import Incident from "../models/Incident";
+import OrderItem from "../models/OrderItem";
+import OrderTracking from "../models/OrderTracking";
 import UploadEvidence from "../models/UploadEvidence";
-import { uploadToCloudinary } from "../lib/cloudinary";
+import Incident from "../models/Incident";
+import {
+  loadOrderOrThrow,
+  assertCarrierAccess,
+  assertUpdatable,
+  assertTransition,
+} from "../modules/carrier/order-helpers";
 
-// ✅ Kiểm tra thông tin Carrier hiện tại
-export const getMe = async (req: Request, res: Response) => {
-  const user = (req as any).user;
-  res.json({
-    id: user._id,
-    fullName: user.full_name || user.fullName,
-    phone: user.phone,
-    avatarUrl: user.avatarUrl,
-    licenseNumber: user.licenseNumber,
-    vehiclePlate: user.vehiclePlate,
-    documents: user.documents || [],
-  });
+/** Lấy ID user an toàn từ req.user */
+const getUserId = (req: any) => req?.user?.id || req?.user?._id;
+
+/** Chuẩn hoá Decimal128 -> number và normalize item */
+const toPlainItem = (it: any) => ({
+  id: String(it._id),
+  description: it.description ?? "",
+  quantity: Number(it.quantity ?? 0),
+  weight: it?.weight?.$numberDecimal
+    ? Number(it.weight.$numberDecimal)
+    : typeof it?.weight === "object" && it?.weight?._bsontype === "Decimal128"
+    ? Number(it.weight.toString())
+    : Number(it?.weight ?? 0),
+  fragile: !!it.fragile,
+});
+
+/** ========== Profile ========== */
+export const getMe = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    // tuỳ hệ thống của bạn, có thể lấy thêm từ DB
+    res.json({ me: req.user });
+  } catch (err) {
+    next(err);
+  }
 };
 
-// ✅ Cập nhật thông tin cá nhân
-export const updateMe = async (req: Request, res: Response) => {
-  const user = (req as any).user;
-  const { fullName, phone, licenseNumber, vehiclePlate } = req.body;
-  Object.assign(user, { fullName, phone, licenseNumber, vehiclePlate });
-  await user.save();
-  res.json({
-    id: user._id,
-    fullName: user.fullName,
-    phone: user.phone,
-    avatarUrl: user.avatarUrl,
-    documents: user.documents || [],
-  });
+export const updateMe = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    // Nếu có bảng User/Carrier riêng, cập nhật ở đó. Ở đây demo cập nhật tạm.
+    // Ví dụ: await Carrier.findByIdAndUpdate(getUserId(req), req.body, { new: true })
+    const payload = req.body || {};
+    res.json({ message: "Updated (mock)", payload });
+  } catch (err) {
+    next(err);
+  }
 };
 
-// ✅ Lấy toàn bộ đơn được assign cho Carrier
-export const listOrders = async (req: Request, res: Response) => {
-  const user = (req as any).user;
-  console.log("🔎 USER TOKEN ID:", user._id);
-  console.log("🟡 Carrier Query filter:", { carrier_id: user._id });
-  const orders = await Order.find({ carrier_id: user._id })
-    .populate("customer_id")
-    .populate("package_id")
-    .sort({ createdAt: -1 });
+/** ========== Orders (List & Detail) ========== */
+// GET /carrier/orders?include=all|active
+export const getCarrierOrders = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const carrierId = getUserId(req);
+    const include = String(req.query.include || "active");
 
-  return res.json({
-    orders: orders.map((o: any) => ({
-      id: String(o._id),
-      orderCode: o.orderCode || `ORD-${String(o._id).slice(-6).toUpperCase()}`,
-      customerName: o.customer_id?.full_name || "",
-      pickup: { address: o.pickup_address },
-      dropoff: { address: o.delivery_address },
-      goodsSummary: o.package_id?.name || "",
-      scheduledTime: o.scheduled_time || "",
-      estimatePrice: o.total_price || 0,
-      status: o.status,
-    })),
-  });
+    const filter: any = { carrier_id: carrierId };
+    if (include !== "all") {
+      filter.status = { $nin: ["DECLINED", "CANCELLED"] };
+    }
+
+    const orders = await Order.find(filter).sort({ createdAt: -1 }).lean();
+    res.json({ orders });
+  } catch (err) {
+    console.error("❌ Error while fetching carrier orders:", err);
+    next(err);
+  }
 };
 
-// ✅ Chi tiết đơn
-export const getOrder = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const o: any = await Order.findById(id)
-    .populate("customer_id")
-    .populate("package_id");
-  if (!o) return res.status(404).json({ message: "Order not found" });
+// GET /carrier/orders/:orderId
+export const getCarrierOrderDetail = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const order = await loadOrderOrThrow(req.params.orderId);
+    assertCarrierAccess(order, getUserId(req));
 
-  res.json({
-    id: String(o._id),
-    orderCode: o.orderCode || `ORD-${String(o._id).slice(-6).toUpperCase()}`,
-    customerName: o.customer_id?.full_name || "",
-    pickup: { address: o.pickup_address },
-    dropoff: { address: o.delivery_address },
-    goodsSummary: o.package_id?.name || "",
-    scheduledTime: o.scheduled_time || "",
-    estimatePrice: o.total_price || 0,
-    status: o.status,
-  });
+    const [items, trackings] = await Promise.all([
+      OrderItem.find({ order_id: order._id }).lean(),
+      OrderTracking.find({ order_id: order._id }).sort({ createdAt: -1 }).lean(),
+    ]);
+
+    const goods = (items || []).map(toPlainItem);
+    res.json({
+      ...order.toObject(),
+      goods,
+      trackings,
+    });
+  } catch (err) {
+    console.error("❌ Error fetching order details:", err);
+    next(err);
+  }
 };
 
-// ✅ Carrier chấp nhận đơn
-export const acceptOrder = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const o = await Order.findByIdAndUpdate(id, { status: "ACCEPTED" }, { new: true });
-  res.json(o);
+/** Legacy giữ tương thích: GET /carrier/orders-legacy/:id */
+export const getOrder = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const order = await loadOrderOrThrow(req.params.id);
+    assertCarrierAccess(order, getUserId(req));
+
+    const [items, trackings] = await Promise.all([
+      OrderItem.find({ order_id: order._id }).lean(),
+      OrderTracking.find({ order_id: order._id }).sort({ createdAt: -1 }).lean(),
+    ]);
+
+    const goods = (items || []).map(toPlainItem);
+    res.json({
+      ...order.toObject(),
+      goods,
+      trackings,
+    });
+  } catch (err) {
+    next(err);
+  }
 };
 
-// ✅ Carrier từ chối đơn
-export const declineOrder = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const o = await Order.findByIdAndUpdate(id, { status: "DECLINED" }, { new: true });
-  res.json(o);
+/** ========== Actions (Accept / Decline / Confirm Contract / Progress / Confirm Delivery) ========== */
+
+// POST /carrier/orders/:orderId/accept
+export const acceptOrder = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const order = await loadOrderOrThrow(req.params.orderId);
+    assertCarrierAccess(order, getUserId(req));
+
+    if (["DECLINED", "CANCELLED", "COMPLETED"].includes(order.status)) {
+      return res.status(400).json({ message: "Đơn không thể chấp nhận" });
+    }
+
+    order.status = "ACCEPTED";
+    order.auditLogs = order.auditLogs || [];
+    order.auditLogs.push({ at: new Date(), by: getUserId(req), action: "ACCEPTED" });
+    await order.save();
+
+    res.json(order);
+  } catch (err) {
+    next(err);
+  }
 };
 
-// ✅ Xác nhận hợp đồng
-export const confirmContract = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const o = await Order.findByIdAndUpdate(id, { status: "CONFIRMED" }, { new: true });
-  res.json(o);
+// POST /carrier/orders/:orderId/decline
+export const declineOrder = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const { reason } = req.body || {};
+    const order = await loadOrderOrThrow(req.params.orderId);
+    assertCarrierAccess(order, getUserId(req));
+
+    if (["CONFIRMED", "ON_THE_WAY", "ARRIVED", "DELIVERING", "DELIVERED", "COMPLETED"].includes(order.status)) {
+      return res.status(400).json({ message: "Không thể từ chối khi đơn đã triển khai" });
+    }
+
+    order.status = "DECLINED";
+    (order as any).declineReason = reason || null;
+    order.auditLogs = order.auditLogs || [];
+    order.auditLogs.push({ at: new Date(), by: getUserId(req), action: "DECLINED", note: reason || "" });
+    await order.save();
+
+    res.json(order);
+  } catch (err) {
+    next(err);
+  }
 };
 
-// ✅ Cập nhật tiến trình đơn hàng
-export const updateProgress = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { status } = req.body as { status: string };
-  const allowed = ["ASSIGNED", "ACCEPTED", "CONFIRMED", "ON_THE_WAY", "ARRIVED", "DELIVERING", "DELIVERED", "COMPLETED"];
-  if (!allowed.includes(status)) return res.status(400).json({ message: "Invalid status" });
-  const o = await Order.findByIdAndUpdate(id, { status }, { new: true });
-  res.json(o);
+// POST /carrier/orders/:orderId/confirm-contract
+export const confirmContract = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const order = await loadOrderOrThrow(req.params.orderId);
+    assertCarrierAccess(order, getUserId(req));
+    assertUpdatable(order);
+
+    // Confirm hợp đồng -> thường chuyển sang CONFIRMED
+    const nextStatus = "CONFIRMED";
+    assertTransition(order.status, nextStatus);
+
+    order.status = nextStatus;
+    order.auditLogs = order.auditLogs || [];
+    order.auditLogs.push({ at: new Date(), by: getUserId(req), action: "CONFIRMED" });
+    await order.save();
+
+    // lưu tracking đồng bộ
+    await OrderTracking.create({
+      order_id: order._id,
+      carrier_id: getUserId(req),
+      status: nextStatus,
+      note: "Xác nhận hợp đồng",
+    });
+
+    res.json(order);
+  } catch (err) {
+    next(err);
+  }
 };
 
-// ✅ Upload bằng chứng BEFORE/AFTER
-export const uploadEvidence = async (req: Request, res: Response) => {
-  const user = (req as any).user;
-  const { id } = req.params;
-  const { phase } = req.body as { phase: "BEFORE" | "AFTER" };
-  // @ts-ignore
-  const files = (req.files as Express.Multer.File[]) || [];
-  const uploads = await Promise.all(
-    files.map(async (f) => {
-      const r = await uploadToCloudinary(f.path);
-      return { url: r.secure_url, type: f.mimetype };
-    })
-  );
-  const doc = await UploadEvidence.create({ orderId: id, phase, files: uploads, uploadedBy: user._id });
-  res.json(doc);
+// POST /carrier/orders/:orderId/progress
+export const updateOrderProgress = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const { status: nextStatus, note = "" } = req.body || {};
+    const order = await loadOrderOrThrow(req.params.orderId);
+
+    assertCarrierAccess(order, getUserId(req));
+    assertUpdatable(order);
+    assertTransition(order.status, nextStatus);
+
+    order.status = nextStatus;
+    order.auditLogs = order.auditLogs || [];
+    order.auditLogs.push({ at: new Date(), by: getUserId(req), action: `PROGRESS:${nextStatus}`, note });
+    await order.save();
+
+    await OrderTracking.create({
+      order_id: order._id,
+      carrier_id: getUserId(req),
+      status: nextStatus,
+      note,
+    });
+
+    res.json(order);
+  } catch (err) {
+    next(err);
+  }
 };
 
-// ✅ Báo sự cố
-export const reportIncident = async (req: Request, res: Response) => {
-  const user = (req as any).user;
-  const { id } = req.params;
-  const { type, description } = req.body as { type: string; description: string };
-  // @ts-ignore
-  const files = (req.files as Express.Multer.File[]) || [];
-  const uploads = await Promise.all(
-    files.map(async (f) => {
-      const r = await uploadToCloudinary(f.path);
-      return { url: r.secure_url, type: f.mimetype };
-    })
-  );
-  const inc = await (Incident as any).create({
-    orderId: id,
-    reporterId: user._id,
-    type,
-    description,
-    attachments: uploads,
-    status: "OPEN",
-  });
-  res.json(inc);
+// POST /carrier/orders/:orderId/confirm-delivery
+export const confirmDelivery = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const { signatureUrl } = req.body || {};
+    const order = await loadOrderOrThrow(req.params.orderId);
+
+    assertCarrierAccess(order, getUserId(req));
+    assertUpdatable(order);
+
+    order.status = "COMPLETED";
+    if (signatureUrl) (order as any).signatureUrl = signatureUrl;
+
+    order.auditLogs = order.auditLogs || [];
+    order.auditLogs.push({ at: new Date(), by: getUserId(req), action: "COMPLETED" });
+    await order.save();
+
+    await OrderTracking.create({
+      order_id: order._id,
+      carrier_id: getUserId(req),
+      status: "COMPLETED",
+      note: "Xác nhận hoàn tất giao hàng",
+    });
+
+    res.json(order);
+  } catch (err) {
+    next(err);
+  }
 };
 
-// ✅ Xác nhận hoàn tất giao hàng
-export const confirmDelivery = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { signatureUrl } = req.body as { signatureUrl?: string };
-  const o = await Order.findByIdAndUpdate(id, { status: "COMPLETED" }, { new: true });
-  res.json({ order: o, signatureUrl });
+/** ========== Evidence & Incident ========== */
+
+// POST /carrier/orders/:orderId/evidence (multer.array('files'))
+export const uploadEvidence = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const order = await loadOrderOrThrow(req.params.orderId);
+    assertCarrierAccess(order, getUserId(req));
+
+    const files = (req.files || []) as Express.Multer.File[];
+    if (!files.length) {
+      return res.status(400).json({ message: "No files uploaded" });
+    }
+
+    // Lưu metadata vào UploadEvidence (giả sử có model)
+    const records = await Promise.all(
+      files.map((f) =>
+        UploadEvidence.create({
+          order_id: order._id,
+          carrier_id: getUserId(req),
+          filename: f.originalname,
+          path: f.path,
+          size: f.size,
+          mime: f.mimetype,
+          uploaded_at: new Date(),
+        })
+      )
+    );
+
+    // Ghi audit
+    order.auditLogs = order.auditLogs || [];
+    order.auditLogs.push({
+      at: new Date(),
+      by: getUserId(req),
+      action: "UPLOAD_EVIDENCE",
+      note: `${files.length} file(s)`,
+    });
+    await order.save();
+
+    res.json({ uploaded: records.length, records });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST /carrier/orders/:orderId/incidents (multer.array('photos'))
+export const reportIncident = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const { type, description = "" } = req.body || {};
+    const order = await loadOrderOrThrow(req.params.orderId);
+    assertCarrierAccess(order, getUserId(req));
+
+    const photos = (req.files || []) as Express.Multer.File[];
+
+    const incident = await Incident.create({
+      order_id: order._id,
+      carrier_id: getUserId(req),
+      type: type || "GENERAL",
+      description,
+      photos: photos.map((p) => ({
+        filename: p.originalname,
+        path: p.path,
+        size: p.size,
+        mime: p.mimetype,
+      })),
+      reported_at: new Date(),
+    });
+
+    order.auditLogs = order.auditLogs || [];
+    order.auditLogs.push({
+      at: new Date(),
+      by: getUserId(req),
+      action: "REPORT_INCIDENT",
+      note: `${type || "GENERAL"} - ${description?.slice(0, 120)}`,
+    });
+    await order.save();
+
+    res.json({ incident });
+  } catch (err) {
+    next(err);
+  }
 };
