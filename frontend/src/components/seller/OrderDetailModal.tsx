@@ -9,20 +9,27 @@ interface OrderDetailModalProps {
 
 const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ orderId, onClose }) => {
   const [order, setOrder] = useState<any>(null);
+  const [orderItems, setOrderItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchOrder = async () => {
+    const fetchOrderData = async () => {
       try {
-        const res = await axios.get(`http://localhost:4000/api/users/orders/${orderId}`);
-        setOrder(res.data?.data || res.data);
+        const [orderRes, itemRes] = await Promise.all([
+          axios.get(`http://localhost:4000/api/users/orders/${orderId}`),
+          axios.get(`http://localhost:4000/api/users/order-items/${orderId}`)
+        ]);
+
+        setOrder(orderRes.data?.data || orderRes.data);
+        setOrderItems(itemRes.data || []);
       } catch (err) {
         console.error("❌ Lỗi khi tải chi tiết đơn hàng:", err);
       } finally {
         setLoading(false);
       }
     };
-    fetchOrder();
+
+    fetchOrderData();
   }, [orderId]);
 
   if (loading) {
@@ -72,9 +79,42 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ orderId, onClose })
           <p><strong>Carrier:</strong> {order.carrier_id?.full_name || "—"}</p>
           <p><strong>Địa chỉ lấy hàng:</strong> {order.pickup_address}</p>
           <p><strong>Địa chỉ giao hàng:</strong> {order.delivery_address}</p>
-          <p><strong>Tổng tiền:</strong> {order.total_amount?.toLocaleString()}₫</p>
+          <p><strong>Tổng tiền:</strong> {order.total_price?.toLocaleString()}₫</p>
           <p><strong>Ngày tạo:</strong> {new Date(order.createdAt).toLocaleString()}</p>
           <p><strong>Ngày cập nhật:</strong> {new Date(order.updatedAt).toLocaleString()}</p>
+        </div>
+
+        {/* 🧾 Danh sách hàng trong đơn */}
+        <div className="mt-6">
+          <h3 className="text-lg font-semibold mb-2">Danh sách hàng hóa</h3>
+          {orderItems.length === 0 ? (
+            <p className="text-gray-500 text-sm">Không có mặt hàng nào trong đơn này.</p>
+          ) : (
+            <table className="w-full text-sm border">
+              <thead>
+                <tr className="bg-gray-100 text-left">
+                  <th className="p-2 border">Mô tả</th>
+                  <th className="p-2 border">Số lượng</th>
+                  <th className="p-2 border">Cân nặng (kg)</th>
+                  <th className="p-2 border">Hàng dễ vỡ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orderItems.map((item, idx) => (
+                  <tr key={idx} className="border-t">
+                    <td className="p-2 border">{item.description || "—"}</td>
+                    <td className="p-2 border text-center">{item.quantity}</td>
+                    <td className="p-2 border text-center">
+                      {parseFloat(item.weight)?.toFixed(2)}
+                    </td>
+                    <td className="p-2 border text-center">
+                      {item.fragile ? "✅ Có" : "❌ Không"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
 
         <div className="mt-6 flex justify-end">
