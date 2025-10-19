@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import User from "../models/User";
 import Order from "../models/Order";
+import OrderItem from "../models/OrderItem";
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
     const users = await User.find({}).select("-password_hash");
@@ -217,5 +218,13 @@ export const updateOrder = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error updating order:", error);
     res.status(500).json({ success: false, message: "Lỗi server khi cập nhật đơn hàng" });
+  }
+};
+export const getOrderItemsByOrderId = async (req: Request, res: Response) => {
+  try {
+    const items = await OrderItem.find({ order_id: req.params.orderId });
+    res.json(items);
+  } catch (err) {
+    res.status(500).json({ message: "Server error", err });
   }
 };

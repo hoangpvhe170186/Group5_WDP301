@@ -12,10 +12,9 @@ import {
   assertTransition,
 } from "../modules/carrier/order-helpers";
 
-/** Lấy ID user an toàn từ req.user */
+/** Utils */
 const getUserId = (req: any) => req?.user?.id || req?.user?._id;
 
-/** Chuẩn hoá Decimal128 -> number và normalize item */
 const toPlainItem = (it: any) => ({
   id: String(it._id),
   description: it.description ?? "",
@@ -28,10 +27,11 @@ const toPlainItem = (it: any) => ({
   fragile: !!it.fragile,
 });
 
-/** ========== Profile ========== */
+/* ============================================================================
+ * Profile
+ * ==========================================================================*/
 export const getMe = async (req: any, res: Response, next: NextFunction) => {
   try {
-    // tuỳ hệ thống của bạn, có thể lấy thêm từ DB
     res.json({ me: req.user });
   } catch (err) {
     next(err);
@@ -40,8 +40,7 @@ export const getMe = async (req: any, res: Response, next: NextFunction) => {
 
 export const updateMe = async (req: any, res: Response, next: NextFunction) => {
   try {
-    // Nếu có bảng User/Carrier riêng, cập nhật ở đó. Ở đây demo cập nhật tạm.
-    // Ví dụ: await Carrier.findByIdAndUpdate(getUserId(req), req.body, { new: true })
+    // Nếu có model Carrier/User riêng, cập nhật ở đó. Ở đây giữ dạng mock cho nhanh.
     const payload = req.body || {};
     res.json({ message: "Updated (mock)", payload });
   } catch (err) {
@@ -49,7 +48,9 @@ export const updateMe = async (req: any, res: Response, next: NextFunction) => {
   }
 };
 
-/** ========== Orders (List & Detail) ========== */
+/* ============================================================================
+ * Orders (List & Detail)
+ * ==========================================================================*/
 // GET /carrier/orders?include=all|active
 export const getCarrierOrders = async (req: any, res: Response, next: NextFunction) => {
   try {
@@ -114,7 +115,9 @@ export const getOrder = async (req: any, res: Response, next: NextFunction) => {
   }
 };
 
-/** ========== Actions (Accept / Decline / Confirm Contract / Progress / Confirm Delivery) ========== */
+/* ============================================================================
+ * Actions (Accept / Decline / Confirm Contract / Progress / Confirm Delivery)
+ * ==========================================================================*/
 
 // POST /carrier/orders/:orderId/accept
 export const acceptOrder = async (req: any, res: Response, next: NextFunction) => {
@@ -167,7 +170,6 @@ export const confirmContract = async (req: any, res: Response, next: NextFunctio
     assertCarrierAccess(order, getUserId(req));
     assertUpdatable(order);
 
-    // Confirm hợp đồng -> thường chuyển sang CONFIRMED
     const nextStatus = "CONFIRMED";
     assertTransition(order.status, nextStatus);
 
@@ -176,7 +178,6 @@ export const confirmContract = async (req: any, res: Response, next: NextFunctio
     order.auditLogs.push({ at: new Date(), by: getUserId(req), action: "CONFIRMED" });
     await order.save();
 
-    // lưu tracking đồng bộ
     await OrderTracking.create({
       order_id: order._id,
       carrier_id: getUserId(req),
@@ -247,9 +248,11 @@ export const confirmDelivery = async (req: any, res: Response, next: NextFunctio
   }
 };
 
-/** ========== Evidence & Incident ========== */
+/* ============================================================================
+ * Evidence & Incident
+ * ==========================================================================*/
 
-// POST /carrier/orders/:orderId/evidence (multer.array('files'))
+// POST /carrier/orders/:orderId/evidence  (multer.array('files'))
 export const uploadEvidence = async (req: any, res: Response, next: NextFunction) => {
   try {
     const order = await loadOrderOrThrow(req.params.orderId);
@@ -260,7 +263,6 @@ export const uploadEvidence = async (req: any, res: Response, next: NextFunction
       return res.status(400).json({ message: "No files uploaded" });
     }
 
-    // Lưu metadata vào UploadEvidence (giả sử có model)
     const records = await Promise.all(
       files.map((f) =>
         UploadEvidence.create({
@@ -275,7 +277,6 @@ export const uploadEvidence = async (req: any, res: Response, next: NextFunction
       )
     );
 
-    // Ghi audit
     order.auditLogs = order.auditLogs || [];
     order.auditLogs.push({
       at: new Date(),
@@ -291,7 +292,7 @@ export const uploadEvidence = async (req: any, res: Response, next: NextFunction
   }
 };
 
-// POST /carrier/orders/:orderId/incidents (multer.array('photos'))
+// POST /carrier/orders/:orderId/incidents  (multer.array('photos'))
 export const reportIncident = async (req: any, res: Response, next: NextFunction) => {
   try {
     const { type, description = "" } = req.body || {};

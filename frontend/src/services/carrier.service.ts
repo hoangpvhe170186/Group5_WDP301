@@ -1,5 +1,7 @@
 import api from "@/lib/axios";
 import type { CarrierProfile, JobItem, JobStatus } from "@/types/carrier";
+import axios from "axios";
+
 
 export type TrackingItem = {
   id: string;
@@ -7,6 +9,18 @@ export type TrackingItem = {
   note?: string;
   createdAt: string;
 };
+import axios from "axios";
+
+
+// Tạo axios instance cục bộ (không cần "@/lib/axios")
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
+const api = axios.create({
+  baseURL: `${API_BASE}/api`, // BE mount /api
+  withCredentials: true,
+});
+
+// Phase upload ảnh/video đối chiếu
+export type EvidencePhase = "BEFORE" | "AFTER" | "INCIDENT";
 
 const getAuthToken = (): string => {
   if (typeof window === "undefined") return "";
@@ -47,6 +61,7 @@ const toNum = (v: any) =>
   Number(v ?? 0);
 
 export const carrierApi = {
+  // ========= PROFILE =========
   async getProfile(): Promise<CarrierProfile> {
     const { data } = await api.get("/carrier/me", {
       headers: { Authorization: `Bearer ${getAuthToken()}` },
@@ -61,13 +76,13 @@ export const carrierApi = {
     return data;
   },
 
+  // ========= ORDERS =========
   async listOrders(): Promise<{ orders: JobItem[] }> {
     const { data } = await api.get("/carrier/orders", {
       headers: { Authorization: `Bearer ${getAuthToken()}` },
     });
 
     const rawOrders = Array.isArray(data) ? data : data?.orders || [];
-
     const orders: JobItem[] = rawOrders.map((o: any) => ({
       id: String(o.id ?? o._id),
       orderCode: o.orderCode ?? `ORD-${String(o.id ?? o._id).slice(-6).toUpperCase()}`,
@@ -75,7 +90,9 @@ export const carrierApi = {
       pickup: { address: o.pickup?.address || o.pickup_address || "" },
       dropoff: { address: o.dropoff?.address || o.delivery_address || "" },
       goodsSummary: o.goodsSummary || "",
-      scheduledTime: o.scheduledTime || (o.scheduled_time ? new Date(o.scheduled_time).toLocaleString("vi-VN") : undefined),
+      scheduledTime:
+        o.scheduledTime ||
+        (o.scheduled_time ? new Date(o.scheduled_time).toLocaleString("vi-VN") : undefined),
       estimatePrice: o.totalPrice ?? o.total_price,
       status: normalizeStatus(o.status) as JobStatus,
     }));
@@ -212,10 +229,38 @@ export const carrierApi = {
     (photos || []).forEach((p) => form.append("photos", p));
     const { data } = await api.post(`/carrier/orders/${orderId}/incidents`, form, {
       headers: {
-        "Content-Type": "multipart/form-data",
+        // ❌ KHÔNG set "Content-Type" để axios tự gắn boundary của FormData
         Authorization: `Bearer ${getAuthToken()}`,
       },
     });
     return data;
+  },
+
+  // ========= EVIDENCE (Before/After/Incident) =========
+  async uploadEvidence({
+    orderId, phase, files, notes,
+  }: { orderId: string; phase: "BEFORE" | "AFTER" | "INCIDENT"; files: File[]; notes?: string; }) {
+    const form = new FormData();
+    files.forEach((f) => form.append("files", f));
+    if (notes) form.append("notes", notes);
+
+    // BE mount /api; router path là /orders/:id/evidence
+    const { data } = await api.post(
+      `/orders/${orderId}/evidence`,
+      form,
+      {
+        params: { phase }, // -> ?phase=BEFORE|AFTER|INCIDENT
+        headers: { Authorization: `Bearer ${getAuthToken()}` },
+      }
+    );
+    return data as { ok: boolean; count: number; items: any[] };
+  },
+
+ async listEvidence(orderId: string, phase?: "BEFORE" | "AFTER" | "INCIDENT") {
+    const { data } = await api.get(`/orders/${orderId}/evidence`, {
+      params: phase ? { phase } : undefined,
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+    return data as { items: any[] };
   },
 };
