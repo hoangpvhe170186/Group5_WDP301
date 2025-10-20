@@ -10,6 +10,7 @@ import vehiclesRoute from "./routes/vehicles.route";
 import routes from "./routes/auth.route";
 import carrierRoutes from "./routes/carrier.routes"; // ✅ THÊM DÒNG NÀY
 import orderRoutes from "./routes/order.route";
+import {requireAuth} from "./middleware/requireAuth"
 const app = express();
 
 app.use(express.json());
@@ -32,12 +33,12 @@ app.get("/", (req, res) => {
 app.use("/api", routes);
 
 // User routes
-app.use("/api/users", userRoutes);
-app.use("/api/upload", uploadRoute);
-app.use("/api/chat", chatRoutes);
-app.use("/api/pricing", pricingRoute);
-app.use("/api/vehicles", vehiclesRoute);
-app.use("/api/orders", orderRoutes);
-app.use("/api/carrier", carrierRoutes);
+app.use("/api/users", requireAuth,userRoutes);
+app.use("/api/upload",requireAuth, uploadRoute);
+app.use("/api/chat", requireAuth,chatRoutes);
+app.use("/api/pricing", requireAuth,pricingRoute);
+app.use("/api/vehicles", requireAuth,vehiclesRoute);
+app.use("/api/orders", requireAuth,orderRoutes);
+app.use("/api/carrier", requireAuth,carrierRoutes);
 
 export default app;

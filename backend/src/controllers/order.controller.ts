@@ -136,6 +136,7 @@ export const createOrder = async (req: Request, res: Response) => {
 export const getMyOrders = async (req: Request, res: Response) => {
    try {
     const userId = (req as any).user?._id;
+    console.log(userId);
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized: user not found in token" });
     }
