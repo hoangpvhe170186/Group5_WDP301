@@ -1,3 +1,4 @@
+// ✅ FULL FILE carrier.service.ts
 import api from "@/lib/axios";
 import type { CarrierProfile, JobItem, JobStatus } from "@/types/carrier";
 
@@ -18,9 +19,14 @@ const getAuthToken = (): string => {
   );
 };
 
-const normalizeStatus = (s?: string): JobStatus | "ASSIGNED" | "DECLINED" | "CANCELLED" => {
+const normalizeStatus = (
+  s?: string
+): JobStatus | "ASSIGNED" | "DECLINED" | "CANCELLED" => {
   const raw = (s || "").toUpperCase();
-  const map: Record<string, JobStatus | "ASSIGNED" | "DECLINED" | "CANCELLED"> = {
+  const map: Record<
+    string,
+    JobStatus | "ASSIGNED" | "DECLINED" | "CANCELLED"
+  > = {
     PENDING: "ASSIGNED",
     ASSIGNED: "ASSIGNED",
     ACCEPTED: "ACCEPTED",
@@ -34,17 +40,18 @@ const normalizeStatus = (s?: string): JobStatus | "ASSIGNED" | "DECLINED" | "CAN
     CANCELLED: "CANCELLED",
     CANCELED: "CANCELLED",
     INPROGRESS: "DELIVERING",
-    INCIDENT: "DELIVERING", // map phụ
+    INCIDENT: "DELIVERING",
     PAUSED: "DELIVERING",
   };
   return map[raw] ?? ("ASSIGNED" as const);
 };
 
-// helper Decimal128 -> number
 const toNum = (v: any) =>
-  v?.$numberDecimal ? Number(v.$numberDecimal) :
-  (typeof v === "object" && v?._bsontype === "Decimal128") ? Number(v.toString()) :
-  Number(v ?? 0);
+  v?.$numberDecimal
+    ? Number(v.$numberDecimal)
+    : typeof v === "object" && v?._bsontype === "Decimal128"
+    ? Number(v.toString())
+    : Number(v ?? 0);
 
 export const carrierApi = {
   async getProfile(): Promise<CarrierProfile> {
@@ -70,12 +77,18 @@ export const carrierApi = {
 
     const orders: JobItem[] = rawOrders.map((o: any) => ({
       id: String(o.id ?? o._id),
-      orderCode: o.orderCode ?? `ORD-${String(o.id ?? o._id).slice(-6).toUpperCase()}`,
+      orderCode:
+        o.orderCode ??
+        `ORD-${String(o.id ?? o._id).slice(-6).toUpperCase()}`,
       customerName: o.customer?.name || o.customer?.full_name || "",
       pickup: { address: o.pickup?.address || o.pickup_address || "" },
       dropoff: { address: o.dropoff?.address || o.delivery_address || "" },
       goodsSummary: o.goodsSummary || "",
-      scheduledTime: o.scheduledTime || (o.scheduled_time ? new Date(o.scheduled_time).toLocaleString("vi-VN") : undefined),
+      scheduledTime:
+        o.scheduledTime ||
+        (o.scheduled_time
+          ? new Date(o.scheduled_time).toLocaleString("vi-VN")
+          : undefined),
       estimatePrice: o.totalPrice ?? o.total_price,
       status: normalizeStatus(o.status) as JobStatus,
     }));
@@ -93,16 +106,24 @@ export const carrierApi = {
     return rawOrders
       .map((o: any) => ({
         id: String(o.id ?? o._id),
-        orderCode: o.orderCode ?? `ORD-${String(o.id ?? o._id).slice(-6).toUpperCase()}`,
+        orderCode:
+          o.orderCode ??
+          `ORD-${String(o.id ?? o._id).slice(-6).toUpperCase()}`,
         customerName: o.customer?.name || o.customer?.full_name || "",
         pickup: { address: o.pickup?.address || o.pickup_address || "" },
         dropoff: { address: o.dropoff?.address || o.delivery_address || "" },
         goodsSummary: o.goodsSummary || "",
-        scheduledTime: o.scheduledTime || (o.scheduled_time ? new Date(o.scheduled_time).toLocaleString("vi-VN") : undefined),
+        scheduledTime:
+          o.scheduledTime ||
+          (o.scheduled_time
+            ? new Date(o.scheduled_time).toLocaleString("vi-VN")
+            : undefined),
         estimatePrice: o.totalPrice ?? o.total_price,
         status: normalizeStatus(o.status) as JobStatus,
       }))
-      .filter((o: JobItem) => ["COMPLETED", "CANCELLED", "DECLINED"].includes(o.status));
+      .filter((o: JobItem) =>
+        ["COMPLETED", "CANCELLED", "DECLINED"].includes(o.status)
+      );
   },
 
   async jobDetail(orderId: string): Promise<any> {
@@ -127,7 +148,9 @@ export const carrierApi = {
 
     return {
       id: String(data._id),
-      orderCode: data.orderCode ?? `ORD-${String(data._id).slice(-6).toUpperCase()}`,
+      orderCode:
+        data.orderCode ??
+        `ORD-${String(data._id).slice(-6).toUpperCase()}`,
       pickup: { address: data.pickup_address },
       dropoff: { address: data.delivery_address },
       goodsSummary: data.goodsSummary || "",
@@ -152,6 +175,50 @@ export const carrierApi = {
       { reason },
       { headers: { Authorization: `Bearer ${getAuthToken()}` } }
     );
+    return data;
+  },
+
+  async listEvidence(orderId: string, phase?: "BEFORE" | "AFTER"): Promise<Array<{id:string; url:string; type:"IMAGE"|"VIDEO"; phase:"BEFORE"|"AFTER"; uploadedAt:string;}>> {
+  try {
+    const { data } = await api.get(`/carrier/orders/${orderId}/evidence`, {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+      params: phase ? { phase } : {},
+    });
+    return data?.items ?? [];
+  } catch (e: any) {
+    if (e?.response?.status === 404) {
+      // trước đây do thiếu route → giờ vẫn an toàn
+      return [];
+    }
+    throw e;
+  }
+}
+,
+
+  async uploadEvidence({
+    orderId,
+    files,
+    phase,
+  }: {
+    orderId: string;
+    phase: string;
+    files: File[];
+  }) {
+    const form = new FormData();
+    form.append("phase", phase);
+    files.forEach((f) => form.append("files", f));
+
+    const { data } = await api.post(
+      `/carrier/orders/${orderId}/evidence`,
+      form,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${getAuthToken()}`,
+        },
+      }
+    );
+
     return data;
   },
 
@@ -182,12 +249,15 @@ export const carrierApi = {
     return data;
   },
 
-  // 🔥 NEW: lưu tracking riêng
   async addTracking(orderId: string, status: string, note?: string) {
     const { data } = await api.post(
       `/order-tracking/${orderId}`,
       { status, note },
-      { headers: { Authorization: `Bearer ${getAuthToken()}` } }
+      {
+        headers: {
+          Authorization: `Bearer ${getAuthToken()}`,
+        },
+      }
     );
     return data;
   },
@@ -205,17 +275,31 @@ export const carrierApi = {
     }));
   },
 
-  async reportIncident({ orderId, type, description, photos }: { orderId: string; type: string; description: string; photos?: File[] }) {
+  async reportIncident({
+    orderId,
+    type,
+    description,
+    photos,
+  }: {
+    orderId: string;
+    type: string;
+    description: string;
+    photos?: File[];
+  }) {
     const form = new FormData();
     form.append("type", type);
     form.append("description", description);
     (photos || []).forEach((p) => form.append("photos", p));
-    const { data } = await api.post(`/carrier/orders/${orderId}/incidents`, form, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-        Authorization: `Bearer ${getAuthToken()}`,
-      },
-    });
+    const { data } = await api.post(
+      `/carrier/orders/${orderId}/incidents`,
+      form,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${getAuthToken()}`,
+        },
+      }
+    );
     return data;
   },
 };

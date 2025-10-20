@@ -1,4 +1,3 @@
-// backend/src/controllers/carrier.controller.ts
 import { Request, Response, NextFunction } from "express";
 import Order from "../models/Order";
 import OrderItem from "../models/OrderItem";
@@ -11,11 +10,11 @@ import {
   assertUpdatable,
   assertTransition,
 } from "../modules/carrier/order-helpers";
+import mongoose from "mongoose";
 
-/** Lấy ID user an toàn từ req.user */
+/** Utils */
 const getUserId = (req: any) => req?.user?.id || req?.user?._id;
 
-/** Chuẩn hoá Decimal128 -> number và normalize item */
 const toPlainItem = (it: any) => ({
   id: String(it._id),
   description: it.description ?? "",
@@ -28,10 +27,11 @@ const toPlainItem = (it: any) => ({
   fragile: !!it.fragile,
 });
 
-/** ========== Profile ========== */
+/* ============================================================================
+ * Profile
+ * ==========================================================================*/
 export const getMe = async (req: any, res: Response, next: NextFunction) => {
   try {
-    // tuỳ hệ thống của bạn, có thể lấy thêm từ DB
     res.json({ me: req.user });
   } catch (err) {
     next(err);
@@ -40,8 +40,6 @@ export const getMe = async (req: any, res: Response, next: NextFunction) => {
 
 export const updateMe = async (req: any, res: Response, next: NextFunction) => {
   try {
-    // Nếu có bảng User/Carrier riêng, cập nhật ở đó. Ở đây demo cập nhật tạm.
-    // Ví dụ: await Carrier.findByIdAndUpdate(getUserId(req), req.body, { new: true })
     const payload = req.body || {};
     res.json({ message: "Updated (mock)", payload });
   } catch (err) {
@@ -49,7 +47,9 @@ export const updateMe = async (req: any, res: Response, next: NextFunction) => {
   }
 };
 
-/** ========== Orders (List & Detail) ========== */
+/* ============================================================================
+ * Orders (List & Detail)
+ * ==========================================================================*/
 // GET /carrier/orders?include=all|active
 export const getCarrierOrders = async (req: any, res: Response, next: NextFunction) => {
   try {
@@ -113,8 +113,9 @@ export const getOrder = async (req: any, res: Response, next: NextFunction) => {
     next(err);
   }
 };
-
-/** ========== Actions (Accept / Decline / Confirm Contract / Progress / Confirm Delivery) ========== */
+/* ============================================================================
+ * Actions (Accept / Decline / Confirm Contract / Progress / Confirm Delivery)
+ * ==========================================================================*/
 
 // POST /carrier/orders/:orderId/accept
 export const acceptOrder = async (req: any, res: Response, next: NextFunction) => {
@@ -167,7 +168,6 @@ export const confirmContract = async (req: any, res: Response, next: NextFunctio
     assertCarrierAccess(order, getUserId(req));
     assertUpdatable(order);
 
-    // Confirm hợp đồng -> thường chuyển sang CONFIRMED
     const nextStatus = "CONFIRMED";
     assertTransition(order.status, nextStatus);
 
@@ -176,7 +176,6 @@ export const confirmContract = async (req: any, res: Response, next: NextFunctio
     order.auditLogs.push({ at: new Date(), by: getUserId(req), action: "CONFIRMED" });
     await order.save();
 
-    // lưu tracking đồng bộ
     await OrderTracking.create({
       order_id: order._id,
       carrier_id: getUserId(req),
@@ -247,51 +246,144 @@ export const confirmDelivery = async (req: any, res: Response, next: NextFunctio
   }
 };
 
-/** ========== Evidence & Incident ========== */
+/* ============================================================================
+ * NEW ✅ Tracking riêng theo kiểu Shopee: /order-tracking/:id
+ * ==========================================================================*/
 
-// POST /carrier/orders/:orderId/evidence (multer.array('files'))
+export const addTracking = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const { status, note = "" } = req.body || {};
+    if (!status) return res.status(400).json({ message: "Missing status" });
+
+    const order = await loadOrderOrThrow(req.params.orderId);
+    assertCarrierAccess(order, getUserId(req));
+
+    const tracking = await OrderTracking.create({
+      order_id: order._id,
+      carrier_id: getUserId(req),
+      status,
+      note,
+      createdAt: new Date(),
+    });
+
+    if (status !== "NOTE") {
+      order.status = status;
+      order.auditLogs = order.auditLogs || [];
+      order.auditLogs.push({
+        at: new Date(),
+        by: getUserId(req),
+        action: `TRACK_${status}`,
+        note,
+      });
+      await order.save();
+    }
+
+    res.json({ tracking });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// GET /order-tracking/:orderId
+export const getTrackings = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const order = await loadOrderOrThrow(req.params.orderId);
+    assertCarrierAccess(order, getUserId(req));
+
+    const trackings = await OrderTracking.find({ order_id: order._id })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json({ trackings });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/* ============================================================================
+ * Evidence & Incident
+ * ==========================================================================*/
+
+// POST /carrier/orders/:orderId/evidence  (multer.array('files'))
 export const uploadEvidence = async (req: any, res: Response, next: NextFunction) => {
   try {
     const order = await loadOrderOrThrow(req.params.orderId);
     assertCarrierAccess(order, getUserId(req));
 
     const files = (req.files || []) as Express.Multer.File[];
+    const phase = req.body.phase === "AFTER" ? "AFTER" : "BEFORE";
+    const userId = new mongoose.Types.ObjectId(getUserId(req));
+    const orderObjectId = new mongoose.Types.ObjectId(order._id);
+
     if (!files.length) {
       return res.status(400).json({ message: "No files uploaded" });
     }
 
-    // Lưu metadata vào UploadEvidence (giả sử có model)
-    const records = await Promise.all(
-      files.map((f) =>
-        UploadEvidence.create({
-          order_id: order._id,
-          carrier_id: getUserId(req),
-          filename: f.originalname,
-          path: f.path,
-          size: f.size,
-          mime: f.mimetype,
-          uploaded_at: new Date(),
-        })
-      )
-    );
+    const fs = require("fs");
+    if (!fs.existsSync("uploads")) fs.mkdirSync("uploads");
 
-    // Ghi audit
+    const created = await UploadEvidence.create({
+      orderId: orderObjectId,
+      uploadedBy: userId,
+      phase,
+      files: files.map((f) => ({
+        url: `/uploads/${f.filename}`,
+        type: f.mimetype.startsWith("video/") ? "VIDEO" : "IMAGE"
+      })),
+      createdAt: new Date(),
+    });
+
     order.auditLogs = order.auditLogs || [];
     order.auditLogs.push({
       at: new Date(),
-      by: getUserId(req),
-      action: "UPLOAD_EVIDENCE",
-      note: `${files.length} file(s)`,
+      by: userId,
+      action: `UPLOAD_EVIDENCE_${phase}`,
+      note: `${files.length} file(s)`
     });
     await order.save();
 
-    res.json({ uploaded: records.length, records });
+    return res.json({ success: true, data: created });
   } catch (err) {
+    console.error("🔥 UploadEvidence ERROR:", err);
+    return res.status(500).json({ message: "Upload failed", error: err });
+  }
+};
+
+// ✅ GET /carrier/orders/:orderId/evidence?phase=BEFORE|AFTER
+export const getEvidence = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const order = await loadOrderOrThrow(req.params.orderId);
+    assertCarrierAccess(order, getUserId(req));
+
+    const phase = (String(req.query.phase || "").toUpperCase() === "AFTER")
+      ? "AFTER"
+      : (String(req.query.phase || "").toUpperCase() === "BEFORE" ? "BEFORE" : undefined);
+
+    const query: any = { orderId: new mongoose.Types.ObjectId(order._id) };
+    if (phase) query.phase = phase;
+
+    const docs = await UploadEvidence.find(query).sort({ createdAt: -1 }).lean();
+
+    // ✅ MAP về đúng format FE mong đợi
+    const items = (docs || []).flatMap((d) =>
+      (d.files || []).map((f: any, idx: number) => ({
+        _id: `${String(d._id)}_${idx}`,   // FE cần _id
+        file_url: f.url,                  // FE đọc key này
+        thumb_url: f.url,                 // có thể thay = CDN thumb nếu có
+        phase: d.phase,
+        uploadedAt: d.createdAt,
+      }))
+    );
+
+    return res.json({ items }); // luôn 200 OK
+  } catch (err) {
+    console.error("❌ getEvidence error:", err);
     next(err);
   }
 };
 
-// POST /carrier/orders/:orderId/incidents (multer.array('photos'))
+
+// POST /carrier/orders/:orderId/incidents  (multer.array('photos'))
 export const reportIncident = async (req: any, res: Response, next: NextFunction) => {
   try {
     const { type, description = "" } = req.body || {};

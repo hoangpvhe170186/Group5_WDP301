@@ -2,6 +2,8 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import path from "path";
+
 import userRoutes from "./routes/user.route";
 import uploadRoute from "./routes/upload.route";
 import chatRoutes from "./routes/chat";
@@ -11,15 +13,29 @@ import routes from "./routes/auth.route";
 import carrierRoutes from "./routes/carrier.routes";
 import orderRoutes from "./routes/order.route";
 import orderTrackingRoute from "./routes/order-tracking.route";
+import fs from "fs";
+if (!fs.existsSync("uploads")) fs.mkdirSync("uploads");
 
 const app = express();
 
 app.use(express.json());
 app.use(cors());
+app.use((req, res, next) => {
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin"); // ✅ Cho phép ảnh hiển thị ở tab riêng
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups"); // ✅ Tránh Chrome chặn
+  next();
+});
+
 app.use(helmet());
 app.use(morgan("dev"));
 
-// ✅ Mount đúng thứ tự
+// 👉 Serve static files (ảnh/video đã upload)
+app.use("/uploads", (req, res, next) => {
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin"); // ✅ Cho phép ảnh được load từ FE
+  next();
+}, express.static(path.join(process.cwd(), "uploads")));
+
+// Mount routes
 app.use("/api/pricing", pricingRoute);
 app.use("/api/vehicles", vehiclesRoute);
 app.use("/api/carrier", carrierRoutes);
@@ -30,9 +46,6 @@ app.use("/api/upload", uploadRoute);
 app.use("/api/chat", chatRoutes);
 app.use("/api/auth", routes);
 
-// ✅ Test
-app.get("/", (req, res) => {
-  res.send("🚀 Backend running...");
-});
+app.get("/", (_req, res) => res.send("🚀 Backend running..."));
 
 export default app;

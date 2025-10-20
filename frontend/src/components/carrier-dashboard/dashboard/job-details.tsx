@@ -1,5 +1,5 @@
+// ✅ PART 1 — BEGIN FILE: JobDetails.tsx
 "use client";
-
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,10 +35,10 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { carrierApi } from "@/services/carrier.service";
 import type { JobItem, JobStatus } from "@/types/carrier";
+import { useNavigate } from "react-router-dom";
+import { API_URL } from "@/config/api";
+ 
 
-// =====================
-// Types & helpers
-// =====================
 interface JobDetailsProps {
   readonly jobId: string | null;
   readonly onBack: () => void;
@@ -91,9 +91,6 @@ const statusTone = (s: string) => {
   }
 };
 
-// =====================
-// Component
-// =====================
 export function JobDetails({
   jobId,
   onBack,
@@ -101,11 +98,16 @@ export function JobDetails({
   onUploadAfter,
   onReportIncident,
 }: JobDetailsProps) {
+  const navigate = useNavigate();
   const [job, setJob] = useState<JobItem & { goods?: any[]; trackings?: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  // tracking modal
+  // ✅ Evidence State
+  const [before, setBefore] = useState<any[]>([]);
+  const [after, setAfter] = useState<any[]>([]);
+
+  // ✅ Tracking Modal
   const [openTrackModal, setOpenTrackModal] = useState(false);
   const [nextStatus, setNextStatus] = useState<string>("ON_THE_WAY");
   const [note, setNote] = useState<string>("");
@@ -115,6 +117,7 @@ export function JobDetails({
     [job?.status]
   );
 
+  // ✅ Load Job
   const load = async () => {
     if (!jobId) return;
     try {
@@ -122,8 +125,7 @@ export function JobDetails({
       setErr(null);
       const d = await carrierApi.jobDetail(jobId);
       setJob(d);
-    } catch (e: any) {
-      console.error("job detail error:", e);
+    } catch (e) {
       setErr("Không thể tải chi tiết đơn hàng.");
       setJob(null);
     } finally {
@@ -131,24 +133,34 @@ export function JobDetails({
     }
   };
 
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobId]);
-
-  // actions
-  const advance = async (next: JobStatus) => {
-    if (!job) return;
-    await carrierApi.updateProgress(job.id, next);
-    await load();
+  // ✅ Load Evidence
+  const loadMedias = async () => {
+    if (!jobId) return;
+    try {
+      const beforeData = await carrierApi.listEvidence(jobId, "BEFORE");
+      const afterData = await carrierApi.listEvidence(jobId, "AFTER");
+      setBefore(beforeData);
+      setAfter(afterData);
+    } catch (e) {
+      console.warn("⚠ Không có evidences");
+      setBefore([]);
+      setAfter([]);
+    }
   };
 
+  useEffect(() => {
+    load();
+    loadMedias();
+  }, [jobId]);
+
+  // ✅ Accept Job
   const accept = async () => {
     if (!job) return;
     await carrierApi.acceptJob(job.id);
     await load();
   };
 
+  // ✅ Decline Job
   const decline = async () => {
     if (!job) return;
     const reason = window.prompt("Nhập lý do từ chối (không bắt buộc):") || undefined;
@@ -156,38 +168,37 @@ export function JobDetails({
     onBack();
   };
 
+  // ✅ Confirm Contract
   const confirmContract = async () => {
     if (!job) return;
     await carrierApi.confirmContract(job.id);
     await load();
   };
 
+  // ✅ Confirm Delivery (ONLY WHEN status === "DELIVERED")
   const confirmDelivery = async () => {
     if (!job) return;
     await carrierApi.confirmDelivery(job.id);
     await load();
   };
 
+  // ✅ Submit Tracking
   const submitTracking = async () => {
     if (!job) return;
-
     const payloadStatus = nextStatus === "NOTE_ONLY" ? "NOTE" : nextStatus;
     try {
       await carrierApi.addTracking(job.id, payloadStatus, note || "");
-      // refresh tracking only to be light
       const updated = await carrierApi.getTrackings(job.id);
       setJob((prev) => (prev ? { ...prev, trackings: updated } : prev));
       setOpenTrackModal(false);
       setNote("");
     } catch (e) {
       console.error("add tracking failed:", e);
-      // fallback: hard reload
       await load();
       setOpenTrackModal(false);
     }
   };
-
-  // ===================== Render guards =====================
+  // ✅ Render Guards
   if (!jobId) {
     return (
       <Card>
@@ -204,7 +215,9 @@ export function JobDetails({
   if (loading) {
     return (
       <Card>
-        <CardContent className="p-6 text-sm text-muted-foreground">Đang tải chi tiết đơn hàng...</CardContent>
+        <CardContent className="p-6 text-sm text-muted-foreground">
+          Đang tải chi tiết đơn hàng...
+        </CardContent>
       </Card>
     );
   }
@@ -222,10 +235,11 @@ export function JobDetails({
     );
   }
 
-  // ===================== UI =====================
+  // ✅ UI Render
   return (
     <>
       <div className="space-y-6">
+        {/* Header */}
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={onBack}>
             <ArrowLeft className="h-5 w-5" />
@@ -237,6 +251,7 @@ export function JobDetails({
           <Badge>{statusText[job.status] ?? job.status}</Badge>
         </div>
 
+        {/* Read Only Warning */}
         {isReadOnly && (
           <Card className="border-yellow-300 bg-yellow-50">
             <CardContent className="p-4 flex items-start gap-3">
@@ -314,11 +329,65 @@ export function JobDetails({
           </CardContent>
         </Card>
 
+        {/* Evidence */}
+        <Card>
+          <CardHeader><CardTitle>Ảnh đối chiếu</CardTitle></CardHeader>
+          <CardContent className="space-y-6">
+            {/* BEFORE */}
+            <div>
+              <div className="text-sm font-semibold mb-2">Trước khi lấy</div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {before.map((m) => (
+                  <a
+                    key={m.id || m._id}
+                    href={`${API_URL}${m.url || m.file_url}`}
+                    target="_blank"
+                    className="block"
+                  >
+                    <img
+                      src={`${API_URL}${m.url || m.thumb_url || m.file_url}`}
+                      crossOrigin="anonymous" 
+                      className="w-full rounded-lg border object-cover"
+                    />
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            {/* AFTER */}
+            <div>
+              <div className="text-sm font-semibold mb-2">Sau khi giao</div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {after.map((m) => (
+                  <a
+                    key={m.id || m._id}
+                    href={`${API_URL}${m.url || m.file_url}`}
+                    target="_blank"
+                    className="block"
+                  >
+                    <img
+                      src={`${API_URL}${m.url || m.thumb_url || m.file_url}`}
+                      crossOrigin="anonymous" 
+                      className="w-full rounded-lg border object-cover"
+                    />
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            <Button
+              variant="outline"
+              className="gap-2 bg-transparent"
+              onClick={() => navigate(`/carrier/compare/${job.id}`)}
+            >
+              <Camera className="h-4 w-4" /> Xem ảnh đối chiếu (trang riêng)
+            </Button>
+          </CardContent>
+        </Card>
+
         {/* Actions */}
         <Card>
-          <CardHeader>
-            <CardTitle>Thao tác</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Thao tác</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <div className="grid gap-2 md:grid-cols-2">
               {job.status === "ASSIGNED" && (
@@ -360,6 +429,14 @@ export function JobDetails({
               )}
             </div>
 
+            <Separator />
+
+            {/* ✅ Only show Confirm Delivery button when status === DELIVERED */}
+            {job.status === "DELIVERED" && (
+              <Button className="w-full gap-2 bg-success hover:bg-success/90 text-white" onClick={confirmDelivery}>
+                <CheckCircle2 className="h-4 w-4" /> Xác nhận giao hàng thành công
+              </Button>
+            )}
           </CardContent>
         </Card>
 
@@ -375,7 +452,7 @@ export function JobDetails({
                   const tone = statusTone(t.status);
                   return (
                     <div
-                      key={t.id || t._id || `${t.status}-${t.createdAt}`}
+                      key={t._id || t.id}
                       className={`flex items-start justify-between rounded-lg border p-3 ${tone}`}
                     >
                       <div className="space-y-1">
@@ -385,9 +462,7 @@ export function JobDetails({
                         <div className="text-sm font-semibold">
                           {statusText[t.status] ?? t.status}
                         </div>
-                        {t.note ? (
-                          <div className="text-sm">{t.note}</div>
-                        ) : null}
+                        {t.note ? <div className="text-sm">{t.note}</div> : null}
                       </div>
                     </div>
                   );
