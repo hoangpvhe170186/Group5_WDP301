@@ -1,9 +1,77 @@
 @import "mapbox-gl/dist/mapbox-gl.css";
 @import "@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css";
+
+/* -------------------------
+   ⚙️ Tailwind layers
+-------------------------- */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* -------------------------
+   🗺️ Mapbox Geocoder Styles
+   (fix hiển thị input & dropdown)
+-------------------------- */
+.mapbox-container .mapboxgl-ctrl-geocoder {
+  width: 100% !important;
+  max-width: 100% !important;
+  border: 1px solid #d1d5db !important; /* giống border Tailwind gray-300 */
+  border-radius: 8px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  position: relative !important;
+  
+}
+
+/* Ẩn icon search mặc định */
+.mapboxgl-ctrl-geocoder--icon-search {
+  display: none !important;
+}
+
+/* Fix layout input */
+.mapboxgl-ctrl-geocoder--input {
+  width: 100% !important;
+  padding: 8px 12px !important;
+  font-size: 0.95rem !important;
+  border: none !important;
+  border-radius: 8px !important;
+  box-sizing: border-box !important;
+}
+
+/* Căn lại nút clear (X) */
+.mapboxgl-ctrl-geocoder--button {
+  top: 6px !important;
+  left: 6px !important;
+}
+
+/* Gợi ý kết quả tìm kiếm */
+.mapboxgl-ctrl-geocoder--suggestion {
+  font-size: 14px !important;
+}
+
+/* ⚡ Fix dropdown bị che */
+.mapboxgl-ctrl-geocoder .suggestions {
+  position: absolute !important;
+  z-index: 9999 !important;
+  border-radius: 6px !important;
+  overflow: hidden !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Thêm hiệu ứng hover đẹp hơn */
+.mapboxgl-ctrl-geocoder--suggestion:hover {
+  background-color: #fff6ed !important; /* cam nhạt */
+  cursor: pointer !important;
+}
+
+/* Giữ container Mapbox không bị cut */
+.mapbox-container {
+  position: relative;
+ 
+}
+
+/* -------------------------
+   🎨 Tailwind Color System
+-------------------------- */
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -30,8 +98,9 @@
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --radius: 0.5rem
+    --radius: 0.5rem;
   }
+
   .dark {
     --background: 0 0% 3.9%;
     --foreground: 0 0% 98%;
@@ -56,14 +125,18 @@
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%
+    --chart-5: 340 75% 55%;
   }
 }
 
+/* -------------------------
+   🌍 Tailwind Global Styles
+-------------------------- */
 @layer base {
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }

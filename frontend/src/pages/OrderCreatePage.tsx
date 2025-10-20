@@ -27,13 +27,7 @@ export default function OrderCreatePage() {
           }}
         />
 
-        {distance && (
-          <div className="mt-4 p-4 border rounded-md text-sm">
-            <p>📍 Khoảng cách: {distance}</p>
-            <p>⏱️ Thời gian dự kiến: {duration}</p>
-            <p>💰 Giá tạm tính: {price.toLocaleString()} VNĐ</p>
-          </div>
-        )}
+        
       </div>
 
       {/* Bản đồ bên phải */}
