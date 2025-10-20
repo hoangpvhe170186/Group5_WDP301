@@ -10,12 +10,8 @@ import vehiclesRoute from "./routes/vehicles.route";
 import routes from "./routes/auth.route";
 import carrierRoutes from "./routes/carrier.routes";
 import orderRoutes from "./routes/order.route";
-<<<<<<< HEAD
 import {requireAuth} from "./middleware/requireAuth"
-=======
-import orderTrackingRoute from "./routes/order-tracking.route";
-
->>>>>>> 5cbb4ddceea1cd4d4b07fc9261e8fe67a4da1e8a
+import orderTrackingRoute from "./routes/order-tracking.route"
 const app = express();
 
 app.use(express.json());
@@ -50,18 +46,15 @@ app.get("/", (req, res) => {
   res.send("🚀 Backend running...");
 });
 
-<<<<<<< HEAD
 app.use("/api", routes);
 
 // User routes
-app.use("/api/users", requireAuth,userRoutes);
-app.use("/api/upload",requireAuth, uploadRoute);
-app.use("/api/chat", requireAuth,chatRoutes);
-app.use("/api/pricing", requireAuth,pricingRoute);
-app.use("/api/vehicles", requireAuth,vehiclesRoute);
-app.use("/api/orders", requireAuth,orderRoutes);
-app.use("/api/carrier", requireAuth,carrierRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/upload", uploadRoute);
+app.use("/api/chat", chatRoutes);
+app.use("/api/pricing", pricingRoute);
+app.use("/api/vehicles",vehiclesRoute);
+app.use("/api/orders", orderRoutes);
+app.use("/api/carrier",carrierRoutes);
 
-=======
->>>>>>> 5cbb4ddceea1cd4d4b07fc9261e8fe67a4da1e8a
 export default app;

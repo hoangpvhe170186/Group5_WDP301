@@ -135,7 +135,8 @@ export const createOrder = async (req: Request, res: Response) => {
 // 🟡 Lấy danh sách đơn hàng của người dùng
 export const getMyOrders = async (req: Request, res: Response) => {
    try {
-    const userId = (req as any).user?._id;
+    
+    const userId = req.user?.id;
     console.log(userId);
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized: user not found in token" });

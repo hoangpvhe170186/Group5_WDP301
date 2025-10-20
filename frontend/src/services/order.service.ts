@@ -4,17 +4,22 @@ import api from "@/lib/axios";
 /**
  * Lấy token xác thực từ localStorage / sessionStorage
  */
-const getAuthToken = (): string =>
-  typeof window === "undefined"
-    ? ""
-    : localStorage.getItem("auth_token") ||
-      localStorage.getItem("token") ||
-      sessionStorage.getItem("auth_token") ||
-      "";
+export const getAuthToken = (): string => {
+  if (typeof window === "undefined") {
+    // Code đang chạy ở server-side (Next.js SSR)
+    return "";
+  }
 
-/**
- * Kiểu dữ liệu đơn hàng (phù hợp với backend MongoDB bạn gửi hình)
- */
+  const token =
+    localStorage.getItem("auth_token") ||
+    localStorage.getItem("token") ||
+    sessionStorage.getItem("auth_token") ||
+    "";
+
+  return token;
+};
+
+
 export interface Order {
   id: string;
   pickupAddress: string;
@@ -40,7 +45,7 @@ export const orderApi = {
       const { data } = await api.get("/orders/myorder", {
         headers: { Authorization: `Bearer ${getAuthToken()}` },
       });
-      console.log("Dữ liệu thô từ API:", data); // Debug
+      console.log("Dữ liệu thô từ API:", data);
       const rawOrders = data.data || []; // Lấy mảng từ data.data
       console.log("Mảng rawOrders:", rawOrders);
       const orders: Order[] = rawOrders.map((o: any) => ({
