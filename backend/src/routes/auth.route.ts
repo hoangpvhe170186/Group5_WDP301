@@ -10,13 +10,13 @@ import {
 
 const router = Router();
 
-// Các route xác thực
-router.post("/auth/register", register);
-router.post("/auth/verify-otp", verifyOtp);
-
-router.post("/auth/forgot-password", forgotPassword);
-router.post("/auth/resend-otp", resendOtp);
-router.post("/auth/login", login);
-router.post("/auth/google", loginGoogle);
+// ❌ Sai: router.post("/auth/login", login);
+// ✅ Đúng:
+router.post("/register", register);
+router.post("/verify-otp", verifyOtp);
+router.post("/forgot-password", forgotPassword);
+router.post("/resend-otp", resendOtp);
+router.post("/login", login);
+router.post("/google", loginGoogle);
 
 export default router;
