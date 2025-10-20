@@ -415,9 +415,7 @@ export function JobDetails({
                   <Button variant="outline" className="gap-2 bg-transparent" onClick={onUploadAfter}>
                     <Camera className="h-4 w-4" /> Chụp sau khi giao
                   </Button>
-                  <Button variant="outline" className="gap-2 bg-transparent" onClick={onReportIncident}>
-                    <AlertTriangle className="h-4 w-4" /> Báo cáo sự cố
-                  </Button>
+                  
                   <Button
                     variant="outline"
                     className="gap-2 bg-transparent"
