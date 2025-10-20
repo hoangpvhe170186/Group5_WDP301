@@ -2,29 +2,31 @@ import mongoose from "mongoose";
 
 const orderSchema = new mongoose.Schema(
   {
-    customer_id: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    pickup_address: { type: String, required: true },
-    pickup_detail: { type: String },
-    delivery_address: { type: String, required: true },
-    total_price: { type: Number, required: true },
-    package_id: { type: mongoose.Schema.Types.ObjectId, ref: "PricePackage", required: true },
+    customer_id: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    seller_id: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    carrier_id: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    driver_id: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    vehicle_id: { type: mongoose.Schema.Types.ObjectId, ref: "Vehicle" },
     phone: { type: String, required: true },
-    delivery_schedule: {
-      type: {
-        type: String,
-        enum: ["now", "later"], // "Bây giờ" hoặc "Đặt lịch"
-        default: "now",
-      },
-      datetime: {
-        type: Date, // Thời gian thực tế (nếu "later")
-        default: null,
-      },
-    },
-    // 🏢 Thêm trường mới:
-    max_floor: { type: Number, default: 1 }, // Người dùng có thể chỉnh tầng tối đa
+    package_id: { type: mongoose.Schema.Types.ObjectId, ref: "PricePackage" },
+    pickup_address: { type: String, required: true },
+    delivery_address: { type: String, required: true },
+    scheduled_time: { type: Date },
+    status: { type: String, default: "Pending" },
+    total_price: { type: Number, required: true },
 
-    // các trường khác nếu có
-    status: { type: String, default: "pending" },
+    // ✅ NEW FIELDS ADDED BELOW
+    declineReason: { type: String, default: null },
+    signatureUrl: { type: String, default: null },
+
+    auditLogs: [
+      {
+        at: { type: Date, default: Date.now },
+        by: { type: String }, // user_id / carrier_id
+        action: { type: String }, // e.g. "ACCEPTED", "DECLINED", "PROGRESS:DELIVERING"
+        note: { type: String, default: "" }, // optional comment
+      },
+    ],
   },
   { timestamps: true }
 );

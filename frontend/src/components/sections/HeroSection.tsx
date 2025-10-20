@@ -23,7 +23,10 @@ export default function HeroSection() {
           <Link to="/dat-hang">
             <Button>Đặt hàng ngay</Button>
           </Link>
-        </div>       
+        </div>
+        <Link to="/tra-cuu-don-hang" className="text-blue-600 hover:underline">
+  🔍 Tra cứu đơn hàng
+</Link>
       </div>
       
     </section>

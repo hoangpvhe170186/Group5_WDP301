@@ -9,20 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function OrderPreviewPage() {
   const [items, setItems] = useState([
-    {
-      description: "",
-      quantity: 1,
-      weight: 0,
-      fragile: false,
-      type: [],
-      shipping_instructions: [],
-      driver_note: "",
-    },
+    { description: "", quantity: 1, weight: 0, fragile: false },
   ]);
   const [loading, setLoading] = useState(false);
-  const [scheduleType, setScheduleType] = useState<"now" | "later">("now"); // ✅ Thời gian: Bây giờ / Đặt lịch
-  const [scheduledDate, setScheduledDate] = useState<string>(""); // ✅ Ngày đặt
-  const [scheduledTime, setScheduledTime] = useState<string>(""); // ✅ Giờ đặt
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -35,23 +24,8 @@ export default function OrderPreviewPage() {
     setItems(updated);
   };
 
-  const toggleType = (index: number, type: string) => {
-    const updated = [...items];
-    const types = updated[index].type;
-    updated[index].type = types.includes(type)
-      ? types.filter((t: string) => t !== type)
-      : [...types, type];
-    setItems(updated);
-  };
-
-  const toggleShippingInstruction = (index: number, instruction: string) => {
-    const updated = [...items];
-    const current = updated[index].shipping_instructions || [];
-    updated[index].shipping_instructions = current.includes(instruction)
-      ? current.filter((i: string) => i !== instruction)
-      : [...current, instruction];
-    setItems(updated);
-  };
+  const addItem = () => setItems([...items, { description: "", quantity: 1, weight: 0, fragile: false }]);
+  const removeItem = (index: number) => setItems(items.filter((_, i) => i !== index));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,30 +35,15 @@ export default function OrderPreviewPage() {
       const token = localStorage.getItem("auth_token");
       if (!token) return alert("Bạn cần đăng nhập!");
 
-      // 🕒 Chuẩn hóa thời gian giao hàng
-      let deliveryTime: string | null = null;
-      if (scheduleType === "later") {
-        if (!scheduledDate || !scheduledTime)
-          return alert("Vui lòng chọn ngày và giờ giao hàng!");
-        deliveryTime = new Date(`${scheduledDate}T${scheduledTime}`).toISOString();
-      }
-
       const res = await axios.post(
         "http://localhost:4000/api/orders/items",
-        {
-          order_id: orderId,
-          items,
-          delivery_schedule: {
-            type: scheduleType,
-            datetime: deliveryTime || new Date().toISOString(),
-          },
-        },
+        { order_id: orderId, items },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       if (res.data?.success) {
         alert("🎉 Xác nhận đơn hàng thành công!");
-        navigate("/");
+        navigate("/"); // trở về trang chủ
       }
     } catch (err: any) {
       alert(err.response?.data?.message || "Lỗi khi gửi chi tiết hàng hóa!");
@@ -93,195 +52,111 @@ export default function OrderPreviewPage() {
     }
   };
 
-  const itemTypes = [
-    "Thực phẩm & Đồ uống",
-    "Văn phòng phẩm",
-    "Quần áo & Phụ kiện",
-    "Đồ điện tử",
-    "Nguyên vật liệu / Linh kiện",
-    "Đồ gia dụng / Nội thất",
-    "Khác",
-  ];
-
-  const shippingOptions = [
-    "Hàng dễ vỡ",
-    "Giữ khô ráo",
-    "Cần nhiệt độ thích hợp",
-    "Thực phẩm có mùi",
-  ];
-
   return (
-    <Card className="w-full max-w-3xl mx-auto shadow-lg mt-10 border border-gray-200">
-      <CardHeader className="bg-gradient-to-r from-orange-500 to-red-500 text-white p-5 flex justify-between items-center">
-        <CardTitle className="text-2xl font-bold text-center flex-1">
-          📦 Chi tiết hàng hóa
-        </CardTitle>
-        <Button
-          type="button"
-          onClick={() => navigate("/dat-hang")}
-          className="bg-white text-orange-600 hover:bg-orange-100 font-semibold px-4 py-2 rounded-lg"
-        >
-          ⬅ Quay lại
-        </Button>
+    <Card className="w-full max-w-2xl mx-auto shadow-xl mt-10">
+      <CardHeader className="bg-gradient-to-r from-green-500 to-teal-500 text-white p-5">
+        <CardTitle className="text-2xl font-bold text-center">📦 Chi tiết hàng hóa</CardTitle>
       </CardHeader>
 
-      <CardContent className="p-6">
+      <CardContent className="p-6 space-y-4">
         <form onSubmit={handleSubmit}>
-          {/* 🕒 Lịch giao hàng */}
-          <div className="border border-gray-200 rounded-lg p-4 mb-6 bg-gray-50 shadow-sm">
-            <Label className="font-semibold text-gray-700 mb-2 block">
-              🕒 Thời gian giao hàng
-            </Label>
-
-            <div className="flex flex-col md:flex-row items-center gap-4">
-              <select
-                value={scheduleType}
-                onChange={(e) =>
-                  setScheduleType(e.target.value as "now" | "later")
-                }
-                className="border border-gray-300 rounded-lg p-2 w-full md:w-1/2"
-              >
-                <option value="now">Bây giờ</option>
-                <option value="later">Đặt lịch</option>
-              </select>        
-            </div>
-
-            {/* Khi chọn Đặt lịch thì hiện lịch + giờ */}
-            {scheduleType === "later" && (
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label className="font-semibold text-gray-700">📅 Ngày giao</Label>
-                  <input
-                    type="date"
-                    min={new Date().toISOString().split("T")[0]}
-                    className="border border-gray-300 rounded-lg p-2 w-full mt-1"
-                    value={scheduledDate}
-                    onChange={(e) => setScheduledDate(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label className="font-semibold text-gray-700">⏰ Giờ giao</Label>
-                  <input
-                    type="time"
-                    className="border border-gray-300 rounded-lg p-2 w-full mt-1"
-                    value={scheduledTime}
-                    onChange={(e) => setScheduledTime(e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* DANH SÁCH HÀNG HÓA */}
           {items.map((item, index) => (
-            <div key={index} className="border rounded-lg p-5 space-y-4 bg-gray-50 mb-6 shadow-sm">
-              <div>
-                <Label className="font-semibold">Mô tả hàng hóa</Label>
-                <input
-                  type="text"
-                  className="w-full border rounded-md p-2"
-                  placeholder="Ví dụ: Tủ lạnh, Ghế sofa..."
-                  value={item.description}
-                  onChange={(e) => handleChange(index, "description", e.target.value)}
-                  required
-                />
-              </div>
+            <div key={index} className="border rounded-lg p-4 space-y-3 bg-gray-50 mb-4">
+              <Label>Mô tả hàng hóa</Label>
+              <input
+                type="text"
+                className="w-full border p-2 rounded-md"
+                value={item.description}
+                onChange={(e) => handleChange(index, "description", e.target.value)}
+                required
+              />
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="font-semibold">Số lượng</Label>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <Label>Số lượng</Label>
                   <input
                     type="number"
+                    className="w-full border p-2 rounded-md"
                     min="1"
-                    className="w-full border rounded-md p-2"
                     value={item.quantity}
                     onChange={(e) => handleChange(index, "quantity", parseInt(e.target.value))}
+                    required
                   />
                 </div>
-                <div>
-                  <Label className="font-semibold">Trọng lượng (kg)</Label>
+                <div className="flex-1">
+                  <Label>Trọng lượng (kg)</Label>
                   <input
                     type="number"
+                    className="w-full border p-2 rounded-md"
                     step="0.1"
                     min="0"
-                    className="w-full border rounded-md p-2"
                     value={item.weight}
                     onChange={(e) => handleChange(index, "weight", parseFloat(e.target.value))}
+                    required
                   />
                 </div>
               </div>
 
-              {/* Loại hàng */}
-              <div>
-                <Label className="font-semibold">Loại hàng vận chuyển</Label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
-                  {itemTypes.map((type) => (
-                    <label
-                      key={type}
-                      className={`flex items-center gap-2 border rounded-md p-2 cursor-pointer text-sm transition-all ${
-                        item.type.includes(type)
-                          ? "border-orange-500 bg-orange-50"
-                          : "border-gray-300 hover:border-orange-300"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={item.type.includes(type)}
-                        onChange={() => toggleType(index, type)}
-                      />
-                      {type}
-                    </label>
-                  ))}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={item.fragile}
+                    onChange={(e) => handleChange(index, "fragile", e.target.checked)}
+                  />
+                  <Label>Dễ vỡ</Label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={item.moldy}
+                    onChange={(e) => handleChange(index, "moldy", e.target.checked)}
+                  />
+                  <Label>Ẩm mốc</Label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={item.temperature_sensitive}
+                    onChange={(e) => handleChange(index, "temperature_sensitive", e.target.checked)}
+                  />
+                  <Label>Nhiệt độ thích hợp</Label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={item.keep_dry}
+                    onChange={(e) => handleChange(index, "keep_dry", e.target.checked)}
+                  />
+                  <Label>Giữ khô ráo</Label>
                 </div>
               </div>
 
-              {/* Hướng dẫn vận chuyển */}
-              <div>
-                <Label className="font-semibold">Hướng dẫn vận chuyển</Label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
-                  {shippingOptions.map((option) => (
-                    <label
-                      key={option}
-                      className={`flex items-center gap-2 border rounded-md p-2 cursor-pointer text-sm transition-all ${
-                        item.shipping_instructions.includes(option)
-                          ? "border-orange-500 bg-orange-50"
-                          : "border-gray-300 hover:border-orange-300"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={item.shipping_instructions.includes(option)}
-                        onChange={() => toggleShippingInstruction(index, option)}
-                      />
-                      {option}
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Ghi chú */}
-              <div>
-                <Label className="font-semibold">Ghi chú cho tài xế</Label>
-                <textarea
-                  className="w-full border rounded-md p-2 mt-1"
-                  placeholder="Ví dụ: Giao nhẹ tay, tránh nghiêng..."
-                  value={item.driver_note}
-                  onChange={(e) => handleChange(index, "driver_note", e.target.value)}
-                  maxLength={200}
-                />
-                <p className="text-xs text-gray-400 text-right">
-                  {200 - item.driver_note.length} ký tự còn lại
-                </p>
-              </div>
+              {items.length > 1 && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="bg-red-500 text-white"
+                  onClick={() => removeItem(index)}
+                >
+                  🗑 Xóa
+                </Button>
+              )}
             </div>
           ))}
 
-          {/* Nút Xác nhận */}
-          <div className="flex justify-end mt-6">
+          <div className="flex justify-between mt-4">
+            <Button type="button" onClick={addItem} className="bg-blue-500 hover:bg-blue-600 text-white">
+              ➕ Thêm hàng hóa
+            </Button>
+
             <Button
               type="submit"
               disabled={loading}
-              className="bg-green-600 text-white font-semibold"
+              className="bg-green-600 hover:bg-green-700 text-white font-semibold"
             >
               {loading ? "Đang gửi..." : "✅ Xác nhận đơn hàng"}
             </Button>
