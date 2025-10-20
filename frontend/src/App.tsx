@@ -19,7 +19,7 @@ import OrderSearchPage from "./pages/OrderSearchPage";
 // ✅ IMPORT CARRIER PAGE
 import CarrierHomePage from "./pages/carrier/CarrierHomePage";
 import OrderPreviewPage from "./components/OrderPreviewPage";
-// ✅ IMPORT USER ORDER
+import ComparePage from "./components/carrier-dashboard/dashboard/compare";
 
 import UserOrderLayout from "./layouts/User_Order_Layout";
 import OrderTracking from "./components/user_order/order-tracking";
@@ -45,7 +45,6 @@ export default function App() {
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/carrier/home" element={<CarrierHomePage />} />
         <Route path="/carrier/compare/:orderId" element={<ComparePage />} />
-
         <Route path="/auth" element={<AuthPage />}>
           <Route path="login" element={<LoginPage />} />
           <Route path="register" element={<RegisterPage />} />

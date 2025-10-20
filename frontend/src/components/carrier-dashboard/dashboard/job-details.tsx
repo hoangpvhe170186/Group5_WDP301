@@ -1,5 +1,5 @@
+// ✅ PART 1 — BEGIN FILE: JobDetails.tsx
 "use client";
-
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -22,6 +22,9 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { carrierApi } from "@/services/carrier.service";
 import type { JobItem, JobStatus } from "@/types/carrier";
+import { useNavigate } from "react-router-dom";
+import { API_URL } from "@/config/api";
+ 
 
 interface JobDetailsProps {
   readonly jobId: string | null;
@@ -84,6 +87,12 @@ export function JobDetails({
   const [after, setAfter] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+
+  // ✅ Evidence State
+  const [before, setBefore] = useState<any[]>([]);
+  const [after, setAfter] = useState<any[]>([]);
+
+  // ✅ Tracking Modal
   const [openTrackModal, setOpenTrackModal] = useState(false);
   const [nextStatus, setNextStatus] = useState<string>("ON_THE_WAY");
   const [note, setNote] = useState<string>("");
@@ -93,21 +102,7 @@ export function JobDetails({
     [job?.status]
   );
 
-  async function loadMedias() {
-    if (!jobId) return;
-    try {
-      const [b, a] = await Promise.all([
-        carrierApi.listEvidence(jobId, "BEFORE"),
-        carrierApi.listEvidence(jobId, "AFTER"),
-      ]);
-      setBefore(b.items || []);
-      setAfter(a.items || []);
-    } catch (e) {
-      console.error("load medias error:", e);
-      setBefore([]); setAfter([]);
-    }
-  }
-
+  // ✅ Load Job
   const load = async () => {
     if (!jobId) return;
     try {
@@ -115,9 +110,7 @@ export function JobDetails({
       setErr(null);
       const d = await carrierApi.jobDetail(jobId);
       setJob(d);
-      await loadMedias();
-    } catch (e: any) {
-      console.error("job detail error:", e);
+    } catch (e) {
       setErr("Không thể tải chi tiết đơn hàng.");
       setJob(null);
     } finally {
@@ -125,18 +118,56 @@ export function JobDetails({
     }
   };
 
-  useEffect(() => { load(); }, [jobId]);
+  // ✅ Load Evidence
+  const loadMedias = async () => {
+    if (!jobId) return;
+    try {
+      const beforeData = await carrierApi.listEvidence(jobId, "BEFORE");
+      const afterData = await carrierApi.listEvidence(jobId, "AFTER");
+      setBefore(beforeData);
+      setAfter(afterData);
+    } catch (e) {
+      console.warn("⚠ Không có evidences");
+      setBefore([]);
+      setAfter([]);
+    }
+  };
 
-  // ===== Actions =====
-  const accept = async () => { if (job) { await carrierApi.acceptJob(job.id); await load(); } };
+  useEffect(() => {
+    load();
+    loadMedias();
+  }, [jobId]);
+
+  // ✅ Accept Job
+  const accept = async () => {
+    if (!job) return;
+    await carrierApi.acceptJob(job.id);
+    await load();
+  };
+
+  // ✅ Decline Job
   const decline = async () => {
     if (!job) return;
     const reason = window.prompt("Nhập lý do từ chối (không bắt buộc):") || undefined;
     await carrierApi.declineJob(job.id, reason);
     onBack();
   };
-  const confirmContract = async () => { if (job) { await carrierApi.confirmContract(job.id); await load(); } };
-  const confirmDelivery = async () => { if (job) { await carrierApi.confirmDelivery(job.id); await load(); } };
+
+  // ✅ Confirm Contract
+  const confirmContract = async () => {
+    if (!job) return;
+    await carrierApi.confirmContract(job.id);
+    await load();
+  };
+
+  // ✅ Confirm Delivery (ONLY WHEN status === "DELIVERED")
+  const confirmDelivery = async () => {
+    if (!job) return;
+    await carrierApi.confirmDelivery(job.id);
+    await load();
+  };
+
+  // ✅ Submit Tracking
   const submitTracking = async () => {
     if (!job) return;
     const payloadStatus = nextStatus === "NOTE_ONLY" ? "NOTE" : nextStatus;
@@ -152,8 +183,7 @@ export function JobDetails({
       setOpenTrackModal(false);
     }
   };
-
-  // ===== Renders =====
+  // ✅ Render Guards
   if (!jobId) {
     return (
       <Card><CardContent className="p-6">
@@ -163,7 +193,15 @@ export function JobDetails({
     );
   }
 
-  if (loading) return <Card><CardContent className="p-6 text-sm">Đang tải chi tiết đơn hàng...</CardContent></Card>;
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-sm text-muted-foreground">
+          Đang tải chi tiết đơn hàng...
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (err || !job) {
     return (
@@ -174,6 +212,7 @@ export function JobDetails({
     );
   }
 
+  // ✅ UI Render
   return (
     <>
       <div className="space-y-6">
@@ -187,6 +226,7 @@ export function JobDetails({
           <Badge>{statusText[job.status] ?? job.status}</Badge>
         </div>
 
+        {/* Read Only Warning */}
         {isReadOnly && (
           <Card className="border-yellow-300 bg-yellow-50">
             <CardContent className="p-4 flex items-start gap-3">
@@ -275,6 +315,62 @@ export function JobDetails({
           </CardContent>
         </Card>
 
+        {/* Evidence */}
+        <Card>
+          <CardHeader><CardTitle>Ảnh đối chiếu</CardTitle></CardHeader>
+          <CardContent className="space-y-6">
+            {/* BEFORE */}
+            <div>
+              <div className="text-sm font-semibold mb-2">Trước khi lấy</div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {before.map((m) => (
+                  <a
+                    key={m.id || m._id}
+                    href={`${API_URL}${m.url || m.file_url}`}
+                    target="_blank"
+                    className="block"
+                  >
+                    <img
+                      src={`${API_URL}${m.url || m.thumb_url || m.file_url}`}
+                      crossOrigin="anonymous" 
+                      className="w-full rounded-lg border object-cover"
+                    />
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            {/* AFTER */}
+            <div>
+              <div className="text-sm font-semibold mb-2">Sau khi giao</div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {after.map((m) => (
+                  <a
+                    key={m.id || m._id}
+                    href={`${API_URL}${m.url || m.file_url}`}
+                    target="_blank"
+                    className="block"
+                  >
+                    <img
+                      src={`${API_URL}${m.url || m.thumb_url || m.file_url}`}
+                      crossOrigin="anonymous" 
+                      className="w-full rounded-lg border object-cover"
+                    />
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            <Button
+              variant="outline"
+              className="gap-2 bg-transparent"
+              onClick={() => navigate(`/carrier/compare/${job.id}`)}
+            >
+              <Camera className="h-4 w-4" /> Xem ảnh đối chiếu (trang riêng)
+            </Button>
+          </CardContent>
+        </Card>
+
         {/* Actions */}
         <Card>
           <CardHeader><CardTitle>Thao tác</CardTitle></CardHeader>
@@ -297,19 +393,26 @@ export function JobDetails({
                   <Button variant="outline" className="gap-2 bg-transparent" onClick={onUploadAfter}>
                     <Camera className="h-4 w-4" /> Chụp sau khi giao
                   </Button>
-                  <Button variant="outline" className="gap-2 bg-transparent" onClick={onReportIncident}>
-                    <AlertTriangle className="h-4 w-4" /> Báo cáo sự cố
-                  </Button>
-                  <Button variant="outline" className="gap-2 bg-transparent" onClick={() => setOpenTrackModal(true)}>
+                  
+                  <Button
+                    variant="outline"
+                    className="gap-2 bg-transparent"
+                    onClick={() => setOpenTrackModal(true)}
+                  >
                     <Clock className="h-4 w-4" /> Cập nhật tiến độ
                   </Button>
                 </>
               )}
             </div>
+
             <Separator />
-            <Button className="w-full gap-2 bg-success hover:bg-success/90 text-white" onClick={confirmDelivery}>
-              <CheckCircle2 className="h-4 w-4" /> Xác nhận giao hàng thành công
-            </Button>
+
+            {/* ✅ Only show Confirm Delivery button when status === DELIVERED */}
+            {job.status === "DELIVERED" && (
+              <Button className="w-full gap-2 bg-success hover:bg-success/90 text-white" onClick={confirmDelivery}>
+                <CheckCircle2 className="h-4 w-4" /> Xác nhận giao hàng thành công
+              </Button>
+            )}
           </CardContent>
         </Card>
 
@@ -322,11 +425,18 @@ export function JobDetails({
                 {job.trackings.map((t: any) => {
                   const tone = statusTone(t.status);
                   return (
-                    <div key={t.id || t._id} className={`rounded-lg border p-3 ${tone}`}>
+                    <div
+                      key={t._id || t.id}
+                      className={`flex items-start justify-between rounded-lg border p-3 ${tone}`}
+                    >
                       <div className="space-y-1">
-                        <div className="text-xs opacity-70">{new Date(t.createdAt).toLocaleString("vi-VN")}</div>
-                        <div className="text-sm font-semibold">{statusText[t.status] ?? t.status}</div>
-                        {t.note && <div className="text-sm">{t.note}</div>}
+                        <div className="text-xs opacity-70">
+                          {new Date(t.createdAt).toLocaleString("vi-VN")}
+                        </div>
+                        <div className="text-sm font-semibold">
+                          {statusText[t.status] ?? t.status}
+                        </div>
+                        {t.note ? <div className="text-sm">{t.note}</div> : null}
                       </div>
                     </div>
                   );
