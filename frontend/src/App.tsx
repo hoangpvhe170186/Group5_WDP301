@@ -20,6 +20,7 @@ import OrderSearchPage from "./pages/OrderSearchPage";
 import CarrierHomePage from "./pages/carrier/CarrierHomePage";
 import OrderPreviewPage from "./components/OrderPreviewPage";
 import ComparePage from "./components/carrier-dashboard/dashboard/compare";
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -29,26 +30,24 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/order-preview" element={<OrderPreviewPage />} />
         <Route path="/dat-hang" element={<OrderCreatePage />} />
-        <Route
-          path="/vehicles/:vehicleId/price"
-          element={<VehiclePricingPage />}
-        />
+        <Route path="/vehicles/:vehicleId/price" element={<VehiclePricingPage />} />
         <Route path="/profile" element={<UserProfilePage />} />
         <Route path="/profile/:userId" element={<UserProfile />} />
         <Route path="/thanh-toan" element={<CheckoutPage />} />
         {/* <Route path="/portal" element={<RolePortal />} /> */}
-        <Route path="/profile/:userId" element={<UserProfile />} />
+        <Route path="/profile/:userId" element={<UserProfile />} />      
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/carrier/home" element={<CarrierHomePage />} />
         <Route path="/carrier/compare/:orderId" element={<ComparePage />} />
-
         <Route path="/auth" element={<AuthPage />}>
           <Route path="login" element={<LoginPage />} />
           <Route path="register" element={<RegisterPage />} />
           <Route path="verify-otp" element={<VerifyOtpPage />} />
           <Route path="forgot-password" element={<ForgotPasswordPage />} />
         </Route>
-        <Route path="/seller/home" element={<Seller />}></Route>
+        <Route path="/seller/home" element={<Seller />}>
+          
+        </Route>
       </Routes>
     </BrowserRouter>
   );
