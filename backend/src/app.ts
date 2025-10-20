@@ -11,7 +11,7 @@ import routes from "./routes/auth.route";
 import carrierRoutes from "./routes/carrier.routes";
 import orderRoutes from "./routes/order.route";
 import orderTrackingRoute from "./routes/order-tracking.route";
-
+import extraFeeRoutes from "./routes/extraFeeRoutes";
 const app = express();
 
 app.use(express.json());
@@ -40,7 +40,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/upload", uploadRoute);
 app.use("/api/chat", chatRoutes);
 app.use("/api/auth", routes);
-
+app.use("/api/extrafees", extraFeeRoutes);
 // ✅ Test
 app.get("/", (req, res) => {
   res.send("🚀 Backend running...");
