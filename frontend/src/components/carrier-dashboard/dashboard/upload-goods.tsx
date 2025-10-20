@@ -13,9 +13,10 @@ interface UploadGoodsProps {
   type: "before" | "after";
   jobId: string | null;
   onBack: () => void;
+  onUploaded?: () => void; // ✅ Optional để tránh crash nếu thiếu callback
 }
 
-export function UploadGoods({ type, jobId, onBack }: UploadGoodsProps) {
+export function UploadGoods({ type, jobId, onBack, onUploaded }: UploadGoodsProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [notes, setNotes] = useState("");
   const [isUploading, setIsUploading] = useState(false);
@@ -38,7 +39,9 @@ export function UploadGoods({ type, jobId, onBack }: UploadGoodsProps) {
     try {
       const phase: EvidencePhase = type === "before" ? "BEFORE" : "AFTER";
       await carrierApi.uploadEvidence({ orderId: jobId, phase, files });
-      alert("Tải lên thành công!");
+
+      // ✅ SAFE CALL — không crash nếu không truyền vào
+      onUploaded?.();
       onBack();
     } catch (e) {
       console.error("upload evidence error:", e);

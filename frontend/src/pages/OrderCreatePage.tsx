@@ -13,7 +13,7 @@ export default function OrderCreatePage() {
 
   return (
     <div className="flex flex-row h-screen">
-      {/* Form bên trái */}
+      
       <div className="w-1/3 bg-white p-4 overflow-y-auto">
         <OrderForm
           onAddressChange={(p, d) => {
@@ -27,10 +27,9 @@ export default function OrderCreatePage() {
           }}
         />
 
-        
+
       </div>
 
-      {/* Bản đồ bên phải */}
       <div className="w-2/3">
         <MapView
           pickup={pickup}
