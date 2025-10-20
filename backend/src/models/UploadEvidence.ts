@@ -10,8 +10,14 @@ export interface IUploadEvidence extends Document {
 const UploadEvidenceSchema = new Schema<IUploadEvidence>({
   orderId: { type: Schema.Types.ObjectId, ref: "Order", required: true },
   phase: { type: String, enum: ["BEFORE", "AFTER"], required: true },
-  files: [{ url: String, type: String }],
+  files: [
+    {
+      url: { type: String, required: true },   // ✅ CHUYỂN THÀNH SUB-SCHEMA
+      type: { type: String, enum: ["IMAGE", "VIDEO"], required: true }
+    }
+  ],
   uploadedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
 }, { timestamps: true });
+
 
 export default mongoose.model<IUploadEvidence>("UploadEvidence", UploadEvidenceSchema);

@@ -9,14 +9,13 @@ import {
   getSellers,
   assignOrder,
   getOrderById,
-  updateOrder,
-  getOrderItemsByOrderId
+  updateOrder
 } from "../controllers/user.controller";
 import { get } from "http";
+
 const router = express.Router();
 router.get("/orders", getAllOrders);
 router.get("/orders/:id", getOrderById);
-router.get("/order-items/:orderId", getOrderItemsByOrderId);
 router.put("/orders/:id", updateOrder);
 router.get("/drivers", getDrivers);   // ✅ thêm
 router.get("/carriers", getCarriers);

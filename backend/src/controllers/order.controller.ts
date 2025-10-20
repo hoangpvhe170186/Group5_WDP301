@@ -237,7 +237,7 @@ export const searchOrder = async (req: Request, res: Response) => {
     }
 
     let orders = [];
-              
+
     // 🔹 Nếu tìm theo số điện thoại
     if (phone) {
       orders = await Order.find({ phone }).sort({ createdAt: -1 });
