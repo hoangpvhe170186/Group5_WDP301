@@ -8,14 +8,14 @@ interface IOtp extends Document {
   expires_at: Date;
 }
 
-// Tạo otpSchema với TypeScript
+
 const otpSchema: Schema = new Schema(
   {
     user_id: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User", // Liên kết với model User
+      ref: "User", 
       required: true,
-      unique: true, // Đảm bảo chỉ có 1 OTP còn hiệu lực cho mỗi user
+      unique: true, 
     },
     otp_code: {
       type: String,
@@ -23,7 +23,7 @@ const otpSchema: Schema = new Schema(
     },
     attempts: {
       type: Number,
-      default: 0, // Giới hạn 5 lần
+      default: 0, 
       min: 0,
     },
     expires_at: {
@@ -31,7 +31,7 @@ const otpSchema: Schema = new Schema(
       required: true,
     },
   },
-  { timestamps: true } // Tự động thêm createdAt và updatedAt
+  { timestamps: true } 
 );
 
 // Tạo chỉ mục để tự động xóa OTP khi hết hạn

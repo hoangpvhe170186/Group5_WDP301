@@ -21,6 +21,9 @@ import CarrierHomePage from "./pages/carrier/CarrierHomePage";
 import OrderPreviewPage from "./components/OrderPreviewPage";
 import ComparePage from "./components/carrier-dashboard/dashboard/compare";
 
+import UserOrderLayout from "./layouts/User_Order_Layout";
+import OrderTracking from "./components/user_order/order-tracking";
+import ComparePage from "./components/carrier-dashboard/dashboard/compare";
 export default function App() {
   return (
     <BrowserRouter>
@@ -30,12 +33,15 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/order-preview" element={<OrderPreviewPage />} />
         <Route path="/dat-hang" element={<OrderCreatePage />} />
-        <Route path="/vehicles/:vehicleId/price" element={<VehiclePricingPage />} />
+        <Route
+          path="/vehicles/:vehicleId/price"
+          element={<VehiclePricingPage />}
+        />
         <Route path="/profile" element={<UserProfilePage />} />
         <Route path="/profile/:userId" element={<UserProfile />} />
         <Route path="/thanh-toan" element={<CheckoutPage />} />
         {/* <Route path="/portal" element={<RolePortal />} /> */}
-        <Route path="/profile/:userId" element={<UserProfile />} />      
+        <Route path="/profile/:userId" element={<UserProfile />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/carrier/home" element={<CarrierHomePage />} />
         <Route path="/carrier/compare/:orderId" element={<ComparePage />} />
@@ -45,8 +51,9 @@ export default function App() {
           <Route path="verify-otp" element={<VerifyOtpPage />} />
           <Route path="forgot-password" element={<ForgotPasswordPage />} />
         </Route>
-        <Route path="/seller/home" element={<Seller />}>
-          
+        <Route path="/seller/home" element={<Seller />}></Route>
+        <Route path="/myorder" element={<UserOrderLayout />}>
+          <Route path="tracking" element={<OrderTracking />} />
         </Route>
       </Routes>
     </BrowserRouter>

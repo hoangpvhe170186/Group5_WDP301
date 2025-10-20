@@ -28,6 +28,8 @@ app.use((req, res, next) => {
 
 app.use(helmet());
 app.use(morgan("dev"));
+app.use("/api/carrier", carrierRoutes);
+app.use("/api", uploadRoute); 
 
 // 👉 Serve static files (ảnh/video đã upload)
 app.use("/uploads", (req, res, next) => {
