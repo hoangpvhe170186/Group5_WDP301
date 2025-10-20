@@ -29,6 +29,8 @@ router.post("/:orderId", requireAuth, async (req: any, res, next) => {
       note,
     });
 
+    
+
     // ✅ Nếu thuộc trạng thái chính → cập nhật Order
     const MAIN = ["ASSIGNED", "ACCEPTED", "CONFIRMED", "ON_THE_WAY", "ARRIVED", "DELIVERING", "DELIVERED", "COMPLETED"];
     if (MAIN.includes(status)) {

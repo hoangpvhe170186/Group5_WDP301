@@ -12,10 +12,15 @@ import vehiclesRoute from "./routes/vehicles.route";
 import routes from "./routes/auth.route";
 import carrierRoutes from "./routes/carrier.routes";
 import orderRoutes from "./routes/order.route";
+<<<<<<< HEAD
 import orderTrackingRoute from "./routes/order-tracking.route";
 import fs from "fs";
 if (!fs.existsSync("uploads")) fs.mkdirSync("uploads");
 
+=======
+import {requireAuth} from "./middleware/requireAuth"
+import orderTrackingRoute from "./routes/order-tracking.route"
+>>>>>>> long
 const app = express();
 
 app.use(express.json());
@@ -46,6 +51,24 @@ app.use("/api/upload", uploadRoute);
 app.use("/api/chat", chatRoutes);
 app.use("/api/auth", routes);
 
+<<<<<<< HEAD
 app.get("/", (_req, res) => res.send("🚀 Backend running..."));
+=======
+// ✅ Test
+app.get("/", (req, res) => {
+  res.send("🚀 Backend running...");
+});
+>>>>>>> long
+
+app.use("/api", routes);
+
+// User routes
+app.use("/api/users", userRoutes);
+app.use("/api/upload", uploadRoute);
+app.use("/api/chat", chatRoutes);
+app.use("/api/pricing", pricingRoute);
+app.use("/api/vehicles",vehiclesRoute);
+app.use("/api/orders", orderRoutes);
+app.use("/api/carrier",carrierRoutes);
 
 export default app;
