@@ -53,7 +53,7 @@ export default function OrderForm({
         const res = await axios.get("http://localhost:4000/api/pricing");
         setPackages(res.data?.packages || []);
       } catch (error) {
-        console.error("❌ Lỗi khi tải danh sách gói giá:", error);
+        console.error(" Lỗi khi tải danh sách gói giá:", error);
       }
     };
     fetchPackages();
@@ -73,11 +73,11 @@ export default function OrderForm({
 
     const pickupGeocoder = new MapboxGeocoder({
       ...opts,
-      placeholder: "📦 Nhập địa chỉ lấy hàng...",
+      placeholder: " Nhập địa chỉ lấy hàng...",
     });
     const deliveryGeocoder = new MapboxGeocoder({
       ...opts,
-      placeholder: "🚚 Nhập địa chỉ giao hàng...",
+      placeholder: " Nhập địa chỉ giao hàng...",
     });
 
     pickupGeocoder.addTo(pickupGeoRef.current);
@@ -101,7 +101,7 @@ export default function OrderForm({
     };
   }, []);
 
-  // 🧮 Tính chi phí ước tính
+  //  Tính chi phí ước tính
   const handleEstimatePrice = async () => {
     if (!form.pickup_address || !form.delivery_address || !selectedPackage) return;
 
@@ -121,18 +121,18 @@ export default function OrderForm({
       setDurationText(data.duration.text);
       onEstimate?.(data.distance.text, data.duration.text, data.totalFee);
     } catch (err) {
-      console.error("❌ Lỗi khi tính giá:", err);
+      console.error(" Lỗi khi tính giá:", err);
       alert("Không thể tính giá tự động");
     }
   };
 
-  // ✅ Tự động tính lại giá
+  //  Tự động tính lại giá
   useEffect(() => {
     if (form.pickup_address && form.delivery_address && selectedPackage)
       handleEstimatePrice();
   }, [form.pickup_address, form.delivery_address, selectedPackage, customFloor]);
 
-  // 🧮 Tính tổng tiền (bao gồm phụ phí)
+  //  Tính tổng tiền (bao gồm phụ phí)
   const totalExtra = extraFees.reduce(
     (sum, fee) => sum + Number(fee.price?.$numberDecimal || fee.price || 0),
     0
@@ -301,7 +301,7 @@ export default function OrderForm({
           className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 rounded-lg shadow-lg"
           disabled={loading}
         >
-          {loading ? "Đang xử lý..." : "✅ Tiếp theo"}
+          {loading ? "Đang xử lý..." : " Tiếp theo"}
         </Button>
       </form>
     </div>

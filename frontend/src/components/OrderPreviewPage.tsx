@@ -61,7 +61,7 @@ export default function OrderPreviewPage() {
       const token = localStorage.getItem("auth_token");
       if (!token) return alert("Bạn cần đăng nhập!");
 
-      // 🕒 Chuẩn hóa thời gian giao hàng
+      //  Chuẩn hóa thời gian giao hàng
       let deliveryTime: string | null = null;
       if (scheduleType === "later") {
         if (!scheduledDate || !scheduledTime)
@@ -121,16 +121,16 @@ export default function OrderPreviewPage() {
           onClick={() => navigate("/dat-hang")}
           className="bg-white text-orange-600 hover:bg-orange-100 font-semibold px-4 py-2 rounded-lg"
         >
-          ⬅ Quay lại
+           Quay lại
         </Button>
       </CardHeader>
 
       <CardContent className="p-6">
         <form onSubmit={handleSubmit}>
-          {/* 🕒 Lịch giao hàng */}
+          {/* Lịch giao hàng */}
           <div className="border border-gray-200 rounded-lg p-4 mb-6 bg-gray-50 shadow-sm">
             <Label className="font-semibold text-gray-700 mb-2 block">
-              🕒 Thời gian giao hàng
+               Thời gian giao hàng
             </Label>
 
             <div className="flex flex-col md:flex-row items-center gap-4">
@@ -141,7 +141,7 @@ export default function OrderPreviewPage() {
                 }
                 className="border border-gray-300 rounded-lg p-2 w-full md:w-1/2"
               >
-                <option value="now">Bây giờ</option>
+                <option value="now">Bây giờ (1-2 giờ tùy thuộc vào tài xế )</option>
                 <option value="later">Đặt lịch</option>
               </select>        
             </div>
@@ -150,7 +150,7 @@ export default function OrderPreviewPage() {
             {scheduleType === "later" && (
               <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label className="font-semibold text-gray-700">📅 Ngày giao</Label>
+                  <Label className="font-semibold text-gray-700"> Ngày giao</Label>
                   <input
                     type="date"
                     min={new Date().toISOString().split("T")[0]}
@@ -160,7 +160,7 @@ export default function OrderPreviewPage() {
                   />
                 </div>
                 <div>
-                  <Label className="font-semibold text-gray-700">⏰ Giờ giao</Label>
+                  <Label className="font-semibold text-gray-700"> Giờ giao</Label>
                   <input
                     type="time"
                     className="border border-gray-300 rounded-lg p-2 w-full mt-1"
