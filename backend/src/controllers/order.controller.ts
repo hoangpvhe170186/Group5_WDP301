@@ -134,12 +134,44 @@ export const createOrder = async (req: Request, res: Response) => {
 
 // 🟡 Lấy danh sách đơn hàng của người dùng
 export const getMyOrders = async (req: Request, res: Response) => {
-  try {
-    const userId = (req as any).user?._id; // nếu dùng JWT
-    const orders = await Order.find({ customer_id: userId }).populate("vehicle_id carrier_id");
-    res.json(orders);
+   try {
+    
+    const userId = req.user?.id;
+    console.log(userId);
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized: user not found in token" });
+    }
+
+    // ✅ Hỗ trợ phân trang và giới hạn dữ liệu
+    const page = Math.max(parseInt(req.query.page as string) || 1, 1);
+    const limit = Math.min(parseInt(req.query.limit as string) || 10, 50);
+    const skip = (page - 1) * limit;
+
+    // ✅ Truy vấn có chọn lọc (chỉ lấy các trường cần thiết)
+    const orders = await Order.find({ customer_id: userId })
+      .populate("vehicle_id", "type") // chỉ lấy trường cần thiết
+      .populate("carrier_id", "name phone")
+      .sort({ createdAt: -1 }) 
+      .limit(limit)
+      .lean(); 
+
+    // ✅ Đếm tổng số đơn hàng (phục vụ client phân trang)
+    const totalOrders = await Order.countDocuments({ customer_id: userId });
+
+    return res.status(200).json({
+      success: true,
+      total: totalOrders,
+      page,
+      pages: Math.ceil(totalOrders / limit),
+      data: orders,
+    });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error });
+    console.error("❌ Error fetching orders:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: (error as Error).message,
+    });
   }
 };
 
@@ -246,3 +278,6 @@ export const searchOrder = async (req: Request, res: Response) => {
     });
   }
 };
+
+
+
