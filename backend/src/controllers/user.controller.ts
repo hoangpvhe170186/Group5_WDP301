@@ -204,18 +204,40 @@ export const getOrderById = async (req: Request, res: Response) => {
 };
 export const updateOrder = async (req: Request, res: Response) => {
   try {
-    const { seller_id, status, scheduled_time } = req.body;
-    const order = await Order.findByIdAndUpdate(
-      req.params.id,
-      { seller_id, status, scheduled_time },
-      { new: true }
-    );
-    if (!order) {
-      return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng" });
+    const { driver_id, scheduled_time } = req.body;
+
+    const updateData: any = {};
+    if (driver_id) updateData.driver_id = driver_id;
+    if (scheduled_time) updateData.scheduled_time = scheduled_time;
+
+    // Nếu bạn muốn ghi log khi driver được chỉ định
+    if (driver_id) {
+      updateData.$push = {
+        auditLogs: {
+          at: new Date(),
+          by: req.user?.id || "system",
+          action: "ASSIGNED_DRIVER",
+          note: `Chỉ định driver ${driver_id}`,
+        },
+      };
     }
+
+    const order = await Order.findByIdAndUpdate(req.params.id, updateData, {
+      new: true,
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy đơn hàng",
+      });
+    }
+
     res.status(200).json({ success: true, data: order });
   } catch (error) {
-    console.error("Error updating order:", error);
-    res.status(500).json({ success: false, message: "Lỗi server khi cập nhật đơn hàng" });
+    console.error("❌ Error updating order:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Lỗi server khi cập nhật đơn hàng" });
   }
 };

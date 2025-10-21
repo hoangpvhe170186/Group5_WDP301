@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Eye, Truck, Edit } from "lucide-react";
-import AssignModal from "./AssignModal";
 import OrderDetailModal from "./OrderDetailModal";
-import UpdateOrderModal from './UpdateOrderModal';
+import OrderActionModal from "./OrderActionModal";
 const OrderManagementScreen = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -123,7 +122,7 @@ const OrderManagementScreen = () => {
                   {order.scheduled_time}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-500 truncate max-w-[14rem]">
-                  
+                  {order.total_price}
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-sm">
                   <StatusBadge text={order.status} />
@@ -140,25 +139,19 @@ const OrderManagementScreen = () => {
 >
   <Eye className="w-5 h-5 cursor-pointer" />
 </button>
-
-                  {order.status === "Pending" && (
+{(order.status === "Assigned" || order.status === "Decline") && (
   <button
-    onClick={() => handleOpenAssignModal(order._id)}
+    onClick={() => {
+      setSelectedOrderId(order._id);
+      setIsUpdateModalOpen(true);
+    }}
     className="text-blue-600 hover:text-blue-900"
-    title="Giao việc"
+    title="Cập nhật / Giao việc"
   >
     <Truck className="w-5 h-5 cursor-pointer" />
   </button>
-  
-  
 )}
-<button
-  onClick={() => handleOpenUpdateModal(order._id)}
-  className="text-green-600 hover:text-green-900"
-  title="Cập nhật đơn hàng"
->
-  <Edit className="w-5 h-5 cursor-pointer" />
-</button>
+
                 </td>
               </tr>
             ))
@@ -167,13 +160,7 @@ const OrderManagementScreen = () => {
       </table>
     </div>
 
-    {/* ✅ Modal giao việc đặt ngoài bảng */}
-    {isAssignOpen && selectedOrderId && (
-      <AssignModal
-        orderId={selectedOrderId}
-        onClose={() => setIsAssignOpen(false)}
-      />
-    )}
+   
 
     {isDetailOpen && selectedOrderDetailId && (
       <OrderDetailModal
@@ -183,12 +170,12 @@ const OrderManagementScreen = () => {
     )}
 
     {isUpdateModalOpen && selectedOrderId && (
-      <UpdateOrderModal
-        isOpen={isUpdateModalOpen}
-        onClose={() => setIsUpdateModalOpen(false)}
-        orderId={selectedOrderId}
-      />
-    )}
+  <OrderActionModal
+    isOpen={isUpdateModalOpen}
+    onClose={() => setIsUpdateModalOpen(false)}
+    orderId={selectedOrderId}
+  />
+)}
   </div>
 );
 };

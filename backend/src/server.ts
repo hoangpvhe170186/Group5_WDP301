@@ -6,10 +6,13 @@ import { config } from "./config";
 import { initRealtime } from "./realtime";
 
 async function start() {
-  await connectMongo(); // chỉ kết nối DB 1 lần trước khi start server
+  await connectMongo(); // ✅ Kết nối DB trước
 
-  const server = createServer(app); // HTTP server chứa luôn Express
-  initRealtime(server);             // gắn Socket.IO vào cùng server
+  // 👉 Chỉ import cron job sau khi MongoDB đã connect
+  await import("./services/autoAssignJob");
+
+  const server = createServer(app);
+  initRealtime(server);
 
   const PORT = Number(config.PORT) || 4000;
   server.listen(PORT, () => {

@@ -14,7 +14,6 @@ import carrierRoutes from "./routes/carrier.routes";
 import orderRoutes from "./routes/order.route";
 import {requireAuth} from "./middleware/requireAuth"
 import orderTrackingRoute from "./routes/order-tracking.route"
-import orderTrackingRoute from "./routes/order-tracking.route";
 import extraFeeRoutes from "./routes/extraFeeRoutes";
 import fs from "fs";
 if (!fs.existsSync("uploads")) fs.mkdirSync("uploads");
