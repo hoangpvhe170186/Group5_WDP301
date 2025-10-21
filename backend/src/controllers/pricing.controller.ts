@@ -54,7 +54,7 @@ export const getAllPricePackages = async (req: Request, res: Response) => {
       // ✅ Bước 2: Suy ra tải trọng từ tên gói
       if (pkg.name === "Gói Nhỏ") {
         targetCapacity = 500;
-      } else if (pkg.name === "Gói Trung") {
+      } else if (pkg.name === "Gói Chung") {
         targetCapacity = 1500;
       } else if (pkg.name === "Gói Lớn") {
         targetCapacity = 3000;
