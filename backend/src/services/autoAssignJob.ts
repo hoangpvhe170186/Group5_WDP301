@@ -5,11 +5,11 @@ import Order from "../models/Order";
 cron.schedule("*/10 * * * * *", async () => {
   try {
     const now = new Date();
-    const tenMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000);
+    const tenMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
 
     // 🔍 Tìm các đơn pending quá 10 phút mà chưa có driver
     const pendingOrders = await Order.find({
-      status: { $regex: /^pending$/i },
+      status: { $regex: /^confirmed$/i },
       $or: [
   { driver_id: { $exists: false } },
   { driver_id: null },

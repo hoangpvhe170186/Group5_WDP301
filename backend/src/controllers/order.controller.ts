@@ -72,7 +72,7 @@ export const addOrderItems = async (req, res) => {
     );
 
     // ✅ Cập nhật trạng thái đơn hàng thành "Confirmed"
-    order.status = "Confirmed";
+    order.status = "Pending";
     await order.save();
 
     res.json({

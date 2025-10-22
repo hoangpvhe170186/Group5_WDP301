@@ -21,7 +21,7 @@ const OrderActionModal: React.FC<OrderActionModalProps> = ({
   const [carrierId, setCarrierId] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-
+  const [driverSchedule, setDriverSchedule] = useState<Record<string, string[]>>({});
   const [sellers, setSellers] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
   const [carriers, setCarriers] = useState<any[]>([]);
@@ -54,7 +54,7 @@ const OrderActionModal: React.FC<OrderActionModalProps> = ({
         const res = await axios.get(
           `http://localhost:4000/api/users/orders/${orderId}`
         );
-        const data = res.data;
+        const data = res.data.data || res.data;
         setSellerId(data.seller_id?._id || data.seller_id || "");
         setDriverId(data.driver_id?._id || data.driver_id || "");
         setCarrierId(data.carrier_id?._id || data.carrier_id || "");
@@ -74,6 +74,21 @@ const OrderActionModal: React.FC<OrderActionModalProps> = ({
     };
     fetchOrder();
   }, [orderId]);
+
+  // 🧠 Lấy lịch driver 7 ngày tới
+  useEffect(() => {
+    const fetchDriverSchedule = async () => {
+      try {
+        const res = await axios.get("http://localhost:4000/api/users/drivers/schedule");
+        if (res.data.success) {
+          setDriverSchedule(res.data.data);
+        }
+      } catch (err) {
+        console.error("❌ Lỗi khi tải lịch driver:", err);
+      }
+    };
+    fetchDriverSchedule();
+  }, []);
 
   // 🧠 Cập nhật đơn
   const handleSave = async () => {
@@ -108,7 +123,7 @@ const OrderActionModal: React.FC<OrderActionModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-2xl shadow-lg p-6 w-[460px] relative">
+      <div className="bg-white rounded-2xl shadow-lg p-6 w-[480px] relative max-h-[90vh] overflow-y-auto">
         <button
           onClick={onClose}
           className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
@@ -127,11 +142,12 @@ const OrderActionModal: React.FC<OrderActionModalProps> = ({
               Thời gian dự kiến
             </label>
             <input
-              type="datetime-local"
-              value={scheduledTime}
-              onChange={(e) => setScheduledTime(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg p-2"
-            />
+  type="datetime-local"
+  value={scheduledTime}
+  onChange={(e) => setScheduledTime(e.target.value)}
+  min={new Date().toISOString().slice(0, 16)} // ⬅️ Giới hạn nhỏ nhất là thời gian hiện tại
+  className="w-full border border-gray-300 rounded-lg p-2"
+/>
           </div>
 
           {/* Driver */}
@@ -153,6 +169,46 @@ const OrderActionModal: React.FC<OrderActionModalProps> = ({
             </select>
           </div>
 
+          {/* 🗓️ Lịch driver 7 ngày tới */}
+          <div className="mt-6">
+            <h3 className="font-semibold mb-2 text-gray-700">
+              Lịch tài xế 7 ngày tới
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full border text-sm text-gray-700">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="border p-2">Ngày</th>
+                    <th className="border p-2">Tài xế đã có đơn</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from({ length: 7 }).map((_, i) => {
+                    const d = new Date();
+                    d.setDate(d.getDate() + i);
+                    const dateStr = d.toISOString().slice(0, 10);
+                    const dayName = d.toLocaleDateString("vi-VN", {
+                      weekday: "long",
+                    });
+                    return (
+                      <tr key={dateStr} className="border-b">
+                        <td className="border p-2 font-medium">
+                          {dayName} ({dateStr})
+                        </td>
+                        <td className="border p-2">
+                          {driverSchedule[dateStr]?.length ? (
+                            driverSchedule[dateStr].join(", ")
+                          ) : (
+                            <span className="text-gray-400">Trống</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
         {message && (
