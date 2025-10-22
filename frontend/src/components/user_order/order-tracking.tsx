@@ -1,67 +1,110 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import OrderTimeline from "./order-timeline"
-import OrderDetails from "./order-details"
-import OrderHeader from "./order-header"
-import { orderApi } from "@/services/order.service"
+import { useState, useEffect, useMemo } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import OrderTimeline from "./order-timeline";
+import OrderDetails from "./order-details";
+import OrderHeader from "./order-header";
+import { orderApi } from "@/services/order.service";
+import FeedbackForm from "./FeedbackForm";
+import IncidentForm from "./IncidentForm";
 
 export default function OrderTracking() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedOrder, setSelectedOrder] = useState<string | null>(null)
-  const [orders, setOrders] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedOrder, setSelectedOrder] = useState<string | null>(null); // holds order id
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        setLoading(true)
-        const { orders: fetchedOrders } = await orderApi.listMyOrders()
-        console.log(fetchedOrders)
-        setOrders(fetchedOrders)
-        if (fetchedOrders.length > 0) {
-          setSelectedOrder(fetchedOrders[0].id)
+        setLoading(true);
+        const { orders: fetchedOrders } = await orderApi.listMyOrders();
+        setOrders(fetchedOrders || []);
+        if (fetchedOrders && fetchedOrders.length > 0) {
+          setSelectedOrder(fetchedOrders[0].id); // keep id only
         }
       } catch (err) {
-        setError("Không thể tải danh sách đơn hàng")
+        setError("Không thể tải danh sách đơn hàng");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
-    fetchOrders()
-  }
-  
-  
-  , [])
+    };
+    fetchOrders();
+  }, []);
 
-  const currentOrder = orders.find((o) => o.id === selectedOrder)
-          
-  // Ánh xạ dữ liệu từ API sang định dạng phù hợp với component
+  const currentOrder = useMemo(
+    () => orders.find((o) => o.id === selectedOrder),
+    [orders, selectedOrder]
+  );
+
+  // Chuẩn hoá dữ liệu cho UI
   const mapOrderData = (order: any) => ({
     id: order.id,
-    orderNumber: `#${order.id}`, // Điều chỉnh theo nhu cầu, có thể dùng _id từ backend
-    status: order.status.toLowerCase(),
-    date: new Date(order.createdAt).toLocaleDateString("vi-VN"),
-    total: `₫ ${order.totalPrice.toLocaleString("vi-VN")}`,
-    items: 1, 
+    orderNumber: `#${order.id}`,
+    status: (order.status || "").toLowerCase(), // expect: "pending" | "in-transit" | "delivered" ...
+    date: order.createdAt ? new Date(order.createdAt).toLocaleDateString("vi-VN") : "—",
+    total: `₫ ${Number(order.totalPrice || 0).toLocaleString("vi-VN")}`,
+    items: 1,
     estimatedDelivery: order.scheduledTime || "Chưa có thời gian",
-    currentLocation: order.status === "delivered" ? "Đã giao" : order.pickupAddress.split(",")[0] || "Hà Nội",
-    recipient: "Khách hàng", // Cần thêm trường từ backend nếu có (ví dụ: customer_id)
+    currentLocation:
+      (order.status || "").toLowerCase() === "delivered"
+        ? "Đã giao"
+        : (order.pickupAddress || "").split(",")[0] || "Hà Nội",
+    recipient: "Khách hàng",
     address: order.deliveryAddress,
-    phone: order.phone, // Cần thêm trường từ backend nếu có (ví dụ: phone)
+    phone: order.phone,
     timeline: [
-      { status: "placed", label: "Đơn hàng được tạo", time: new Date(order.createdAt).toLocaleString("vi-VN"), completed: true },
-      { status: "confirmed", label: "Đơn hàng được xác nhận", time: "Chưa có", completed: order.status !== "Pending" },
-      { status: "processing", label: "Đang chuẩn bị hàng", time: "Chưa có", completed: order.status !== "Pending" && order.status !== "in-transit" },
-      { status: "shipped", label: "Hàng đã được gửi đi", time: "Chưa có", completed: order.status === "in-transit" || order.status === "delivered" },
-      { status: "in-transit", label: "Đang vận chuyển", time: "Chưa có", completed: order.status === "in-transit" || order.status === "delivered" },
-      { status: "delivered", label: "Đã giao hàng", time: order.scheduledTime || "Dự kiến", completed: order.status === "delivered" },
+      {
+        status: "placed",
+        label: "Đơn hàng được tạo",
+        time: order.createdAt ? new Date(order.createdAt).toLocaleString("vi-VN") : "—",
+        completed: true,
+      },
+      {
+        status: "confirmed",
+        label: "Đơn hàng được xác nhận",
+        time: "Chưa có",
+        completed: (order.status || "").toLowerCase() !== "pending",
+      },
+      {
+        status: "processing",
+        label: "Đang chuẩn bị hàng",
+        time: "Chưa có",
+        completed:
+          (order.status || "").toLowerCase() !== "pending" &&
+          (order.status || "").toLowerCase() !== "in-transit",
+      },
+      {
+        status: "shipped",
+        label: "Hàng đã được gửi đi",
+        time: "Chưa có",
+        completed:
+          (order.status || "").toLowerCase() === "in-transit" ||
+          (order.status || "").toLowerCase() === "delivered",
+      },
+      {
+        status: "in-transit",
+        label: "Đang vận chuyển",
+        time: "Chưa có",
+        completed:
+          (order.status || "").toLowerCase() === "in-transit" ||
+          (order.status || "").toLowerCase() === "delivered",
+      },
+      {
+        status: "delivered",
+        label: "Đã giao hàng",
+        time: order.scheduledTime || "Dự kiến",
+        completed: (order.status || "").toLowerCase() === "delivered",
+      },
     ],
-  })
+  });
+
+  // Dùng một biến đã map cho phần chi tiết để tránh lặp xử lý
+  const mappedCurrent = currentOrder ? mapOrderData(currentOrder) : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -79,7 +122,9 @@ export default function OrderTracking() {
                 className="h-12 text-base"
               />
             </div>
-            <Button className="h-12 px-6 bg-primary hover:bg-primary/90 text-primary-foreground">Tìm kiếm</Button>
+            <Button className="h-12 px-6 bg-primary hover:bg-primary/90 text-primary-foreground">
+              Tìm kiếm
+            </Button>
           </div>
         </div>
 
@@ -92,61 +137,81 @@ export default function OrderTracking() {
               </div>
               <div className="divide-y">
                 {loading ? (
-                  <p className="p-4 text-center text-muted-foreground">Đang tải...</p>
+                  <p className="p-4 text-center text-muted-foreground">
+                    Đang tải...
+                  </p>
                 ) : error ? (
                   <p className="p-4 text-center text-destructive">{error}</p>
                 ) : orders.length === 0 ? (
-                  <p className="p-4 text-center text-muted-foreground">Không có đơn hàng.</p>
+                  <p className="p-4 text-center text-muted-foreground">
+                    Không có đơn hàng.
+                  </p>
                 ) : (
                   orders.map((order) => {
-                    const mappedOrder = mapOrderData(order)
+                    const m = mapOrderData(order);
                     return (
                       <button
-                        key={mappedOrder.id}
-                        onClick={() => setSelectedOrder(mappedOrder.id)}
+                        key={m.id}
+                        onClick={() => setSelectedOrder(m.id)}
                         className={`w-full text-left p-4 transition-colors ${
-                          selectedOrder === mappedOrder.id ? "bg-primary/10 border-l-4 border-primary" : "hover:bg-muted"
+                          selectedOrder === m.id
+                            ? "bg-primary/10 border-l-4 border-primary"
+                            : "hover:bg-muted"
                         }`}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-foreground truncate">{mappedOrder.orderNumber}</p>
-                            <p className="text-sm text-muted-foreground">{mappedOrder.date}</p>
-                            <p className="text-sm font-medium text-primary mt-1">{mappedOrder.total}</p>
+                            <p className="font-semibold text-foreground truncate">
+                              {m.orderNumber}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {m.date}
+                            </p>
+                            <p className="text-sm font-medium text-primary mt-1">
+                              {m.total}
+                            </p>
                           </div>
                           <div
                             className={`px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${
-                              mappedOrder.status === "delivered"
-                                ? "bg-primary/20 text-primary"
-                                : mappedOrder.status === "in-transit"
-                                  ? "bg-primary/15 text-primary"
-                                  : "bg-primary/10 text-primary"
+                              m.status === "delivered"
+                                ? "bg-green-100 text-green-700"
+                                : m.status === "in-transit"
+                                ? "bg-primary/15 text-primary"
+                                : "bg-primary/10 text-primary"
                             }`}
                           >
-                            {mappedOrder.status === "delivered" && "Đã giao"}
-                            {mappedOrder.status === "in-transit" && "Đang giao"}
-                            {mappedOrder.status === "processing" && "Chuẩn bị"}
+                            {m.status === "delivered" && "Đã giao"}
+                            {m.status === "in-transit" && "Đang giao"}
+                            {m.status === "processing" && "Chuẩn bị"}
                           </div>
                         </div>
                       </button>
-                    )
+                    );
                   })
                 )}
               </div>
             </Card>
           </div>
 
-          {/* Order Details */}
+          {/* Order Details + Feedback/Incident */}
           <div className="lg:col-span-2 space-y-6">
-            {currentOrder && (
+            {mappedCurrent && (
               <>
-                <OrderDetails order={mapOrderData(currentOrder)} />
-                <OrderTimeline timeline={mapOrderData(currentOrder).timeline} />
+                <OrderDetails order={mappedCurrent} />
+                <OrderTimeline timeline={mappedCurrent.timeline} />
+
+                {/* Chỉ hiện khi đã giao */}
+                {mappedCurrent.status === "delivered" && (
+                  <div className="mt-4 space-y-4">
+                    <FeedbackForm orderId={mappedCurrent.id} />
+                    <IncidentForm orderId={mappedCurrent.id} />
+                  </div>
+                )}
               </>
             )}
           </div>
         </div>
       </main>
     </div>
-  )
+  );
 }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import OrderForm from "@/components/OrderForm";
 import MapView from "@/components/MapView_Mapbox";
-
+import ChatBotWidget from "../components/ChatBotWidget";
 export default function OrderCreatePage() {
   const [pickup, setPickup] = useState("");
   const [delivery, setDelivery] = useState("");
@@ -26,7 +26,7 @@ export default function OrderCreatePage() {
             setPrice(fee);
           }}
         />
-
+<ChatBotWidget /> 
 
       </div>
 

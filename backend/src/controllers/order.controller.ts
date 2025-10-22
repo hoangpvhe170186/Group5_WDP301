@@ -71,7 +71,9 @@ export const addOrderItems = async (req, res) => {
       }))
     );
 
-    // ✅ Cập nhật trạng thái đơn hàng thành "Confirmed"
+
+    // ✅ Cập nhật trạng thái đơn hàng thành "Pending"
+
     order.status = "Pending";
     await order.save();
 
