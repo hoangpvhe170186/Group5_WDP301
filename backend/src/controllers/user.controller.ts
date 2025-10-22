@@ -81,16 +81,17 @@ export const getAllOrders = async (req: Request, res: Response) => {
       .populate("carrier_id")
       .populate("package_id")
       .populate("driver_id")
-      .populate("customer_id");  
+      .populate("customer_id")
+      .sort({ createdAt: -1 }); // ✅ Sắp xếp từ sớm nhất → muộn nhất
 
     if (!orders || orders.length === 0) {
-      return res.status(404).json({ message: "No orders found" });
+      return res.status(404).json({ message: "Không tìm thấy đơn hàng nào" });
     }
 
     res.json(orders);
   } catch (error) {
-    console.error("Error fetching orders:", error);
-    res.status(500).json({ message: "Server error", error });
+    console.error("❌ Lỗi khi lấy danh sách đơn hàng:", error);
+    res.status(500).json({ message: "Lỗi máy chủ", error });
   }
 };
 export const getDrivers = async (req: Request, res: Response) => {
@@ -204,18 +205,96 @@ export const getOrderById = async (req: Request, res: Response) => {
 };
 export const updateOrder = async (req: Request, res: Response) => {
   try {
-    const { seller_id, status, scheduled_time } = req.body;
-    const order = await Order.findByIdAndUpdate(
-      req.params.id,
-      { seller_id, status, scheduled_time },
-      { new: true }
-    );
+    const { driver_id, scheduled_time } = req.body;
+
+    const updateData: any = {};
+    if (driver_id) updateData.driver_id = driver_id;
+    if (scheduled_time) updateData.scheduled_time = scheduled_time;
+
+    // Nếu bạn muốn ghi log khi driver được chỉ định
+    if (driver_id) {
+      updateData.$push = {
+        auditLogs: {
+          at: new Date(),
+          by: req.user?.id || "system",
+          action: "ASSIGNED_DRIVER",
+          note: `Chỉ định driver ${driver_id}`,
+        },
+      };
+    }
+
+    const order = await Order.findByIdAndUpdate(req.params.id, updateData, {
+      new: true,
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy đơn hàng",
+      });
+    }
+
+    res.status(200).json({ success: true, data: order });
+  } catch (error) {
+    console.error("❌ Error updating order:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Lỗi server khi cập nhật đơn hàng" });
+  }
+};
+
+export const getDriverSchedule = async (req: Request, res: Response) => {
+  try {
+    const today = new Date();
+    const nextWeek = new Date();
+    nextWeek.setDate(today.getDate() + 7);
+    
+    // Lấy tất cả orders có driver_id và scheduled_time trong 7 ngày tới
+    const orders = await Order.find({
+      driver_id: { $ne: null },
+      scheduled_time: { $gte: today, $lte: nextWeek }
+    }).populate("driver_id", "full_name");
+    
+    const scheduleMap: Record<string, any[]> = {};
+    
+    for (const order of orders) {
+      const driver = order.driver_id?.full_name || "Chưa rõ";
+      const date = new Date(order.scheduled_time).toISOString().slice(0, 10);
+      if (!scheduleMap[date]) scheduleMap[date] = [];
+      scheduleMap[date].push(driver);
+    }
+    
+    res.status(200).json({ success: true, data: scheduleMap });
+  } catch (err) {
+    console.error("❌ Lỗi khi lấy lịch driver:", err);
+    res.status(500).json({ success: false, message: "Không thể tải lịch tài xế!" });
+  }
+};
+export const confirmOrder = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const order = await Order.findById(id);
     if (!order) {
       return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng" });
     }
-    res.status(200).json({ success: true, data: order });
-  } catch (error) {
-    console.error("Error updating order:", error);
-    res.status(500).json({ success: false, message: "Lỗi server khi cập nhật đơn hàng" });
+
+    if (order.status !== "Pending") {
+      return res.status(400).json({ success: false, message: "Chỉ đơn ở trạng thái Pending mới được xác nhận" });
+    }
+
+    order.status = "Confirmed";
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      message: "✅ Đơn hàng đã được xác nhận (Pending → Confirmed)",
+      data: order
+    });
+  } catch (err) {
+    console.error("❌ Lỗi khi xác nhận đơn:", err);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server khi xác nhận đơn"
+    });
   }
 };

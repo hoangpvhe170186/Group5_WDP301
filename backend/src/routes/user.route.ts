@@ -9,7 +9,9 @@ import {
   getSellers,
   assignOrder,
   getOrderById,
-  updateOrder
+  updateOrder,
+  getDriverSchedule,
+  confirmOrder
 } from "../controllers/user.controller";
 import { get } from "http";
 
@@ -24,4 +26,6 @@ router.get("/", getAllUsers);
 router.get("/:id", getUserById);
 router.put("/:id", updateUser);
 router.post("/orders/:id/assign", assignOrder);
+router.get("/drivers/schedule", getDriverSchedule);
+router.post("/orders/:id/confirm", confirmOrder);
 export default router;
