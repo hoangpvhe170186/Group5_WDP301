@@ -1,79 +1,50 @@
-import { useState } from "react";
-import { 
-  Search, 
-  Filter, 
-  Eye, 
-  Edit, 
-  Trash2, 
+"use client";
+
+import { useState, useEffect } from "react";
+import {
+  Search,
+  Filter,
+  Eye,
+  Edit,
+  Trash2,
   Plus,
   User,
   UserCheck,
   UserX,
   Mail,
   Phone,
-  Shield,
-  ShieldCheck
+  ShieldCheck,
 } from "lucide-react";
+import { userApi, User as UserType } from "@/services/user.service";
 
 export default function UserManagement() {
+  // 🧠 State
+  const [users, setUsers] = useState<UserType[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
 
-  // Dữ liệu mẫu
-  const users = [
-    {
-      id: "USR001",
-      fullName: "Nguyễn Văn Admin",
-      email: "admin@homeexpress.com",
-      phone: "0123456789",
-      role: "Admin",
-      status: "Active",
-      createdAt: "2024-01-01",
-      lastLogin: "2024-01-15 14:30"
-    },
-    {
-      id: "USR002",
-      fullName: "Trần Thị Bình",
-      email: "tranthibinh@email.com",
-      phone: "0987654321",
-      role: "Customer",
-      status: "Active",
-      createdAt: "2024-01-10",
-      lastLogin: "2024-01-15 10:15"
-    },
-    {
-      id: "USR003",
-      fullName: "Lê Văn Cường",
-      email: "levancuong@email.com",
-      phone: "0369852147",
-      role: "Driver",
-      status: "Active",
-      createdAt: "2024-01-08",
-      lastLogin: "2024-01-15 08:45"
-    },
-    {
-      id: "USR004",
-      fullName: "Phạm Thị Dung",
-      email: "phamthidung@email.com",
-      phone: "0741258963",
-      role: "Carrier",
-      status: "Inactive",
-      createdAt: "2024-01-05",
-      lastLogin: "2024-01-12 16:20"
-    },
-    {
-      id: "USR005",
-      fullName: "Hoàng Văn Em",
-      email: "hoangvanem@email.com",
-      phone: "0852369741",
-      role: "Customer",
-      status: "Suspended",
-      createdAt: "2024-01-03",
-      lastLogin: "2024-01-10 11:30"
-    }
-  ];
+  // 🚀 Fetch dữ liệu từ API khi component mount
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setLoading(true);
+        const { users } = await userApi.listUsers();
+        setUsers(users);
+      } catch (err: any) {
+        console.error("❌ Lỗi khi tải danh sách user:", err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
 
+    fetchUsers();
+  }, []);
+
+  // ⚙️ Hàm render icon và màu cho vai trò
   const getRoleIcon = (role: string) => {
     switch (role) {
       case "Admin":
@@ -117,17 +88,36 @@ export default function UserManagement() {
     }
   };
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.id.toLowerCase().includes(searchTerm.toLowerCase());
+  // 🔍 Lọc dữ liệu theo tìm kiếm & bộ lọc
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch =
+      user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.id.toLowerCase().includes(searchTerm.toLowerCase());
+
     const matchesRole = filterRole === "all" || user.role === filterRole;
     const matchesStatus = filterStatus === "all" || user.status === filterStatus;
     return matchesSearch && matchesRole && matchesStatus;
   });
 
+  // 🧭 Loading & Error
+  if (loading)
+    return (
+      <div className="flex items-center justify-center h-64 text-gray-500">
+        Đang tải danh sách người dùng...
+      </div>
+    );
+
+  if (error)
+    return (
+      <div className="text-center text-red-600 font-semibold mt-10">
+        ❌ Lỗi: {error}
+      </div>
+    );
+
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Quản lý tài khoản</h1>
         <button className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2">
@@ -187,25 +177,25 @@ export default function UserManagement() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Thông tin
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Liên hệ
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Vai trò
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Trạng thái
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Ngày tạo
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Đăng nhập cuối
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Cập nhật cuối
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Thao tác
                 </th>
               </tr>
@@ -215,13 +205,13 @@ export default function UserManagement() {
                 <tr key={index} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10">
-                        <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
-                          {getRoleIcon(user.role)}
-                        </div>
+                      <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
+                        {getRoleIcon(user.role)}
                       </div>
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{user.fullName}</div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {user.fullName}
+                        </div>
                         <div className="text-sm text-gray-500">ID: {user.id}</div>
                       </div>
                     </div>
@@ -232,21 +222,35 @@ export default function UserManagement() {
                         <Mail className="w-4 h-4 mr-2 text-gray-400" />
                         {user.email}
                       </div>
-                      <div className="flex items-center text-sm text-gray-500">
-                        <Phone className="w-4 h-4 mr-2 text-gray-400" />
-                        {user.phone}
-                      </div>
+                      {user.phone && (
+                        <div className="flex items-center text-sm text-gray-500">
+                          <Phone className="w-4 h-4 mr-2 text-gray-400" />
+                          {user.phone}
+                        </div>
+                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}>
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleColor(
+                        user.role
+                      )}`}
+                    >
                       {getRoleIcon(user.role)}
                       <span className="ml-1">{user.role}</span>
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(user.status)}`}>
-                      {user.status === "Active" ? <UserCheck className="w-4 h-4 mr-1" /> : <UserX className="w-4 h-4 mr-1" />}
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
+                        user.status
+                      )}`}
+                    >
+                      {user.status === "Active" ? (
+                        <UserCheck className="w-4 h-4 mr-1" />
+                      ) : (
+                        <UserX className="w-4 h-4 mr-1" />
+                      )}
                       {user.status}
                     </span>
                   </td>
@@ -254,7 +258,7 @@ export default function UserManagement() {
                     {user.createdAt}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.lastLogin}
+                    {user.updatedAt}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
@@ -275,37 +279,9 @@ export default function UserManagement() {
           </table>
         </div>
 
-        {/* Pagination */}
-        <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-          <div className="flex-1 flex justify-between sm:hidden">
-            <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-              Trước
-            </button>
-            <button className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-              Sau
-            </button>
-          </div>
-          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-gray-700">
-                Hiển thị <span className="font-medium">1</span> đến <span className="font-medium">{filteredUsers.length}</span> 
-                của <span className="font-medium">{users.length}</span> kết quả
-              </p>
-            </div>
-            <div>
-              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                <button className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                  Trước
-                </button>
-                <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-                  1
-                </button>
-                <button className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                  Sau
-                </button>
-              </nav>
-            </div>
-          </div>
+        {/* Pagination (placeholder) */}
+        <div className="bg-white px-4 py-3 text-sm text-gray-700 text-center border-t">
+          Hiển thị {filteredUsers.length} / {users.length} người dùng
         </div>
       </div>
     </div>
