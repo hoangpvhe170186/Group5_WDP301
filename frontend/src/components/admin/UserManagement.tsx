@@ -15,7 +15,7 @@ import {
   Phone,
   ShieldCheck,
 } from "lucide-react";
-import { userApi, User as UserType } from "@/services/user.service";
+import { userApi, type User as UserType } from "@/services/user.service";
 
 export default function UserManagement() {
   // 🧠 State
