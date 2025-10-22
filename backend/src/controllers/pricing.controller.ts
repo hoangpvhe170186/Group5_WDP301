@@ -9,27 +9,80 @@ import mongoose from "mongoose";
  * @route   GET /api/pricing
  * @desc    Lấy danh sách tất cả các gói cước, có đính kèm thông tin xe.
  */
+const specsByCapacity = {
+  500: {
+    maxPayload: "500kg",
+    innerSize: "190cm x 140cm x 140cm",
+    suitable: [
+      "01 máy giặt (≈10kg)",
+      "01 tủ lạnh mini (cao < 1m)",
+      "01 tủ quần áo/tháo rời (cao < 1.5m, ngang < 1m)",
+      "4–6 thùng đồ cá nhân (50×50×50cm)",
+    ],
+  },
+  1500: {
+    maxPayload: "1.5 tấn",
+    innerSize: "300cm x 170cm x 170cm",
+    suitable: [
+      "Nội thất cỡ vừa–lớn",
+      "15–25 thùng đồ",
+      "Phù hợp chuyển trọ căn 1–2 phòng",
+    ],
+  },
+  3000: {
+    maxPayload: "3 tấn",
+    innerSize: "420cm x 190cm x 200cm",
+    suitable: [
+      "Văn phòng nhỏ 3–5 người",
+      "Thiết bị cồng kềnh, nhiều thùng hàng",
+      "Chuyển nhà 2–3 phòng ngủ",
+    ],
+  },
+};
+
+/**
+ * @route   GET /api/pricing
+ * @desc    Lấy danh sách tất cả các gói cước, kèm thông tin xe VÀ thông số kỹ thuật.
+ */
 export const getAllPricePackages = async (req: Request, res: Response) => {
   try {
-    // 🟢 Lấy toàn bộ gói giá
     const packages = await PricePackage.find({}).lean();
+    const vehicles = await Vehicle.find({}, "capacity image type").lean();
 
-    // 🟢 Lấy toàn bộ xe để biết capacity + package_id
-    const vehicles = await Vehicle.find({}, "capacity package_id").lean();
+    const packagesWithFullInfo = packages.map((pkg) => {
+      let targetCapacity: number | null = null;
+      // ✅ Bước 2: Suy ra tải trọng từ tên gói
+      if (pkg.name === "Gói Nhỏ") {
+        targetCapacity = 500;
+      } else if (pkg.name === "Gói Chung") {
+        targetCapacity = 1500;
+      } else if (pkg.name === "Gói Lớn") {
+        targetCapacity = 3000;
+      }
 
-    // 🟢 Ghép capacity vào từng gói
-    const packagesWithCapacity = packages.map((pkg) => {
-      const vehicle = vehicles.find(
-        (v) => v.package_id?.toString() === pkg._id.toString()
-      );
+      let representativeVehicle = null;
+      let vehicleSpecs = null;
 
+      if (targetCapacity !== null) {
+        // ✅ Bước 3: Tìm xe đại diện VÀ thông số kỹ thuật tương ứng
+        representativeVehicle = vehicles.find(v => v.capacity === targetCapacity);
+        vehicleSpecs = specsByCapacity[targetCapacity as keyof typeof specsByCapacity];
+      }
+
+      // ✅ Bước 4: Trả về đối tượng đã được gộp đầy đủ thông tin
       return {
         ...pkg,
-        capacity: vehicle ? vehicle.capacity : null,
+        vehicleInfo: representativeVehicle ? {
+          capacity: representativeVehicle.capacity,
+          type: representativeVehicle.type,
+          image: representativeVehicle.image,
+        } : null,
+        specs: vehicleSpecs || null, // Thêm thông số kỹ thuật vào đây
       };
     });
 
-    res.status(200).json({ success: true, packages: packagesWithCapacity });
+    res.status(200).json({ success: true, packages: packagesWithFullInfo });
+
   } catch (error) {
     console.error("❌ Lỗi khi tải danh sách gói cước:", error);
     res
