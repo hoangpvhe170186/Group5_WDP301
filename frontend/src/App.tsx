@@ -50,7 +50,6 @@ export default function App() {
           <Route path="forgot-password" element={<ForgotPasswordPage />} />
         </Route>
 <<<<<<< HEAD
-<<<<<<< HEAD
         <Route path="/seller/home" element={<Seller />}>
           
 =======
@@ -58,11 +57,6 @@ export default function App() {
         <Route path="/myorder" element={<UserOrderLayout />}>
           <Route path="tracking" element={<OrderTracking />} />
 >>>>>>> long
-=======
-        <Route path="/seller/home" element={<Seller />}></Route>
-        <Route path="/myorder" element={<UserOrderLayout />}>
-          <Route path="tracking" element={<OrderTracking />} />
->>>>>>> 308a323ff3a9a5af3d56c8912cb77cb74c444f79
         </Route>
       </Routes>
     </BrowserRouter>

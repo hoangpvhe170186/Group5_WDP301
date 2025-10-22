@@ -23,7 +23,6 @@ const orderSchema = new mongoose.Schema(
       {
         at: { type: Date, default: Date.now },
 <<<<<<< HEAD
-<<<<<<< HEAD
         by: { type: String }, // user_id / carrier_id
         action: { type: String }, // e.g. "ACCEPTED", "DECLINED", "PROGRESS:DELIVERING"
         note: { type: String, default: "" }, // optional comment
@@ -32,11 +31,6 @@ const orderSchema = new mongoose.Schema(
         action: { type: String },
         note: { type: String, default: "" }, 
 >>>>>>> long
-=======
-        by: { type: String }, // user_id / carrier_id
-        action: { type: String }, // e.g. "ACCEPTED", "DECLINED", "PROGRESS:DELIVERING"
-        note: { type: String, default: "" }, // optional comment
->>>>>>> 308a323ff3a9a5af3d56c8912cb77cb74c444f79
       },
     ],
   },

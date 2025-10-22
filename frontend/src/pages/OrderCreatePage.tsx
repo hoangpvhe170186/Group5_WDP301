@@ -3,7 +3,7 @@
 import { useState } from "react";
 import OrderForm from "@/components/OrderForm";
 import MapView from "@/components/MapView_Mapbox";
-import ChatBotWidget from "../components/ChatBotWidget";
+
 export default function OrderCreatePage() {
   const [pickup, setPickup] = useState("");
   const [delivery, setDelivery] = useState("");
@@ -13,7 +13,7 @@ export default function OrderCreatePage() {
 
   return (
     <div className="flex flex-row h-screen">
-      
+      {/* Form bên trái */}
       <div className="w-1/3 bg-white p-4 overflow-y-auto">
         <OrderForm
           onAddressChange={(p, d) => {
@@ -26,10 +26,17 @@ export default function OrderCreatePage() {
             setPrice(fee);
           }}
         />
-<ChatBotWidget /> 
 
+        {distance && (
+          <div className="mt-4 p-4 border rounded-md text-sm">
+            <p>📍 Khoảng cách: {distance}</p>
+            <p>⏱️ Thời gian dự kiến: {duration}</p>
+            <p>💰 Giá tạm tính: {price.toLocaleString()} VNĐ</p>
+          </div>
+        )}
       </div>
 
+      {/* Bản đồ bên phải */}
       <div className="w-2/3">
         <MapView
           pickup={pickup}
