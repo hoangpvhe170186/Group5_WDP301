@@ -71,8 +71,8 @@ export const addOrderItems = async (req, res) => {
       }))
     );
 
-    // ✅ Cập nhật trạng thái đơn hàng thành "Confirmed"
-    order.status = "Confirmed";
+    // ✅ Cập nhật trạng thái đơn hàng thành "Pending"
+    order.status = "Pending";
     await order.save();
 
     res.json({
@@ -237,11 +237,7 @@ export const searchOrder = async (req: Request, res: Response) => {
     }
 
     let orders = [];
-<<<<<<< HEAD
 
-=======
-              
->>>>>>> long
     // 🔹 Nếu tìm theo số điện thoại
     if (phone) {
       orders = await Order.find({ phone }).sort({ createdAt: -1 });
@@ -282,9 +278,6 @@ export const searchOrder = async (req: Request, res: Response) => {
     });
   }
 };
-<<<<<<< HEAD
-=======
 
 
 
->>>>>>> long

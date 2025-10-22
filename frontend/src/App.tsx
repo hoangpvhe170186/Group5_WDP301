@@ -49,14 +49,9 @@ export default function App() {
           <Route path="verify-otp" element={<VerifyOtpPage />} />
           <Route path="forgot-password" element={<ForgotPasswordPage />} />
         </Route>
-<<<<<<< HEAD
-        <Route path="/seller/home" element={<Seller />}>
-          
-=======
         <Route path="/seller/home" element={<Seller />}></Route>
         <Route path="/myorder" element={<UserOrderLayout />}>
           <Route path="tracking" element={<OrderTracking />} />
->>>>>>> long
         </Route>
       </Routes>
     </BrowserRouter>

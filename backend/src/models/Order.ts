@@ -22,15 +22,9 @@ const orderSchema = new mongoose.Schema(
     auditLogs: [
       {
         at: { type: Date, default: Date.now },
-<<<<<<< HEAD
         by: { type: String }, // user_id / carrier_id
         action: { type: String }, // e.g. "ACCEPTED", "DECLINED", "PROGRESS:DELIVERING"
         note: { type: String, default: "" }, // optional comment
-=======
-        by: { type: String }, 
-        action: { type: String },
-        note: { type: String, default: "" }, 
->>>>>>> long
       },
     ],
   },

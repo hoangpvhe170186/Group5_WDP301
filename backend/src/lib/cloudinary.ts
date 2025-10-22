@@ -6,9 +6,10 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET as string,
 });
 
-export async function uploadToCloudinary(localPath: string) {
-  return cloudinary.uploader.upload(localPath, { resource_type: "auto" });
-}
+export { cloudinary };          // named export
+export default cloudinary;      // default export là client
 
-// 👉 Export default để tránh lỗi "no exported member"
-export default uploadToCloudinary;
+// (tuỳ chọn) helper nếu cần
+export async function uploadToCloudinary(localPath: string, opts: any = {}) {
+  return cloudinary.uploader.upload(localPath, { resource_type: "auto", ...opts });
+}
