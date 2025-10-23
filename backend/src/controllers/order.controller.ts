@@ -3,6 +3,7 @@ import Order from "../models/Order"; // đảm bảo đã có model Order.ts
 import OrderItem from "../models/OrderItem";
 import PricePackage from "../models/PricePackage";
 import mongoose from "mongoose";
+import OrderStatusLog from "../models/OrderStatusLog";
 export const createTemporaryOrder = async (req, res) => {
   try {
     const {
@@ -280,5 +281,35 @@ export const searchOrder = async (req: Request, res: Response) => {
     });
   }
 };
+export const cancelOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    const userId = req.user._id; // ✅ Lấy từ middleware requireAuth
 
+    const order = await Order.findById(id);
+    if (!order) return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng." });
+
+    if (order.status !== "Pending") {
+      return res.status(400).json({
+        success: false,
+        message: `Không thể hủy đơn hàng vì trạng thái hiện tại là "${order.status}".`,
+      });
+    }
+
+    await OrderStatusLog.create({
+      order_id: order._id,
+      updated_by: userId,
+      status: "Canceled",
+      note: reason || "Người dùng hủy đơn hàng",
+    });
+
+    await Order.deleteOne({ _id: order._id });
+
+    return res.json({ success: true, message: "Đã hủy và xóa đơn hàng thành công." });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Lỗi server khi hủy đơn hàng." });
+  }
+};
 
