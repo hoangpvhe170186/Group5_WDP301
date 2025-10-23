@@ -15,7 +15,9 @@ export const getAuthToken = (): string => {
   );
 };
 
-
+/**
+ * Kiểu dữ liệu User
+ */
 export interface User {
   id: string;
   fullName: string;
@@ -27,38 +29,61 @@ export interface User {
   createdAt: string;
   updatedAt: string;
 }
+
+/**
+ * Hàm tiện ích chuẩn hóa dữ liệu user từ backend
+ */
+const normalizeUser = (u: any): User => ({
+  id: String(u._id),
+  fullName: u.full_name || "",
+  email: u.email || "",
+  phone: u.phone || "",
+  avatar: u.avatar || "",
+  role: u.role || "Customer",
+  status: u.status || "Active",
+  createdAt: u.created_at
+    ? new Date(u.created_at).toLocaleString("vi-VN")
+    : "",
+  updatedAt: u.updated_at
+    ? new Date(u.updated_at).toLocaleString("vi-VN")
+    : "",
+});
+
+/**
+ * 📘 API Service cho User
+ */
 export const userApi = {
- 
-  async listUsers(): Promise<{ users: User[] }> {
+  /**
+   * 🔍 Lấy danh sách user với bộ lọc (role, status, search, phân trang)
+   * API: GET /users?role=Driver&status=Active&search=An&page=1&limit=20
+   */
+  async listUsers(
+    filters?: { role?: string; status?: string; search?: string; page?: number; limit?: number }
+  ): Promise<{ users: User[]; total?: number }> {
     try {
+      const params: any = {};
+
+      if (filters?.role && filters.role !== "all") params.role = filters.role;
+      if (filters?.status && filters.status !== "all") params.status = filters.status;
+      if (filters?.search) params.search = filters.search;
+      if (filters?.page) params.page = filters.page;
+      if (filters?.limit) params.limit = filters.limit;
+
       const { data } = await api.get("/users", {
+        params,
         headers: { Authorization: `Bearer ${getAuthToken()}` },
       });
 
-      // Chuẩn hóa dữ liệu trả về
-      const rawUsers = data.data || data || [];
-      const users: User[] = rawUsers.map((u: any) => ({
-        id: String(u._id),
-        fullName: u.full_name || "",
-        email: u.email || "",
-        phone: u.phone || "",
-        avatar: u.avatar || "",
-        role: u.role || "Customer",
-        status: u.status || "Active",
-        createdAt: u.created_at
-          ? new Date(u.created_at).toLocaleString("vi-VN")
-          : "",
-        updatedAt: u.updated_at
-          ? new Date(u.updated_at).toLocaleString("vi-VN")
-          : "",
-      }));
+      const rawUsers = data.data || data.users || data || [];
+      const users: User[] = Array.isArray(rawUsers)
+        ? rawUsers.map(normalizeUser)
+        : (rawUsers.items || []).map(normalizeUser);
 
-      return { users };
+      const total = data.total || rawUsers.total || users.length;
+
+      return { users, total };
     } catch (error: any) {
-      console.error(
-        "❌ listUsers error:",
-        error.response?.data || error.message
-      );
+      console.error("❌ listUsers error:", error.response?.data || error.message);
       throw new Error(
         error.response?.data?.message || "Không thể tải danh sách người dùng"
       );
@@ -66,7 +91,7 @@ export const userApi = {
   },
 
   /**
-   * 📄 Lấy chi tiết thông tin user theo ID
+   * 📄 Lấy chi tiết user theo ID
    * API: GET /users/:id
    */
   async getDetail(id: string): Promise<User> {
@@ -74,23 +99,7 @@ export const userApi = {
       const { data } = await api.get(`/users/${id}`, {
         headers: { Authorization: `Bearer ${getAuthToken()}` },
       });
-
-      const u = data.data || data;
-      return {
-        id: String(u._id),
-        fullName: u.full_name || "",
-        email: u.email || "",
-        phone: u.phone || "",
-        avatar: u.avatar || "",
-        role: u.role || "Customer",
-        status: u.status || "Active",
-        createdAt: u.created_at
-          ? new Date(u.created_at).toLocaleString("vi-VN")
-          : "",
-        updatedAt: u.updated_at
-          ? new Date(u.updated_at).toLocaleString("vi-VN")
-          : "",
-      };
+      return normalizeUser(data.data || data);
     } catch (error: any) {
       console.error("❌ getDetail error:", error);
       throw new Error(
@@ -108,31 +117,11 @@ export const userApi = {
       const { data } = await api.put(`/users/${id}`, payload, {
         headers: { Authorization: `Bearer ${getAuthToken()}` },
       });
-
-      const u = data.data || data;
-      return {
-        id: String(u._id),
-        fullName: u.full_name || "",
-        email: u.email || "",
-        phone: u.phone || "",
-        avatar: u.avatar || "",
-        role: u.role || "Customer",
-        status: u.status || "Active",
-        createdAt: u.created_at
-          ? new Date(u.created_at).toLocaleString("vi-VN")
-          : "",
-        updatedAt: u.updated_at
-          ? new Date(u.updated_at).toLocaleString("vi-VN")
-          : "",
-      };
+      return normalizeUser(data.data || data);
     } catch (error: any) {
-      console.error(
-        "❌ updateUser error:",
-        error.response?.data || error.message
-      );
+      console.error("❌ updateUser error:", error.response?.data || error.message);
       throw new Error(
-        error.response?.data?.message ||
-          "Không thể cập nhật thông tin người dùng"
+        error.response?.data?.message || "Không thể cập nhật thông tin người dùng"
       );
     }
   },
@@ -146,110 +135,11 @@ export const userApi = {
       const { data } = await api.delete(`/users/${id}`, {
         headers: { Authorization: `Bearer ${getAuthToken()}` },
       });
-
       return { message: data.message || "Đã xóa người dùng thành công" };
     } catch (error: any) {
-      console.error(
-        "❌ deleteUser error:",
-        error.response?.data || error.message
-      );
+      console.error("❌ deleteUser error:", error.response?.data || error.message);
       throw new Error(
         error.response?.data?.message || "Không thể xóa người dùng"
-      );
-    }
-  },
-
-  /**
-   * 👩‍💼 Lấy danh sách Seller
-   * API: GET /users/sellers
-   */
-  async listSellers(): Promise<{ users: User[] }> {
-    try {
-      const { data } = await api.get("/users/sellers", {
-        headers: { Authorization: `Bearer ${getAuthToken()}` },
-      });
-      const rawUsers = data.data || data || [];
-      const users: User[] = rawUsers.map((u: any) => ({
-        id: String(u._id),
-        fullName: u.full_name || "",
-        email: u.email || "",
-        phone: u.phone || "",
-        role: u.role || "Seller",
-        status: u.status || "Active",
-        createdAt: new Date(u.created_at).toLocaleString("vi-VN"),
-        updatedAt: new Date(u.updated_at).toLocaleString("vi-VN"),
-      }));
-      return { users };
-    } catch (error: any) {
-      console.error(
-        "❌ listSellers error:",
-        error.response?.data || error.message
-      );
-      throw new Error(
-        error.response?.data?.message || "Không thể tải danh sách người bán"
-      );
-    }
-  },
-
-  /**
-   * 🚚 Lấy danh sách tài xế
-   * API: GET /users/drivers
-   */
-  async listDrivers(): Promise<{ users: User[] }> {
-    try {
-      const { data } = await api.get("/users/drivers", {
-        headers: { Authorization: `Bearer ${getAuthToken()}` },
-      });
-      const rawUsers = data.data || data || [];
-      const users: User[] = rawUsers.map((u: any) => ({
-        id: String(u._id),
-        fullName: u.full_name || "",
-        phone: u.phone || "",
-        role: u.role || "Driver",
-        status: u.status || "Active",
-        createdAt: new Date(u.created_at).toLocaleString("vi-VN"),
-        updatedAt: new Date(u.updated_at).toLocaleString("vi-VN"),
-      }));
-      return { users };
-    } catch (error: any) {
-      console.error(
-        "❌ listDrivers error:",
-        error.response?.data || error.message
-      );
-      throw new Error(
-        error.response?.data?.message || "Không thể tải danh sách tài xế"
-      );
-    }
-  },
-
-  /**
-   * 🚛 Lấy danh sách Carrier (đơn vị vận chuyển)
-   * API: GET /users/carriers
-   */
-  async listCarriers(): Promise<{ users: User[] }> {
-    try {
-      const { data } = await api.get("/users/carriers", {
-        headers: { Authorization: `Bearer ${getAuthToken()}` },
-      });
-      const rawUsers = data.data || data || [];
-      const users: User[] = rawUsers.map((u: any) => ({
-        id: String(u._id),
-        fullName: u.full_name || "",
-        phone: u.phone || "",
-        role: u.role || "Carrier",
-        status: u.status || "Active",
-        createdAt: new Date(u.created_at).toLocaleString("vi-VN"),
-        updatedAt: new Date(u.updated_at).toLocaleString("vi-VN"),
-      }));
-      return { users };
-    } catch (error: any) {
-      console.error(
-        "❌ listCarriers error:",
-        error.response?.data || error.message
-      );
-      throw new Error(
-        error.response?.data?.message ||
-          "Không thể tải danh sách đơn vị vận chuyển"
       );
     }
   },
