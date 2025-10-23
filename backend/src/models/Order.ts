@@ -13,11 +13,20 @@ const orderSchema = new mongoose.Schema(
     pickup_address: { type: String, required: true },
     delivery_address: { type: String, required: true },
     scheduled_time: { type: Date },
-    status: { type: String, default: "Pending" },
+    // UPDATED: status enum to include new workflow states (keep legacy "Pending")
+    status: { 
+      type: String, 
+      enum: ["Pending", "CONFIRMED","AVAILABLE","ASSIGNED","ACCEPTED","DECLINED","COMPLETED","CANCELLED"],
+      default: "Pending"
+    },
     total_price: { type: Number, required: true },
     isPaid: { type: Boolean, default: false },
 
-    // ✅ NEW FIELDS ADDED BELOW
+    // NEW FIELDS
+    assignedCarrier: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    acceptedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    availableAt: { type: Date, default: null },
+
     declineReason: { type: String, default: null },
     signatureUrl: { type: String, default: null },
 

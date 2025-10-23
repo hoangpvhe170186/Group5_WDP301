@@ -17,26 +17,22 @@ const OrderActionModal: React.FC<OrderActionModalProps> = ({
   const [status, setStatus] = useState("");
   const [scheduledTime, setScheduledTime] = useState("");
   const [sellerId, setSellerId] = useState("");
-  const [driverId, setDriverId] = useState("");
   const [carrierId, setCarrierId] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const [driverSchedule, setDriverSchedule] = useState<Record<string, string[]>>({});
   const [sellers, setSellers] = useState<any[]>([]);
-  const [drivers, setDrivers] = useState<any[]>([]);
   const [carriers, setCarriers] = useState<any[]>([]);
+  const [carrierSchedule, setCarrierSchedule] = useState<Record<string, string[]>>({});
 
-  // 🧠 Lấy danh sách user
+  // 🧠 Lấy danh sách seller + carrier
   useEffect(() => {
     const fetchLists = async () => {
       try {
-        const [sellerRes, driverRes, carrierRes] = await Promise.all([
+        const [sellerRes, carrierRes] = await Promise.all([
           axios.get("http://localhost:4000/api/users/sellers"),
-          axios.get("http://localhost:4000/api/users/drivers"),
           axios.get("http://localhost:4000/api/users/carriers"),
         ]);
         setSellers(sellerRes.data.data || []);
-        setDrivers(driverRes.data.data || []);
         setCarriers(carrierRes.data.data || []);
       } catch (error) {
         console.error("❌ Lỗi khi tải danh sách:", error);
@@ -46,7 +42,7 @@ const OrderActionModal: React.FC<OrderActionModalProps> = ({
     fetchLists();
   }, []);
 
-  // 🧠 Lấy chi tiết đơn
+  // 🧠 Lấy chi tiết đơn hàng
   useEffect(() => {
     if (!orderId) return;
     const fetchOrder = async () => {
@@ -56,7 +52,6 @@ const OrderActionModal: React.FC<OrderActionModalProps> = ({
         );
         const data = res.data.data || res.data;
         setSellerId(data.seller_id?._id || data.seller_id || "");
-        setDriverId(data.driver_id?._id || data.driver_id || "");
         setCarrierId(data.carrier_id?._id || data.carrier_id || "");
         setStatus(data.status || "");
         if (data.scheduled_time) {
@@ -75,22 +70,24 @@ const OrderActionModal: React.FC<OrderActionModalProps> = ({
     fetchOrder();
   }, [orderId]);
 
-  // 🧠 Lấy lịch driver 7 ngày tới
+  // 🧠 Lấy lịch carrier 7 ngày tới
   useEffect(() => {
-    const fetchDriverSchedule = async () => {
+    const fetchCarrierSchedule = async () => {
       try {
-        const res = await axios.get("http://localhost:4000/api/users/drivers/schedule");
+        const res = await axios.get(
+          "http://localhost:4000/api/users/carriers/schedule"
+        );
         if (res.data.success) {
-          setDriverSchedule(res.data.data);
+          setCarrierSchedule(res.data.data);
         }
       } catch (err) {
-        console.error("❌ Lỗi khi tải lịch driver:", err);
+        console.error("❌ Lỗi khi tải lịch carrier:", err);
       }
     };
-    fetchDriverSchedule();
+    fetchCarrierSchedule();
   }, []);
 
-  // 🧠 Cập nhật đơn
+  // 🧠 Cập nhật đơn hàng
   const handleSave = async () => {
     if (!orderId) return;
     setLoading(true);
@@ -99,7 +96,6 @@ const OrderActionModal: React.FC<OrderActionModalProps> = ({
         `http://localhost:4000/api/users/orders/${orderId}`,
         {
           seller_id: sellerId,
-          driver_id: driverId,
           carrier_id: carrierId,
           status,
           scheduled_time: scheduledTime,
@@ -132,54 +128,54 @@ const OrderActionModal: React.FC<OrderActionModalProps> = ({
         </button>
 
         <h2 className="text-xl font-semibold mb-4 text-gray-800">
-          Cập nhật / Giao việc đơn #{orderId}
+          Giao việc cho Carrier (#{orderId})
         </h2>
 
         <div className="space-y-4">
-          {/* Scheduled Time */}
+          {/* Thời gian dự kiến */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Thời gian dự kiến
             </label>
             <input
-  type="datetime-local"
-  value={scheduledTime}
-  onChange={(e) => setScheduledTime(e.target.value)}
-  min={new Date().toISOString().slice(0, 16)} // ⬅️ Giới hạn nhỏ nhất là thời gian hiện tại
-  className="w-full border border-gray-300 rounded-lg p-2"
-/>
+              type="datetime-local"
+              value={scheduledTime}
+              onChange={(e) => setScheduledTime(e.target.value)}
+              min={new Date().toISOString().slice(0, 16)}
+              className="w-full border border-gray-300 rounded-lg p-2"
+            />
           </div>
 
-          {/* Driver */}
+          {/* Chọn Carrier */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Driver
+              Chọn Carrier
             </label>
             <select
-              value={driverId}
-              onChange={(e) => setDriverId(e.target.value)}
+              value={carrierId}
+              onChange={(e) => setCarrierId(e.target.value)}
               className="w-full border border-gray-300 rounded-lg p-2"
             >
-              <option value="">-- Chọn driver --</option>
-              {drivers.map((d) => (
-                <option key={d._id} value={d._id}>
-                  {d.full_name}
+              <option value="">-- Chọn Carrier --</option>
+              {carriers.map((c) => (
+                <option key={c._id} value={c._id}>
+                  {c.full_name} ({c.email})
                 </option>
               ))}
             </select>
           </div>
 
-          {/* 🗓️ Lịch driver 7 ngày tới */}
+          {/* 🗓️ Lịch carrier 7 ngày tới */}
           <div className="mt-6">
             <h3 className="font-semibold mb-2 text-gray-700">
-              Lịch tài xế 7 ngày tới
+              Lịch carrier 7 ngày tới
             </h3>
             <div className="overflow-x-auto">
               <table className="w-full border text-sm text-gray-700">
                 <thead className="bg-gray-100">
                   <tr>
                     <th className="border p-2">Ngày</th>
-                    <th className="border p-2">Tài xế đã có đơn</th>
+                    <th className="border p-2">Carrier đã có đơn</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -196,8 +192,8 @@ const OrderActionModal: React.FC<OrderActionModalProps> = ({
                           {dayName} ({dateStr})
                         </td>
                         <td className="border p-2">
-                          {driverSchedule[dateStr]?.length ? (
-                            driverSchedule[dateStr].join(", ")
+                          {carrierSchedule[dateStr]?.length ? (
+                            carrierSchedule[dateStr].join(", ")
                           ) : (
                             <span className="text-gray-400">Trống</span>
                           )}

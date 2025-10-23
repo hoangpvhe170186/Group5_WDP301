@@ -1,3 +1,4 @@
+import { socket } from "@/lib/socket";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
 
@@ -64,47 +65,50 @@ export default function ChatBotWidget() {
 
   // ✅ Kết nối socket 1 lần duy nhất
   useEffect(() => {
+  // Reset lỗi cũ
+  setConnErr(null);
+
+  // ✅ Tham gia room
+  socket.emit("join_room", roomId);
+
+  // ✅ Khi kết nối thành công
+  socket.on("connect", () => {
+    console.log("🔌 Connected to socket server");
     setConnErr(null);
+  });
 
-    const s = io(SOCKET_URL, {
-      // Cho phép websocket và fallback polling để tránh bị chặn bởi proxy/cors
-      transports: ["websocket", "polling"],
-      reconnection: true,
-      reconnectionAttempts: 20,
-      reconnectionDelay: 600,
-    });
+  // ✅ Khi lỗi kết nối
+  socket.on("connect_error", (err) => {
+    console.error("⚠️ Socket connection error:", err);
+    setConnErr(err?.message || "Không thể kết nối server.");
+  });
 
-    socketRef.current = s;
+  // ✅ Khi nhận tin nhắn realtime
+  socket.on(
+    "receive_message",
+    (data: UiMessage & { roomId?: string; name?: string }) => {
+      // Nếu roomId không trùng thì bỏ qua
+      if (data.roomId && data.roomId !== roomId) return;
 
-    s.on("connect", () => setConnErr(null));
-    s.on("connect_error", (err) => {
-      setConnErr(err?.message || "Không thể kết nối server.");
-    });
+      setMessages((prev) => [...prev, data]);
 
-    s.emit("join_room", roomId);
+      // ✅ Lưu DB khi nhận tin từ seller/bot qua socket
+      persistMessage({
+        roomId,
+        sender: (data.sender as any) || "seller",
+        senderName: data?.name,
+        text: data.text,
+      });
+    }
+  );
 
-    // Nhận tin nhắn realtime
-    s.on(
-      "receive_message",
-      (data: UiMessage & { roomId?: string; name?: string }) => {
-        setMessages((prev) => [...prev, data]);
-        // ✅ lưu DB khi nhận tin từ seller/bot qua socket
-        persistMessage({
-          roomId,
-          sender: (data.sender as any) || "seller",
-          senderName: data?.name,
-          text: data.text,
-        });
-      }
-    );
-
-    return () => {
-      s.off("receive_message");
-      s.off("connect_error");
-      s.off("connect");
-      s.disconnect();
-    };
-  }, [roomId]);
+  // ✅ Cleanup
+  return () => {
+    socket.off("connect");
+    socket.off("connect_error");
+    socket.off("receive_message");
+  };
+}, [roomId]);
 
   // Lấy lịch sử khi chuyển sang agent
   useEffect(() => {
