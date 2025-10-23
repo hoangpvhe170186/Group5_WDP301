@@ -56,7 +56,8 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/order-tracking", orderTrackingRoute);
 app.use("/api/extrafees", extraFeeRoutes);
 app.use("/api/upload", uploadRoute);
-
+app.use("/api/carrier", carrierRoutes);
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 // 👉 mới mount
 app.use("/api/feedback", feedbackRoute);
 app.use("/api/incidents", incidentsRoute);

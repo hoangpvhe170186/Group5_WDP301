@@ -253,7 +253,7 @@ const OrderManagementScreen = () => {
                     )}
 
                     {/* Cập nhật / Giao việc */}
-                    {(order.status === "Assigned" || order.status === "Decline") && (
+                    {(order.status === "ASSIGNED" || order.status === "DECLINED") && (
                       <button
                         onClick={() => {
                           setSelectedOrderId(order._id);

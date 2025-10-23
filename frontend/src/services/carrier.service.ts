@@ -50,14 +50,15 @@ const toNum = (v: any) =>
   v?.$numberDecimal
     ? Number(v.$numberDecimal)
     : typeof v === "object" && v?._bsontype === "Decimal128"
-    ? Number(v.toString())
-    : Number(v ?? 0);
+      ? Number(v.toString())
+      : Number(v ?? 0);
 
 export const carrierApi = {
   async getProfile(): Promise<CarrierProfile> {
-    const { data } = await api.get("/carrier/me", {
+    const { data } = await api.get("/carrier/profile", {
       headers: { Authorization: `Bearer ${getAuthToken()}` },
     });
+
     return data;
   },
 
@@ -77,28 +78,25 @@ export const carrierApi = {
 
     const orders: JobItem[] = rawOrders.map((o: any) => ({
       id: String(o.id ?? o._id),
-      orderCode:
-        o.orderCode ??
-        `ORD-${String(o.id ?? o._id).slice(-6).toUpperCase()}`,
+      orderCode: o.orderCode ?? `ORD-${String(o._id).slice(-6).toUpperCase()}`,
       customerName: o.customer?.name || o.customer?.full_name || "",
-      pickup: { address: o.pickup?.address || o.pickup_address || "" },
-      dropoff: { address: o.dropoff?.address || o.delivery_address || "" },
+      pickup: { address: o.pickup_address || "" },
+      dropoff: { address: o.delivery_address || "" },
       goodsSummary: o.goodsSummary || "",
-      scheduledTime:
-        o.scheduledTime ||
-        (o.scheduled_time
-          ? new Date(o.scheduled_time).toLocaleString("vi-VN")
-          : undefined),
-      estimatePrice: o.totalPrice ?? o.total_price,
-      status: normalizeStatus(o.status) as JobStatus,
+      scheduledTime: o.scheduled_time
+        ? new Date(o.scheduled_time).toLocaleString("vi-VN")
+        : "",
+      estimatePrice: o.total_price ?? 0,
+      status: normalizeStatus(o.status),
     }));
 
     return { orders };
   },
 
   async listHistory(): Promise<JobItem[]> {
-    const { data } = await api.get("/carrier/orders?include=all", {
+    const { data } = await api.get("/carrier/orders", {
       headers: { Authorization: `Bearer ${getAuthToken()}` },
+      params: { include: "all" },
     });
 
     const rawOrders = Array.isArray(data) ? data : data?.orders || [];
@@ -106,22 +104,18 @@ export const carrierApi = {
     return rawOrders
       .map((o: any) => ({
         id: String(o.id ?? o._id),
-        orderCode:
-          o.orderCode ??
-          `ORD-${String(o.id ?? o._id).slice(-6).toUpperCase()}`,
+        orderCode: o.orderCode ?? `ORD-${String(o._id).slice(-6).toUpperCase()}`,
         customerName: o.customer?.name || o.customer?.full_name || "",
-        pickup: { address: o.pickup?.address || o.pickup_address || "" },
-        dropoff: { address: o.dropoff?.address || o.delivery_address || "" },
+        pickup: { address: o.pickup_address || "" },
+        dropoff: { address: o.delivery_address || "" },
         goodsSummary: o.goodsSummary || "",
-        scheduledTime:
-          o.scheduledTime ||
-          (o.scheduled_time
-            ? new Date(o.scheduled_time).toLocaleString("vi-VN")
-            : undefined),
-        estimatePrice: o.totalPrice ?? o.total_price,
-        status: normalizeStatus(o.status) as JobStatus,
+        scheduledTime: o.scheduled_time
+          ? new Date(o.scheduled_time).toLocaleString("vi-VN")
+          : "",
+        estimatePrice: o.total_price ?? 0,
+        status: normalizeStatus(o.status),
       }))
-      .filter((o: JobItem) =>
+      .filter((o) =>
         ["COMPLETED", "CANCELLED", "DECLINED"].includes(o.status)
       );
   },
@@ -159,41 +153,61 @@ export const carrierApi = {
       trackings,
     };
   },
+  async claimOrder(orderId: string) {
+    const { data } = await api.post(`/carrier/orders/${orderId}/claim`, {});
+    return data;
+  },
+
+  async acceptAssignedOrder(orderId: string) {
+    const { data } = await api.post(`/carrier/orders/${orderId}/accept-assigned`, {}, {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+    return data;
+  },
+
+  async declineAssignedOrder(orderId: string) {
+    const { data } = await api.post(`/carrier/orders/${orderId}/decline-assigned`, {}, {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+    return data;
+  },
+
 
   async acceptJob(orderId: string) {
     const { data } = await api.post(
-      `/carrier/orders/${orderId}/accept`,
+      `/carrier/claim/${orderId}`,
       {},
       { headers: { Authorization: `Bearer ${getAuthToken()}` } }
     );
     return data;
   },
 
+  // 🟩 Carrier từ chối đơn được assign
   async declineJob(orderId: string, reason?: string) {
     const { data } = await api.post(
-      `/carrier/orders/${orderId}/decline`,
+      `/carrier/decline/${orderId}`,
       { reason },
       { headers: { Authorization: `Bearer ${getAuthToken()}` } }
     );
     return data;
   },
 
-  async listEvidence(orderId: string, phase?: "BEFORE" | "AFTER"): Promise<Array<{id:string; url:string; type:"IMAGE"|"VIDEO"; phase:"BEFORE"|"AFTER"; uploadedAt:string;}>> {
-  try {
-    const { data } = await api.get(`/carrier/orders/${orderId}/evidence`, {
-      headers: { Authorization: `Bearer ${getAuthToken()}` },
-      params: phase ? { phase } : {},
-    });
-    return data?.items ?? [];
-  } catch (e: any) {
-    if (e?.response?.status === 404) {
-      // trước đây do thiếu route → giờ vẫn an toàn
-      return [];
+  async listEvidence(orderId: string, phase?: "BEFORE" | "AFTER"): Promise<Array<{ id: string; url: string; type: "IMAGE" | "VIDEO"; phase: "BEFORE" | "AFTER"; uploadedAt: string; }>> {
+    try {
+      const { data } = await api.get(`/carrier/orders/${orderId}/evidence`, {
+        headers: { Authorization: `Bearer ${getAuthToken()}` },
+        params: phase ? { phase } : {},
+      });
+      return data?.items ?? [];
+    } catch (e: any) {
+      if (e?.response?.status === 404) {
+        // trước đây do thiếu route → giờ vẫn an toàn
+        return [];
+      }
+      throw e;
     }
-    throw e;
   }
-}
-,
+  ,
 
   async uploadEvidence({
     orderId,
