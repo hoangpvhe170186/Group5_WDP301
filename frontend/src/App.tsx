@@ -24,7 +24,7 @@ import OrderPreviewPage from "./components/OrderPreviewPage";
 import UserOrderLayout from "./layouts/User_Order_Layout";
 import OrderTracking from "./components/user_order/order-tracking";
 import ComparePage from "./components/carrier-dashboard/dashboard/compare";
-
+import BlogDetail from "./pages/BlogDetail";
 export default function App() {
   return (
     <BrowserRouter>
@@ -32,6 +32,7 @@ export default function App() {
         {/* ✅ ROUTE MỚI CHO TRA CỨU ĐƠN HÀNG */}
         <Route path="/tra-cuu-don-hang" element={<OrderSearchPage />} />
         <Route path="/" element={<HomePage />} />
+        <Route path="/blog/:slug" element={<BlogDetail />} />
         <Route path="/order-preview" element={<OrderPreviewPage />} />
         <Route path="/dat-hang" element={<OrderCreatePage />} />
         <Route path="/vehicles/:vehicleId/price" element={<VehiclePricingPage />} />

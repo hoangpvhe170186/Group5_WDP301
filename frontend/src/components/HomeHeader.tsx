@@ -97,7 +97,6 @@ function MobileMenu({
           <div className="space-y-2 text-gray-800">
             {/* Các link menu (có thể thêm các link khác vào đây nếu cần) */}
             <Link to="/chuyen-nha" className="block rounded-lg p-2 hover:bg-gray-50">Chuyển nhà / Chuyển trọ</Link>
-            <Link to="/bang-gia" className="block rounded-lg p-2 hover:bg-gray-50">Bảng giá</Link>
             <Link to="/lien-he" className="block rounded-lg p-2 hover:bg-gray-50">Liên hệ</Link>
             <div className="mt-3 border-t pt-3">
               {user ? (
@@ -198,7 +197,6 @@ export default function HomeHeader() {
             <Link to="/tuyen-boc-xep" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">Tuyển người bốc xếp</Link>
           </Dropdown>
 
-          <Link to="/bang-gia" className={`font-medium ${baseText}`}>Bảng giá</Link>
 
           {/* Về Home Express */}
           <Dropdown label="Về Home Express" isScrolled={isScrolled} openKey="vehe" currentOpen={openMenu} setCurrentOpen={setOpenMenu}>

@@ -10,7 +10,12 @@ import {
   assignOrder,
   getOrderById,
   updateOrder,
+<<<<<<< HEAD
   deleteUser
+=======
+  getDriverSchedule,
+  confirmOrder
+>>>>>>> main
 } from "../controllers/user.controller";
 import { get } from "http";
 import { requireAuth } from "../middleware/requireAuth";
@@ -30,4 +35,6 @@ router.get("/:id", getUserById);
 router.put("/:id", updateUser);
 router.delete("/:id", deleteUser);
 router.post("/orders/:id/assign", assignOrder);
+router.get("/drivers/schedule", getDriverSchedule);
+router.post("/orders/:id/confirm", confirmOrder);
 export default router;

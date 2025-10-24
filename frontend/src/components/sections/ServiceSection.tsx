@@ -8,7 +8,7 @@ const services = [
   {
     title: "Dịch vụ đóng gói",
     desc: "Đóng gói & mở gói an toàn",
-    img: "https://interlogistics.com.vn/static/1131/2023/05/25/dich-vu-dong-goi-hang-hoa-la-gi-1.jpg",
+    img: "https://dhdlogistics.com/wp-content/uploads/2018/09/porto.hu_.15jan-e1625544529925.jpg",
   },
   {
     title: "Vận chuyển trong chung cư",
