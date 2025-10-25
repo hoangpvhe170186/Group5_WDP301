@@ -9,10 +9,12 @@ import {
   createTemporaryOrder,
   addOrderItems,
   cancelOrder,
-  deleteOrder 
+  deleteOrder, 
+  getOrderItemsByOrderId
 } from "../controllers/order.controller";
 
 const router = Router();
+router.get("/:orderId/items", requireAuth, getOrderItemsByOrderId);
 router.post("/temporary", createTemporaryOrder); // tạo đơn tạm
 router.post("/items", addOrderItems);            // thêm hàng hóa & xác nhận đơn
 router.use(requireAuth);

@@ -13,11 +13,15 @@ import IncidentForm from "./IncidentForm";
 
 export default function OrderTracking() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedOrder, setSelectedOrder] = useState<string | null>(null); // holds order id
+  const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [orders, setOrders] = useState<any[]>([]);
+  const [orderItems, setOrderItems] = useState<any[]>([]); // 🟢 lưu danh sách items của order hiện tại
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
+
+  // 🔹 Lấy danh sách đơn hàng của người dùng
   useEffect(() => {
     const fetchOrders = async () => {
       try {
@@ -25,7 +29,7 @@ export default function OrderTracking() {
         const { orders: fetchedOrders } = await orderApi.listMyOrders();
         setOrders(fetchedOrders || []);
         if (fetchedOrders && fetchedOrders.length > 0) {
-          setSelectedOrder(fetchedOrders[0].id); // keep id only
+          setSelectedOrder(fetchedOrders[0].id);
         }
       } catch (err) {
         setError("Không thể tải danh sách đơn hàng");
@@ -36,19 +40,46 @@ export default function OrderTracking() {
     fetchOrders();
   }, []);
 
+  // 🔹 Lấy order hiện tại
   const currentOrder = useMemo(
     () => orders.find((o) => o.id === selectedOrder),
     [orders, selectedOrder]
   );
 
-  // Chuẩn hoá dữ liệu cho UI
+  // 🔹 Gọi API để lấy order items thật từ DB
+  useEffect(() => {
+    const fetchOrderItems = async () => {
+      if (!selectedOrder) return;
+      try {
+        const token = localStorage.getItem("auth_token");
+        const res = await fetch(`${API_BASE}/api/orders/${selectedOrder}/items`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setOrderItems(data.items || []);
+        } else {
+          setOrderItems([]);
+        }
+      } catch (err) {
+        console.error("❌ Lỗi lấy danh sách items:", err);
+        setOrderItems([]);
+      }
+    };
+    fetchOrderItems();
+  }, [selectedOrder]);
+
+  // 🔹 Chuẩn hoá dữ liệu order cho UI
   const mapOrderData = (order: any) => ({
     id: order.id,
     orderNumber: `#${order.id}`,
-    status: (order.status || "").toLowerCase(), // expect: "pending" | "in-transit" | "delivered" ...
+    status: (order.status || "").toLowerCase(),
     date: order.createdAt ? new Date(order.createdAt).toLocaleDateString("vi-VN") : "—",
     total: `₫ ${Number(order.totalPrice || 0).toLocaleString("vi-VN")}`,
-    items: 1,
+    items: orderItems.length || 0, // 🟢 hiển thị số lượng items thực
     estimatedDelivery: order.scheduledTime || "Chưa có thời gian",
     currentLocation:
       (order.status || "").toLowerCase() === "delivered"
@@ -103,7 +134,6 @@ export default function OrderTracking() {
     ],
   });
 
-  // Dùng một biến đã map cho phần chi tiết để tránh lặp xử lý
   const mappedCurrent = currentOrder ? mapOrderData(currentOrder) : null;
 
   return (
@@ -111,7 +141,7 @@ export default function OrderTracking() {
       <OrderHeader />
 
       <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* Search Section */}
+        {/* 🔍 Search Section */}
         <div className="mb-8">
           <div className="flex gap-3">
             <div className="flex-1">
@@ -129,7 +159,7 @@ export default function OrderTracking() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Orders List */}
+          {/* 📋 Orders List */}
           <div className="lg:col-span-1">
             <Card className="p-0 overflow-hidden">
               <div className="bg-primary text-primary-foreground p-4">
@@ -137,15 +167,11 @@ export default function OrderTracking() {
               </div>
               <div className="divide-y">
                 {loading ? (
-                  <p className="p-4 text-center text-muted-foreground">
-                    Đang tải...
-                  </p>
+                  <p className="p-4 text-center text-muted-foreground">Đang tải...</p>
                 ) : error ? (
                   <p className="p-4 text-center text-destructive">{error}</p>
                 ) : orders.length === 0 ? (
-                  <p className="p-4 text-center text-muted-foreground">
-                    Không có đơn hàng.
-                  </p>
+                  <p className="p-4 text-center text-muted-foreground">Không có đơn hàng.</p>
                 ) : (
                   orders.map((order) => {
                     const m = mapOrderData(order);
@@ -164,12 +190,8 @@ export default function OrderTracking() {
                             <p className="font-semibold text-foreground truncate">
                               {m.orderNumber}
                             </p>
-                            <p className="text-sm text-muted-foreground">
-                              {m.date}
-                            </p>
-                            <p className="text-sm font-medium text-primary mt-1">
-                              {m.total}
-                            </p>
+                            <p className="text-sm text-muted-foreground">{m.date}</p>
+                            <p className="text-sm font-medium text-primary mt-1">{m.total}</p>
                           </div>
                           <div
                             className={`px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${
@@ -193,14 +215,13 @@ export default function OrderTracking() {
             </Card>
           </div>
 
-          {/* Order Details + Feedback/Incident */}
+          {/* 📦 Order Details + Feedback/Incident */}
           <div className="lg:col-span-2 space-y-6">
             {mappedCurrent && (
               <>
-                <OrderDetails order={mappedCurrent} />
+                <OrderDetails order={mappedCurrent} items={orderItems} />
                 <OrderTimeline timeline={mappedCurrent.timeline} />
 
-                {/* Chỉ hiện khi đã giao */}
                 {mappedCurrent.status === "delivered" && (
                   <div className="mt-4 space-y-4">
                     <FeedbackForm orderId={mappedCurrent.id} />
