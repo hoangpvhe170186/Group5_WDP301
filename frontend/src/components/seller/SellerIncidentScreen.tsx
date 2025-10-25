@@ -2,11 +2,10 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { CheckCircle, AlertTriangle } from "lucide-react";
-import { getCurrentUserId } from "@/lib/auth";
-const ComplaintManagementScreen = () => {
+
+const StaffIncidentScreen = () => {
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const currentUserId = getCurrentUserId();
 
   // 🧠 Lấy danh sách khiếu nại
   useEffect(() => {
@@ -25,28 +24,18 @@ const ComplaintManagementScreen = () => {
 
   // 🧩 Xử lý giải quyết khiếu nại
   const handleResolve = async (id) => {
-  const resolution = prompt("Nhập nội dung xử lý (ví dụ: Đã hoàn tiền, đã thay hàng, ...)");
-  if (!resolution) return alert("❌ Bạn cần nhập nội dung xử lý!");
-
-  const choice = window.confirm("Ấn OK nếu muốn đánh dấu là 'Đã giải quyết', Cancel nếu muốn 'Từ chối khiếu nại'");
-  const status = choice ? "Resolved" : "Rejected";
-
-  try {
-    await axios.patch(`http://localhost:4000/api/users/incidents/${id}/resolve`, {
-      resolution,
-      staffId: currentUserId, // 💡 Lấy từ token hoặc context người dùng
-      status,
-    });
-
-    alert(`✅ Khiếu nại đã được ${status === "Resolved" ? "giải quyết" : "từ chối"}`);
-    setIncidents((prev) =>
-      prev.map((r) => (r._id === id ? { ...r, status, resolution } : r))
-    );
-  } catch (err) {
-    console.error(err);
-    alert("❌ Lỗi khi cập nhật!");
-  }
-};
+    if (!window.confirm("Xác nhận đánh dấu đã giải quyết khiếu nại này?")) return;
+    try {
+      await axios.patch(`http://localhost:4000/api/users/incidents/${id}/resolve`);
+      alert("✅ Đã đánh dấu là đã giải quyết!");
+      setIncidents((prev) =>
+        prev.map((r) => (r._id === id ? { ...r, status: "Resolved" } : r))
+      );
+    } catch (err) {
+      console.error(err);
+      alert("❌ Lỗi khi cập nhật!");
+    }
+  };
 
   if (loading) return <p className="text-center py-10">Đang tải...</p>;
 
@@ -111,4 +100,4 @@ const ComplaintManagementScreen = () => {
   );
 };
 
-export default ComplaintManagementScreen;
+export default StaffIncidentScreen;

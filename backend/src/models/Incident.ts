@@ -8,7 +8,12 @@ const incidentSchema = new mongoose.Schema({
   evidence_file: { type: String },
   resolved_by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   resolution: { type: String },
-  resolved_at: { type: Date }
+  resolved_at: { type: Date },
+  status: {
+      type: String,
+      enum: ["Pending", "Resolved", "Rejected"],
+      default: "Pending",
+    }
 }, { timestamps: true });
 
 export default mongoose.model("Incident", incidentSchema);
