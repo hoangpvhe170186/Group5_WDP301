@@ -377,3 +377,50 @@ export const getIcidentByOrderId = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Server error", error });
   }
 };
+export const getAllIncidents = async (req: Request, res: Response) => {
+  try {
+    const incidents = await Incident.find();
+   
+    if (!incidents || incidents.length === 0) return res.status(404).json({ message: "Incident not found" });
+    res.json(incidents);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error });
+  }
+};
+export const resolveIncident = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { resolution, staffId, status } = req.body; 
+    // status ở đây sẽ là "Resolved" hoặc "Rejected"
+
+    const incident = await Incident.findById(id);
+    if (!incident) return res.status(404).json({ message: "Không tìm thấy khiếu nại" });
+
+    // ✅ Cập nhật thông tin xử lý
+    incident.status = status || "Resolved"; // nếu không gửi thì mặc định là Resolved
+    incident.resolution = resolution;
+    incident.resolved_by = staffId;
+    incident.resolved_at = new Date();
+
+    await incident.save();
+
+    res.json({ message: `✅ Khiếu nại đã được ${incident.status === "Resolved" ? "giải quyết" : "từ chối"}`, incident });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Lỗi khi cập nhật khiếu nại" });
+  }
+};
+export const getCompletedAndCancelledOrders = async (req: Request, res: Response) => {
+  try {
+    const orders = await Order.find({
+      status: { $in: ["COMPLETED", "CANCELLED"] },
+    })
+      .populate("customer_id seller_id carrier_id driver_id")
+      .sort({ createdAt: -1 });
+
+    res.json(orders);
+  } catch (err) {
+    console.error("❌ Lỗi tải lịch sử đơn:", err);
+    res.status(500).json({ message: "Lỗi server khi lấy lịch sử đơn" });
+  }
+};
