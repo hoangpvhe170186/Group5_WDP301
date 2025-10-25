@@ -3,17 +3,28 @@ import User from "../models/User";
 import Order from "../models/Order";
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
-    const users = await User.find({}).select("-password_hash");
-    res.status(200).json({
+    const { role, limit = 100 } = req.query;
+    
+    let filter = {};
+    if (role) {
+      filter = { role };
+    }
+    
+    const users = await User.find(filter)
+      .select('full_name email phone created_at')
+      .limit(Number(limit))
+      .sort({ created_at: -1 });
+    
+    res.json({
       success: true,
       data: users,
       total: users.length
     });
   } catch (error) {
-    console.error("Error getting users:", error);
+    console.error("Error fetching users:", error);
     res.status(500).json({
       success: false,
-      message: "Lỗi server khi lấy danh sách users"
+      message: "Lỗi server khi tải danh sách user"
     });
   }
 };

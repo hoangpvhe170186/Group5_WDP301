@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { generateCode } from "../utils/generateOrderCode";
+
 const orderSchema = new mongoose.Schema(
   { 
     orderCode: { type: String, unique: true },
@@ -16,22 +17,23 @@ const orderSchema = new mongoose.Schema(
     status: { type: String, default: "Pending" },
     total_price: { type: Number, required: true },
     isPaid: { type: Boolean, default: false },
+    customer_chat_id: { type: String, index: true }, 
 
-    // ✅ NEW FIELDS ADDED BELOW
     declineReason: { type: String, default: null },
     signatureUrl: { type: String, default: null },
 
     auditLogs: [
       {
         at: { type: Date, default: Date.now },
-        by: { type: String }, // user_id / carrier_id
-        action: { type: String }, // e.g. "ACCEPTED", "DECLINED", "PROGRESS:DELIVERING"
-        note: { type: String, default: "" }, // optional comment
+        by: { type: String }, 
+        action: { type: String }, 
+        note: { type: String, default: "" }, 
       },
     ],
   },
   { timestamps: true }
 );
+
 orderSchema.pre("save", async function (next) {
   if (!this.orderCode) {
     let unique = false;
@@ -46,4 +48,5 @@ orderSchema.pre("save", async function (next) {
   }
   next();
 });
+
 export default mongoose.model("Order", orderSchema);

@@ -1,11 +1,13 @@
+// models/ChatMessage.ts
 import mongoose, { Schema, Document } from "mongoose";
 
-export type ChatSender = "guest" | "seller" | "bot";
+export type Sender = "guest" | "seller" | "bot";
+
 export interface IChatMessage extends Document {
-  roomId: string;                  
-  userId?: string;                 
-  sender: ChatSender;              
-  senderName?: string;             
+  roomId: string;          // "room:order:<orderId>" hoặc customer_chat_id
+  orderId?: mongoose.Types.ObjectId;
+  sender: Sender;
+  senderName?: string;
   text: string;
   createdAt: Date;
 }
@@ -13,14 +15,15 @@ export interface IChatMessage extends Document {
 const ChatMessageSchema = new Schema<IChatMessage>(
   {
     roomId: { type: String, index: true, required: true },
-    userId: { type: String },
+    orderId: { type: Schema.Types.ObjectId, ref: "Order", index: true },
     sender: { type: String, enum: ["guest", "seller", "bot"], required: true },
-    senderName: { type: String },
+    senderName: String,
     text: { type: String, required: true },
-    createdAt: { type: Date, default: Date.now, index: true },
   },
-  { versionKey: false }
+  { timestamps: { createdAt: true, updatedAt: false } }
 );
 
-export default mongoose.models.ChatMessage ||
-  mongoose.model<IChatMessage>("ChatMessage", ChatMessageSchema);
+// Tối ưu các truy vấn lịch sử theo room + thời gian
+ChatMessageSchema.index({ roomId: 1, createdAt: 1 });
+
+export default mongoose.model<IChatMessage>("ChatMessage", ChatMessageSchema);

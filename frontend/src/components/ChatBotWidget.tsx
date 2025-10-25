@@ -55,8 +55,13 @@ export default function ChatBotWidget() {
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const socketRef = useRef<Socket | null>(null);
-
+ const [sentMessageIds, setSentMessageIds] = useState<Set<string>>(new Set());
+  const messageIdRef = useRef(0);
   const roomId = useRoomId();
+    const generateMessageId = () => {
+    messageIdRef.current += 1;
+    return `msg_${Date.now()}_${messageIdRef.current}`;
+  };
   const displayName =
     localStorage.getItem("fullName") ||
     localStorage.getItem("username") ||
@@ -86,7 +91,14 @@ export default function ChatBotWidget() {
     // Nhận tin nhắn realtime
     s.on(
       "receive_message",
-      (data: UiMessage & { roomId?: string; name?: string }) => {
+      (data: UiMessage & { roomId?: string; name?: string; id?: string }) => {
+         if (data.id && sentMessageIds.has(data.id)) {
+          console.log("⚠️ Duplicate message received, ignoring:", data.id);
+          return;
+        }
+        if (data.id) {
+          setSentMessageIds(prev => new Set([...prev, data.id!]));
+        }
         setMessages((prev) => [...prev, data]);
         // ✅ lưu DB khi nhận tin từ seller/bot qua socket
         persistMessage({
@@ -104,7 +116,7 @@ export default function ChatBotWidget() {
       s.off("connect");
       s.disconnect();
     };
-  }, [roomId]);
+  }, [roomId, sentMessageIds]);
 
   // Lấy lịch sử khi chuyển sang agent
   useEffect(() => {
@@ -150,11 +162,26 @@ export default function ChatBotWidget() {
     const text = input.trim();
     if (!text) return;
     const name = displayName;
-
+ const tempId = generateMessageId();
+    if (sentMessageIds.has(tempId)) {
+      console.log("⚠️ Duplicate message prevented:", tempId);
+      return;
+    }
+     setSentMessageIds(prev => new Set([...prev, tempId]));
     // ✅ append UI + lưu DB (khách)
-    setMessages((prev) => [...prev, { sender: "guest", text }]);
+   setMessages((prev) => [...prev, { 
+      id: tempId, 
+      sender: "guest", 
+      text,
+      createdAt: new Date().toISOString()
+    }]);
     setInput("");
-    persistMessage({ roomId, sender: "guest", senderName: name, text });
+    persistMessage({ 
+      roomId, 
+      sender: "guest", 
+      senderName: name, 
+      text 
+    });
 
     if (mode === "agent") {
       socketRef.current?.emit("send_message", {
@@ -162,12 +189,13 @@ export default function ChatBotWidget() {
         sender: "guest",
         name: displayName,
         text,
+        tempId,
       });
       return;
     }
 
     // 🤖 Chatbot AI (REST)
-    try {
+     try {
       const res = await fetch(`${API_BASE}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -175,7 +203,14 @@ export default function ChatBotWidget() {
       });
       const data = await res.json();
       const reply = data.reply || "❌ Bot chưa trả lời được.";
-      setMessages((prev) => [...prev, { sender: "bot", text: reply }]);
+      
+      const botTempId = generateMessageId();
+      setMessages((prev) => [...prev, { 
+        id: botTempId, 
+        sender: "bot", 
+        text: reply,
+        createdAt: new Date().toISOString()
+      }]);
 
       // ✅ lưu DB (bot)
       persistMessage({
@@ -186,7 +221,13 @@ export default function ChatBotWidget() {
       });
     } catch {
       const fallback = "❌ Không thể kết nối server.";
-      setMessages((prev) => [...prev, { sender: "bot", text: fallback }]);
+      const fallbackId = generateMessageId();
+      setMessages((prev) => [...prev, { 
+        id: fallbackId, 
+        sender: "bot", 
+        text: fallback,
+        createdAt: new Date().toISOString()
+      }]);
       persistMessage({
         roomId,
         sender: "bot",

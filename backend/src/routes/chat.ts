@@ -48,63 +48,94 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.get("/rooms", async (req, res) => {
-  const limit = Number(req.query.limit ?? 100);
-
-  const docs = await ChatMessage.aggregate([
-    { $sort: { createdAt: -1 } },
-
-    // lấy bản ghi mới nhất của từng room
-    {
-      $group: {
-        _id: "$roomId",
-        lastText: { $first: "$text" },
-        lastAt: { $first: "$createdAt" },
-      },
-    },
-
-    // tìm bản ghi GUEST mới nhất cho từng room
-    {
-      $lookup: {
-        from: ChatMessage.collection.name,
-        let: { rid: "$_id" },
-        pipeline: [
-          { $match: { $expr: { $and: [
-            { $eq: ["$roomId", "$$rid"] },
-            { $eq: ["$sender", "guest"] },
-            { $ne: ["$senderName", null] },
-          ]}}},
-          { $sort: { createdAt: -1 } },
-          { $limit: 1 },
-          { $project: { _id: 0, senderName: 1 } },
-        ],
-        as: "guestLast",
-      }
-    },
-
-    // build output
-    {
-      $project: {
-        _id: 0,
-        roomId: "$_id",
-        preview: "$lastText",
-        at: "$lastAt",
-        name: {
-          $ifNull: [
-            { $arrayElemAt: ["$guestLast.senderName", 0] },
-            "Khách"
-          ]
+router.get('/rooms', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 100;
+    
+    // 🔥 FIX: Lấy rooms với thông tin senderName chính xác
+    const rooms = await ChatMessage.aggregate([
+      {
+        $match: {
+          roomId: { $regex: /^guest_/, $exists: true }
         }
-      }
-    },
+      },
+      {
+        $sort: { createdAt: -1 }
+      },
+      {
+        $group: {
+          _id: "$roomId",
+          lastMessage: { $first: "$$ROOT" }, // 🔥 Sửa: $first thay vì $last vì đã sort -1
+          messageCount: { $sum: 1 },
+          lastActivity: { $max: "$createdAt" },
+          // 🔥 THÊM: Lấy thông tin senderName từ tin nhắn gần nhất
+          recentSenderName: { $first: "$senderName" }
+        }
+      },
+      {
+        $project: {
+          roomId: "$_id",
+          at: "$lastActivity",
+          name: { 
+            $cond: [
+              { $and: ["$recentSenderName", { $ne: ["$recentSenderName", "Khách"] }] },
+              "$recentSenderName",
+              "$lastMessage.senderName"
+            ]
+          },
+          lastMessage: "$lastMessage.text",
+          messageCount: 1,
+          _id: 0
+        }
+      },
+      { $sort: { at: -1 } },
+      { $limit: limit }
+    ]);
 
-    { $sort: { at: -1 } },
-    { $limit: limit },
-  ]);
+    const roomsWithUnread = rooms.map(room => ({
+      ...room,
+      unreadCount: 0
+    }));
 
-  res.json({ rooms: docs });
+    res.json({ rooms: roomsWithUnread });
+  } catch (error) {
+    console.error('Error fetching chat rooms:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
+router.get('/sync-rooms', async (req, res) => {
+  try {
+    // Lấy tất cả users có role Customer
+    const users = await User.find({ role: 'Customer' }).select('_id email full_name');
+    
+    // Đảm bảo mỗi user có 1 room chat
+    const syncResults = await Promise.all(
+      users.map(async (user) => {
+        const roomId = `guest_${user._id}`;
+        
+        // Kiểm tra room đã có tin nhắn chưa
+        const existingMessage = await ChatMessage.findOne({ roomId });
+        
+        return {
+          userId: user._id,
+          email: user.email,
+          full_name: user.full_name,
+          roomId,
+          hasChatHistory: !!existingMessage
+        };
+      })
+    );
 
+    res.json({ 
+      success: true, 
+      totalUsers: syncResults.length,
+      rooms: syncResults 
+    });
+  } catch (error) {
+    console.error('Error syncing rooms:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 // load lịch sử theo room
 router.get("/history", async (req, res) => {
   try {
