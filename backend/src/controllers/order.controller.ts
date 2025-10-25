@@ -38,22 +38,21 @@ export const createTemporaryOrder = async (req, res) => {
     res.status(500).json({ success: false, message: "Không thể tạo đơn hàng tạm." });
   }
 };
-
-
 // ✅ Thêm chi tiết hàng hóa (OrderItem)
 export const addOrderItems = async (req, res) => {
   try {
-    const { order_id, items } = req.body;
+    const { order_id, items, delivery_schedule } = req.body;
 
     if (!order_id || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ success: false, message: "Thiếu thông tin chi tiết hàng hóa." });
     }
 
-    // Kiểm tra đơn có tồn tại không
+    // ✅ Kiểm tra đơn hàng có tồn tại
     const order = await Order.findById(order_id).populate("package_id");
-    if (!order) return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng." });
+    if (!order)
+      return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng." });
 
-    // ✅ Kiểm tra tổng khối lượng không vượt quá capacity của gói
+    // ✅ Kiểm tra tổng khối lượng không vượt quá capacity
     const totalWeight = items.reduce((sum, item) => sum + Number(item.weight || 0), 0);
     const maxCapacity = Number(order.package_id?.vehicle?.capacity || 0);
 
@@ -64,23 +63,38 @@ export const addOrderItems = async (req, res) => {
       });
     }
 
-    // ✅ Lưu danh sách hàng hóa
+    // ✅ Thêm danh sách hàng hóa
     const insertedItems = await OrderItem.insertMany(
       items.map((item) => ({
-        ...item,
         order_id,
+        description: item.description,
+        quantity: item.quantity,
+        weight: item.weight,
+        fragile: item.fragile || false,
       }))
     );
 
+    // ✅ Cập nhật lịch giao hàng
+    if (delivery_schedule) {
+      const { type, datetime } = delivery_schedule;
 
-    // ✅ Cập nhật trạng thái đơn hàng thành "Pending"
+      if (type === "later" && datetime) {
+        order.scheduled_time = new Date(datetime);
+      } else {      
+        const now = new Date();
+        const estimated = new Date(now.getTime() + 2 * 60 * 60 * 1000); 
+        order.scheduled_time = estimated;
+      }
+    }
 
+    //  Cập nhật trạng thái
     order.status = "Pending";
     await order.save();
 
-    res.json({
+    return res.json({
       success: true,
-      message: "Đã xác nhận và thêm chi tiết hàng hóa thành công.",
+      message: "Đã thêm chi tiết hàng hóa và cập nhật lịch giao hàng thành công.",
+      order,
       items: insertedItems,
     });
   } catch (err) {
@@ -88,7 +102,7 @@ export const addOrderItems = async (req, res) => {
     res.status(500).json({ success: false, message: "Không thể thêm chi tiết hàng hóa." });
   }
 };
-// 🟢 Tạo đơn hàng mới
+//  Tạo đơn hàng mới
 export const createOrder = async (req: Request, res: Response) => {
   try {
     const {
@@ -101,7 +115,7 @@ export const createOrder = async (req: Request, res: Response) => {
       items // 👈 nếu frontend gửi danh sách sản phẩm
     } = req.body;
 
-    // 1️⃣ Tạo đơn hàng
+    // 1️ Tạo đơn hàng
     const order = await Order.create({
       customer_id,
       pickup_address,
@@ -111,7 +125,7 @@ export const createOrder = async (req: Request, res: Response) => {
       phone,
     });
 
-    // 2️⃣ Tạo các OrderItem liên kết với order vừa tạo
+    //  Tạo các OrderItem liên kết với order vừa tạo
     if (items && Array.isArray(items)) {
       await OrderItem.insertMany(
         items.map((item) => ({
@@ -135,7 +149,7 @@ export const createOrder = async (req: Request, res: Response) => {
   }
 };
 
-// 🟡 Lấy danh sách đơn hàng của người dùng
+//  Lấy danh sách đơn hàng của người dùng
 export const getMyOrders = async (req: Request, res: Response) => {
    try {
     
@@ -145,12 +159,12 @@ export const getMyOrders = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Unauthorized: user not found in token" });
     }
 
-    // ✅ Hỗ trợ phân trang và giới hạn dữ liệu
+    //  Hỗ trợ phân trang và giới hạn dữ liệu
     const page = Math.max(parseInt(req.query.page as string) || 1, 1);
     const limit = Math.min(parseInt(req.query.limit as string) || 10, 50);
     const skip = (page - 1) * limit;
 
-    // ✅ Truy vấn có chọn lọc (chỉ lấy các trường cần thiết)
+    //  Truy vấn có chọn lọc (chỉ lấy các trường cần thiết)
     const orders = await Order.find({ customer_id: userId })
       .populate("vehicle_id", "type") // chỉ lấy trường cần thiết
       .populate("carrier_id", "name phone")
@@ -158,7 +172,7 @@ export const getMyOrders = async (req: Request, res: Response) => {
       .limit(limit)
       .lean(); 
 
-    // ✅ Đếm tổng số đơn hàng (phục vụ client phân trang)
+    //  Đếm tổng số đơn hàng (phục vụ client phân trang)
     const totalOrders = await Order.countDocuments({ customer_id: userId });
 
     return res.status(200).json({
@@ -178,7 +192,7 @@ export const getMyOrders = async (req: Request, res: Response) => {
   }
 };
 
-// 🔵 Lấy chi tiết đơn hàng theo ID
+//  Lấy chi tiết đơn hàng theo ID
 export const getOrderById = async (req: Request, res: Response) => {
   try {
     const order = await Order.findById(req.params.id).populate("carrier_id vehicle_id");
@@ -285,7 +299,7 @@ export const cancelOrder = async (req, res) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
-    const userId = req.user._id; // ✅ Lấy từ middleware requireAuth
+    const userId = req.user._id; //  Lấy từ middleware requireAuth
 
     const order = await Order.findById(id);
     if (!order) return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng." });
@@ -310,6 +324,16 @@ export const cancelOrder = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: "Lỗi server khi hủy đơn hàng." });
+  }
+};
+export const getOrderItemsByOrderId = async (req: Request, res: Response) => {
+  try {
+    const { orderId } = req.params;
+    const items = await OrderItem.find({ order_id: orderId });
+    res.status(200).json({ success: true, items });
+  } catch (error) {
+    console.error("Lỗi khi lấy order items:", error);
+    res.status(500).json({ success: false, message: "Không thể lấy danh sách hàng hóa" });
   }
 };
 
