@@ -70,11 +70,11 @@ const statusText: Record<string, string> = {
 const trackingOptions = [
   { value: "ON_THE_WAY", label: "Đang di chuyển" },
   { value: "ARRIVED", label: "Đã tới nơi" },
-  { value: "DELIVERING", label: "Đang giao" },
-  { value: "DELIVERED", label: "Đã giao" },
   { value: "INCIDENT", label: "Đang gặp sự cố" },
   { value: "PAUSED", label: "Tạm dừng" },
   { value: "NOTE_ONLY", label: "Chỉ lưu ghi chú" },
+  { value: "DELIVERED", label: "Đã giao" },
+
 ] as const;
 
 const statusTone = (s: string) => {
@@ -205,7 +205,11 @@ export function JobDetails({
     try {
       await carrierApi.addTracking(job.id, payloadStatus, note || "");
       const updated = await carrierApi.getTrackings(job.id);
-      setJob((prev) => (prev ? { ...prev, trackings: updated } : prev));
+      setJob((prev) => {
+        if (!prev) return prev;
+        const newStatus = payloadStatus === "DELIVERED" ? "DELIVERED" : prev.status;
+        return { ...prev, trackings: updated, status: newStatus };
+      });
       setOpenTrackModal(false);
       setNote("");
     } catch (e) {
@@ -214,6 +218,7 @@ export function JobDetails({
       setOpenTrackModal(false);
     }
   };
+
 
   // ===================== RENDER STATES =====================
   if (!jobId) {
@@ -433,9 +438,16 @@ export function JobDetails({
                   <Button variant="outline" onClick={onReportIncident}>
                     <AlertTriangle className="h-4 w-4 mr-2" /> Báo cáo sự cố
                   </Button>
-                  <Button variant="outline" onClick={() => setOpenTrackModal(true)}>
+                  <Button
+                    variant="outline"
+                    onClick={() => setOpenTrackModal(true)}
+                    disabled={["DELIVERED", "COMPLETED"].includes(job.status)}
+                  >
                     <Clock className="h-4 w-4 mr-2" /> Cập nhật tiến độ
                   </Button>
+
+
+
                 </div>
               )}
 
@@ -450,11 +462,12 @@ export function JobDetails({
             )}
 
             {/* 5️⃣ Trạng thái không thao tác */}
-            {["DECLINED", "CANCELLED", "COMPLETED"].includes(job.status) && (
+            {["DECLINED", "CANCELLED"].includes(job.status) && (
               <p className="text-sm text-muted-foreground">
                 Đơn ở trạng thái {statusText[job.status]}. Không thể thao tác thêm.
               </p>
             )}
+
           </CardContent>
         </Card>
 
@@ -505,11 +518,20 @@ export function JobDetails({
                 </SelectTrigger>
                 <SelectContent>
                   {trackingOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
+                    <SelectItem
+                      key={opt.value}
+                      value={opt.value}
+                      disabled={
+                        // 🚫 Disable “Đã giao” nếu đơn đã giao hoặc hoàn tất
+                        (opt.value === "DELIVERED" &&
+                          ["DELIVERED", "COMPLETED"].includes(job.status))
+                      }
+                    >
                       {opt.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
+
               </Select>
             </div>
 

@@ -63,7 +63,7 @@ export const carrierApi = {
   },
 
   async updateProfile(payload: Partial<CarrierProfile>): Promise<CarrierProfile> {
-    const { data } = await api.put("/carrier/me", payload, {
+    const { data } = await api.put("/carrier/profile", payload, {
       headers: { Authorization: `Bearer ${getAuthToken()}` },
     });
     return data;
@@ -288,6 +288,23 @@ export const carrierApi = {
       createdAt: t.createdAt,
     }));
   },
+
+  async uploadAvatar(file: File): Promise<string> {
+    const form = new FormData();
+    form.append("file", file);
+
+    const { data } = await api.post("/upload/avatar", form, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+        Authorization: `Bearer ${getAuthToken()}`,
+      },
+    });
+
+    if (data?.url) return data.url;
+    throw new Error("Upload lại");
+  },
+
+
 
   async reportIncident({
     orderId,
