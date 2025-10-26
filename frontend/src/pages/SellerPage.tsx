@@ -3,7 +3,7 @@ import Navbar from '../components/seller/Navbar';
 import OrderManagementScreen from '../components/seller/OrderManagementScreen';
 import ComplaintManagementScreen from '../components/seller/ComplaintManagementScreen';
 import ComplaintHistoryScreen from '../components/seller/ComplaintHistoryScreen';
-
+import OrderHistoryManagementScreen from '../components/seller/OrderHistoryManagementScreen';
 export default function SellerPage() {
   const [currentPage, setPage] = useState('orders');
 
@@ -14,7 +14,7 @@ export default function SellerPage() {
       case 'complaints':
         return <ComplaintManagementScreen />;
       case 'history':
-        return <ComplaintHistoryScreen />;
+        return <OrderHistoryManagementScreen />;
       default:
         return <OrderManagementScreen />;
     }

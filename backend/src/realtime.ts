@@ -42,6 +42,14 @@ export function initRealtime(server: HTTPServer) {
 socket.on("join_driver_interview_room", () => {
       socket.join("driver_interview_notifications");
     });
+    
+  socket.on("join", (user) => {
+    if (user.role === "carrier") {
+      socket.join("carrier:all");
+      socket.join(`carrier:${user.id}`);
+      console.log(`🚚 Carrier ${user.id} joined carrier:all`);
+    }
+  });
     // KH ping nhờ hỗ trợ => bắn noti + badge tới staff
    socket.on("notify_support", (payload: SupportPayload) => {
   const data = {

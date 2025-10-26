@@ -16,10 +16,17 @@ import {
   getEvidence,       // ✅ ADD: controller GET evidence
   reportIncident,
   addTracking,      // ✅ tracking riêng
-  getTrackings,     // ✅ tracking riêng
+  getTrackings,
+  claimOrder,
+  declineAssignedOrder,
+  getCarrierProfile,
+  acceptAssignedOrder,
+  updateCarrierProfile,     // ✅ tracking riêng
 } from "../controllers/carrier.controller";
 import crypto from "crypto";
 import path from "path";
+import { withIO } from "../middleware/withIO";
+import Order from "../models/Order";
 
 const router = Router();
 const storage = multer.diskStorage({
@@ -50,6 +57,7 @@ router.post("/orders/:orderId/confirm-contract", confirmContract);
 router.post("/orders/:orderId/progress", updateOrderProgress);
 router.post("/orders/:orderId/confirm-delivery", confirmDelivery);
 
+
 /* ============================== EVIDENCE & INCIDENT ============================== */
 router.post("/orders/:orderId/evidence", upload.array("files"), uploadEvidence);
 // ✅ ADD: list evidence (BEFORE/AFTER) – luôn 200 với items=[]
@@ -61,6 +69,32 @@ router.post("/orders/:orderId/incidents", upload.array("photos"), reportIncident
 // ✅ NEW: Giống bản cũ của bạn - xử lý tracking riêng
 router.post("/order-tracking/:orderId", addTracking);
 router.get("/order-tracking/:orderId", getTrackings);
+router.post("/orders/:id/claim", requireAuth, withIO, claimOrder); // 🟢 Đây là route đúng, nếu bạn đã thêm withIO
+router.post("/decline/:id", requireAuth, withIO, declineAssignedOrder);
+router.get("/profile", requireAuth, getCarrierProfile);
+router.put("/profile", requireAuth, updateCarrierProfile);
+router.post("/orders/:id/accept-assigned", requireAuth, withIO, acceptAssignedOrder);
+router.post("/orders/:id/decline-assigned", requireAuth, withIO, declineAssignedOrder);
+router.get("/orders", requireAuth, async (req, res) => {
+  try {
+    const carrierId = req.user._id;
+
+    const orders = await Order.find({
+      $or: [
+        { status: "CONFIRMED" }, // có thể claim
+        { status: "ASSIGNED", $or: [{ assignedCarrier: carrierId }, { carrier_id: carrierId }] },
+        { status: "ACCEPTED", $or: [{ assignedCarrier: carrierId }, { carrier_id: carrierId }] },
+      ],
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json({ orders });
+  } catch (err) {
+    console.error("❌ Lỗi /api/carrier/orders:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 
 /* ============================== EXPORT ============================== */
 export default router;

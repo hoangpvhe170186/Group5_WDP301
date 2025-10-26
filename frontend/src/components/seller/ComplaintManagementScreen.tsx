@@ -1,123 +1,112 @@
-import React, { useState } from 'react';
-import { SparklesIcon } from './Icons';
-
+"use client";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import { CheckCircle, AlertTriangle } from "lucide-react";
+import { getCurrentUserId } from "@/lib/auth";
 const ComplaintManagementScreen = () => {
-  const initialComplaints = [
-    { id: 'KN-015', orderId: 'HE-84255', seller: 'Shop A', issue: 'Hàng hóa bị hư hỏng nặng khi nhận.', received: '2 giờ trước' },
-    { id: 'KN-014', orderId: 'HE-84251', seller: 'Shop B', issue: 'Giao hàng trễ 3 ngày so với dự kiến.', received: '1 ngày trước' },
-  ];
+  const [incidents, setIncidents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const currentUserId = getCurrentUserId();
 
-  const [complaints, setComplaints] = useState(initialComplaints.map(c => ({ ...c, suggestions: null, draft: null, isLoading: false, error: null })));
+  // 🧠 Lấy danh sách khiếu nại
+  useEffect(() => {
+    const fetchIncidents = async () => {
+      try {
+        const res = await axios.get("http://localhost:4000/api/users/incidents");
+        setIncidents(res.data);
+      } catch (err) {
+        console.error("❌ Lỗi khi tải khiếu nại:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchIncidents();
+  }, []);
 
-  const getGeminiResponse = async (prompt) => {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (prompt.includes("Gợi ý các bước giải quyết")) {
-          resolve({
-            text: () => `1. **Xin lỗi khách hàng:** Liên hệ ngay và xin lỗi vì sự cố.\n2. **Kiểm tra hàng hóa:** Xác minh tình trạng sản phẩm với kho.\n3. **Đề xuất phương án:** Đổi hàng mới hoặc hoàn tiền tùy theo chính sách.`,
-          });
-        } else if (prompt.includes("Soạn email phản hồi")) {
-          const sellerName = prompt.match(/người bán (.*?) về vấn đề/)[1];
-          resolve({
-            text: () => `Chào anh/chị ${sellerName},\n\nChúng tôi rất tiếc về vấn đề mà khách hàng đã gặp phải với đơn hàng của bạn.\n\nVui lòng kiểm tra và phản hồi trong vòng 24 giờ để chúng tôi hỗ trợ xử lý.\n\nTrân trọng,\nĐội ngũ Home Express`,
-          });
-        } else {
-          reject(new Error("Yêu cầu không hợp lệ."));
-        }
-      }, 1500);
+  // 🧩 Xử lý giải quyết khiếu nại
+  const handleResolve = async (id) => {
+  const resolution = prompt("Nhập nội dung xử lý (ví dụ: Đã hoàn tiền, đã thay hàng, ...)");
+  if (!resolution) return alert("❌ Bạn cần nhập nội dung xử lý!");
+
+  const choice = window.confirm("Ấn OK nếu muốn đánh dấu là 'Đã giải quyết', Cancel nếu muốn 'Từ chối khiếu nại'");
+  const status = choice ? "Resolved" : "Rejected";
+
+  try {
+    await axios.patch(`http://localhost:4000/api/users/incidents/${id}/resolve`, {
+      resolution,
+      staffId: currentUserId, // 💡 Lấy từ token hoặc context người dùng
+      status,
     });
-  };
 
-  const handleGenerate = async (complaintId, type) => {
-    const complaintIndex = complaints.findIndex(c => c.id === complaintId);
-    if (complaintIndex === -1) return;
+    alert(`✅ Khiếu nại đã được ${status === "Resolved" ? "giải quyết" : "từ chối"}`);
+    setIncidents((prev) =>
+      prev.map((r) => (r._id === id ? { ...r, status, resolution } : r))
+    );
+  } catch (err) {
+    console.error(err);
+    alert("❌ Lỗi khi cập nhật!");
+  }
+};
 
-    const updatedComplaints = [...complaints];
-    updatedComplaints[complaintIndex] = { ...updatedComplaints[complaintIndex], isLoading: type, error: null };
-    setComplaints(updatedComplaints);
-
-    const complaint = updatedComplaints[complaintIndex];
-
-    try {
-      let prompt = '';
-      if (type === 'suggestions') {
-        prompt = `Với vai trò là người bán, hãy gợi ý các bước giải quyết cho khiếu nại sau: "${complaint.issue}"`;
-      } else if (type === 'draft') {
-        prompt = `Với vai trò là người bán, hãy soạn email phản hồi cho đội ngũ hỗ trợ về vấn đề: "${complaint.issue}" của người bán ${complaint.seller}`;
-      }
-      
-      const response = await getGeminiResponse(prompt);
-      const text = await response.text();
-
-      const finalComplaints = [...complaints];
-      if (type === 'suggestions') {
-        finalComplaints[complaintIndex] = { ...complaint, suggestions: text, isLoading: false };
-      } else {
-        finalComplaints[complaintIndex] = { ...complaint, draft: text, isLoading: false };
-      }
-      setComplaints(finalComplaints);
-    } catch (err) {
-      const finalComplaints = [...complaints];
-      finalComplaints[complaintIndex] = { ...complaint, error: 'Không thể tạo nội dung. Vui lòng thử lại.', isLoading: false };
-      setComplaints(finalComplaints);
-    }
-  };
+  if (loading) return <p className="text-center py-10">Đang tải...</p>;
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900">Quản lý Khiếu nại</h1>
-      <div className="space-y-4">
-        {complaints.map(c => (
-          <div key={c.id} className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition-all">
-            <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-orange-600">{c.id} (Đơn hàng: {c.orderId})</p>
-                <h3 className="mt-1 text-lg font-bold text-gray-800">{c.seller}</h3>
-                <p className="mt-2 text-sm text-gray-600">{c.issue}</p>
-              </div>
-              <div className="text-right">
-                <button className="rounded-md bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-600">Xử lý ngay</button>
-              </div>
-            </div>
-            <div className="mt-4 border-t border-gray-100 pt-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <button 
-                  onClick={() => handleGenerate(c.id, 'suggestions')} 
-                  disabled={c.isLoading}
-                  className="flex items-center gap-2 rounded-md bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-600 shadow-sm transition-colors hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <SparklesIcon />
-                  {c.isLoading === 'suggestions' ? 'Đang tạo gợi ý...' : '✨ Gợi ý giải quyết'}
-                </button>
-                <button 
-                  onClick={() => handleGenerate(c.id, 'draft')}
-                  disabled={c.isLoading}
-                  className="flex items-center gap-2 rounded-md bg-green-50 px-3 py-2 text-xs font-semibold text-green-600 shadow-sm transition-colors hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <SparklesIcon />
-                  {c.isLoading === 'draft' ? 'Đang soạn thư...' : '✨ Soạn thư trả lời'}
-                </button>
-              </div>
+    <div className="max-w-5xl mx-auto p-6">
+      <h2 className="text-2xl font-semibold mb-6 flex items-center gap-2">
+        <AlertTriangle className="text-yellow-500" /> Danh sách khiếu nại khách hàng
+      </h2>
 
-              {c.error && <p className="mt-3 text-xs text-red-600">{c.error}</p>}
-
-              {c.suggestions && (
-                <div className="mt-4 rounded-lg bg-blue-50/50 p-4">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-blue-800">Gợi ý các bước xử lý</h4>
-                  <div className="prose prose-sm mt-2 text-blue-900" dangerouslySetInnerHTML={{ __html: c.suggestions.replace(/\n/g, '<br/>') }} />
-                </div>
-              )}
-
-              {c.draft && (
-                <div className="mt-4 rounded-lg bg-green-50/50 p-4">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-green-800">Bản nháp email gửi hỗ trợ</h4>
-                  <div className="prose prose-sm mt-2 whitespace-pre-line text-green-900">{c.draft}</div>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+      {incidents.length === 0 ? (
+        <p className="text-gray-600">Không có khiếu nại nào.</p>
+      ) : (
+        <div className="overflow-x-auto border rounded-lg shadow-sm">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-gray-100 text-gray-700">
+              <tr>
+                <th className="p-3">Mã đơn</th>
+                <th className="p-3">Loại sự cố</th>
+                <th className="p-3">Mô tả</th>
+                <th className="p-3">Khách hàng</th>
+                <th className="p-3">Trạng thái</th>
+                <th className="p-3 text-center">Hành động</th>
+              </tr>
+            </thead>
+            <tbody>
+              {incidents.map((i) => (
+                <tr key={i._id} className="border-t">
+                  <td className="p-3">{i.order_id?.code || i.order_id}</td>
+                  <td className="p-3">{i.type}</td>
+                  <td className="p-3 line-clamp-2 max-w-xs">{i.description}</td>
+                  <td className="p-3">{i.reported_by?.full_name || "Ẩn danh"}</td>
+                  <td className="p-3">
+                    <span
+                      className={`px-2 py-1 rounded text-xs font-medium ${
+                        i.status === "Resolved"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-yellow-100 text-yellow-700"
+                      }`}
+                    >
+                      {i.status}
+                    </span>
+                  </td>
+                  <td className="p-3 text-center">
+                    {i.status !== "Resolved" ? (
+                      <button
+                        onClick={() => handleResolve(i._id)}
+                        className="px-3 py-1 text-sm rounded bg-green-600 text-white hover:bg-green-700"
+                      >
+                        Giải quyết
+                      </button>
+                    ) : (
+                      <CheckCircle className="inline text-green-500" />
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };

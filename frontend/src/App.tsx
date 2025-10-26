@@ -25,6 +25,8 @@ import OrderTracking from "./components/user_order/order-tracking";
 import ComparePage from "./components/carrier-dashboard/dashboard/compare";
 import BlogDetail from "./pages/BlogDetail";
 import DriverInterviewPage from "./components/carrier-dashboard/dashboard/DriverRecruitPage";
+import OrderHistoryPage from "./pages/OrderHistoryPage";
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -55,7 +57,9 @@ export default function App() {
         <Route path="/seller/driver-applications" element={<SellerDriverApplications />} />
         <Route path="/myorder" element={<UserOrderLayout />}>
           <Route path="tracking" element={<OrderTracking />} />
+          <Route path="history" element={<OrderHistoryPage />} />
         </Route>
+        
       </Routes>
     </BrowserRouter>
   );
