@@ -193,8 +193,7 @@ export default function HomeHeader() {
 
           {/* Tuyển dụng */}
           <Dropdown label="Tuyển dụng" isScrolled={isScrolled} openKey="tuyendung" currentOpen={openMenu} setCurrentOpen={setOpenMenu}>
-            <Link to="/tuyen-tai-xe" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">Tuyển tài xế</Link>
-            <Link to="/tuyen-boc-xep" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">Tuyển người bốc xếp</Link>
+            <Link to="/driver-recruit" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">Tuyển tài xế</Link>
           </Dropdown>
 
 

@@ -15,7 +15,8 @@ import carrierRoutes from "./routes/carrier.routes";
 import orderRoutes from "./routes/order.route";
 import orderTrackingRoute from "./routes/order-tracking.route";
 import extraFeeRoutes from "./routes/extraFeeRoutes";
-
+import driverInterviewRoutes from "./routes/driverInterview.route";
+import notificationRoutes from "./routes/notification.route";
 // 👉 mới thêm
 import feedbackRoute from "./routes/feedback.route";
 import incidentsRoute from "./routes/incidents.route";
@@ -55,7 +56,8 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/order-tracking", orderTrackingRoute);
 app.use("/api/extrafees", extraFeeRoutes);
 app.use("/api/upload", uploadRoute);
-
+app.use("/api/driver-interviews", driverInterviewRoutes);
+app.use("/api/notifications", notificationRoutes);
 // 👉 mới mount
 app.use("/api/feedback", feedbackRoute);
 app.use("/api/incidents", incidentsRoute);
