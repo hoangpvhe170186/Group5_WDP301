@@ -13,69 +13,90 @@ import {
   UserX,
   Mail,
   Phone,
-  ShieldCheck,
 } from "lucide-react";
-import { userApi, type User as UserType } from "@/services/user.service";
+import { adminApi, type User as UserType } from "@/services/admin.service"; // Import adminApi
+import { useNavigate } from "react-router-dom";
 
-export default function UserManagement() {
+export default function CustomerManagement() {
   // 🧠 State
   const [users, setUsers] = useState<UserType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterRole, setFilterRole] = useState("all");
-  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "Active" | "Inactive" | "Banned">("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const limit = 10; // Số lượng khách hàng mỗi trang
+  const navigate = useNavigate();
 
-  // 🚀 Fetch dữ liệu từ API khi component mount
+  // 🚀 Fetch dữ liệu khách hàng từ API
   useEffect(() => {
     const fetchUsers = async () => {
       try {
         setLoading(true);
-        const { users } = await userApi.listUsers();
-        setUsers(users);
+        setError(null);
+        const response = await adminApi.getUsersByRole("customers", currentPage, limit);
+        setUsers(response.users);
+        setTotalPages(response.totalPages);
+        setTotalUsers(response.total);
       } catch (err: any) {
-        console.error("❌ Lỗi khi tải danh sách user:", err);
-        setError(err.message);
+        console.error("❌ Lỗi khi tải danh sách khách hàng:", err);
+        setError(err.message || "Lỗi khi tải danh sách khách hàng");
       } finally {
         setLoading(false);
       }
     };
 
     fetchUsers();
-  }, []);
+  }, [currentPage]);
+
+  // ⚙️ Hàm xử lý hành động
+  const handleViewUser = async (userId: string) => {
+    try {
+      const user = await adminApi.getUserDetail(userId);
+      // Có thể mở modal hoặc chuyển hướng để hiển thị chi tiết
+      navigate(`/admin/customers/${userId}`); // Giả sử có route chi tiết khách hàng
+    } catch (err: any) {
+      setError("Lỗi khi lấy chi tiết khách hàng");
+      console.error(err);
+    }
+  };
+
+  const handleEditUser = (userId: string) => {
+    navigate(`/admin/customers/edit/${userId}`); // Chuyển hướng đến trang chỉnh sửa
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (window.confirm("Bạn có chắc muốn xóa khách hàng này?")) {
+      try {
+        await adminApi.deleteUser(userId);
+        setUsers(users.filter((user) => user.id !== userId));
+        if (filteredUsers.length === 1 && currentPage > 1) {
+          setCurrentPage(currentPage - 1); // Quay lại trang trước nếu trang hiện tại rỗng
+        }
+      } catch (err: any) {
+        setError("Lỗi khi xóa khách hàng");
+        console.error(err);
+      }
+    }
+  };
+
+  // 🔍 Lọc dữ liệu theo tìm kiếm & trạng thái
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch =
+      user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.id.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesStatus = filterStatus === "all" || user.status === filterStatus;
+    return matchesSearch && matchesStatus;
+  });
 
   // ⚙️ Hàm render icon và màu cho vai trò
-  const getRoleIcon = (role: string) => {
-    switch (role) {
-      case "Admin":
-        return <ShieldCheck className="w-4 h-4" />;
-      case "Driver":
-        return <User className="w-4 h-4" />;
-      case "Carrier":
-        return <UserCheck className="w-4 h-4" />;
-      case "Customer":
-        return <User className="w-4 h-4" />;
-      default:
-        return <User className="w-4 h-4" />;
-    }
-  };
+  const getRoleIcon = () => <User className="w-4 h-4" />; // Chỉ cần icon cho Customer
 
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case "Admin":
-        return "bg-red-100 text-red-800";
-      case "Driver":
-        return "bg-yellow-100 text-yellow-800";
-      case "Carrier":
-        return "bg-purple-100 text-purple-800";
-      case "Customer":
-        return "bg-green-100 text-green-800";
-
-        
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
+  const getRoleColor = () => "bg-green-100 text-green-800"; // Màu cố định cho Customer
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -83,48 +104,41 @@ export default function UserManagement() {
         return "bg-green-100 text-green-800";
       case "Inactive":
         return "bg-gray-100 text-gray-800";
-      case "Suspended":
+      case "Banned":
         return "bg-red-100 text-red-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
   };
 
-  // 🔍 Lọc dữ liệu theo tìm kiếm & bộ lọc
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch =
-      user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.id.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesRole = filterRole === "all" || user.role === filterRole;
-    const matchesStatus = filterStatus === "all" || user.status === filterStatus;
-    return matchesSearch && matchesRole && matchesStatus;
-  });
-
   // 🧭 Loading & Error
-  if (loading)
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-64 text-gray-500">
-        Đang tải danh sách người dùng...
+        Đang tải danh sách khách hàng...
       </div>
     );
+  }
 
-  if (error)
+  if (error) {
     return (
       <div className="text-center text-red-600 font-semibold mt-10">
         ❌ Lỗi: {error}
       </div>
     );
+  }
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Quản lý tài khoản</h1>
-        <button className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2">
+        <h1 className="text-3xl font-bold text-gray-900">Quản lý khách hàng</h1>
+        <button
+          onClick={() => navigate("/admin/customers/add")}
+          className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+        >
           <Plus className="w-4 h-4" />
-          Thêm người dùng
+          Thêm khách hàng
         </button>
       </div>
 
@@ -145,25 +159,14 @@ export default function UserManagement() {
           </div>
           <div className="flex gap-4">
             <select
-              value={filterRole}
-              onChange={(e) => setFilterRole(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-            >
-              <option value="all">Tất cả vai trò</option>
-              <option value="Admin">Admin</option>
-              <option value="Driver">Driver</option>
-              <option value="Carrier">Carrier</option>
-              <option value="Customer">Customer</option>
-            </select>
-            <select
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
+              onChange={(e) => setFilterStatus(e.target.value as any)}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
             >
               <option value="all">Tất cả trạng thái</option>
               <option value="Active">Hoạt động</option>
               <option value="Inactive">Không hoạt động</option>
-              <option value="Suspended">Bị khóa</option>
+              <option value="Banned">Bị khóa</option>
             </select>
             <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2">
               <Filter className="w-4 h-4" />
@@ -203,12 +206,12 @@ export default function UserManagement() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredUsers.map((user, index) => (
-                <tr key={index} className="hover:bg-gray-50">
+              {filteredUsers.map((user) => (
+                <tr key={user.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
-                        {getRoleIcon(user.role)}
+                        {getRoleIcon()}
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">
@@ -234,12 +237,10 @@ export default function UserManagement() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleColor(
-                        user.role
-                      )}`}
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleColor()}`}
                     >
-                      {getRoleIcon(user.role)}
-                      <span className="ml-1">{user.role}</span>
+                      {getRoleIcon()}
+                      <span className="ml-1">Customer</span>
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -264,13 +265,25 @@ export default function UserManagement() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
-                      <button className="text-blue-600 hover:text-blue-900 p-1">
+                      <button
+                        onClick={() => handleViewUser(user.id)}
+                        className="text-blue-600 hover:text-blue-900 p-1"
+                        title="Xem chi tiết"
+                      >
                         <Eye className="w-4 h-4" />
                       </button>
-                      <button className="text-orange-600 hover:text-orange-900 p-1">
+                      <button
+                        onClick={() => handleEditUser(user.id)}
+                        className="text-orange-600 hover:text-orange-900 p-1"
+                        title="Chỉnh sửa"
+                      >
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button className="text-red-600 hover:text-red-900 p-1">
+                      <button
+                        onClick={() => handleDeleteUser(user.id)}
+                        className="text-red-600 hover:text-red-900 p-1"
+                        title="Xóa"
+                      >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -281,9 +294,30 @@ export default function UserManagement() {
           </table>
         </div>
 
-        {/* Pagination (placeholder) */}
-        <div className="bg-white px-4 py-3 text-sm text-gray-700 text-center border-t">
-          Hiển thị {filteredUsers.length} / {users.length} người dùng
+        {/* Pagination */}
+        <div className="bg-white px-4 py-3 flex items-center justify-between border-t">
+          <div className="text-sm text-gray-700">
+            Hiển thị {filteredUsers.length} / {totalUsers} khách hàng
+          </div>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              Trước
+            </button>
+            <span className="px-4 py-2 text-sm text-gray-700">
+              Trang {currentPage} / {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              Tiếp
+            </button>
+          </div>
         </div>
       </div>
     </div>

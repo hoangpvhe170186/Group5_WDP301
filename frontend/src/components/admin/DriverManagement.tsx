@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useState } from "react"
+import { useState, useEffect } from "react";
 import {
   Search,
   Filter,
@@ -18,239 +18,169 @@ import {
   ChevronDown,
   ChevronUp,
   ArrowUpDown,
-} from "lucide-react"
+} from "lucide-react";
+import { adminApi, type User as Driver } from "@/services/admin.service"; // Import adminApi
+import { useNavigate } from "react-router-dom";
 
 interface Driver {
-  id: string
-  fullName: string
-  email: string
-  phone: string
-  licenseNumber: string
-  vehicleType: string
-  status: "active" | "inactive" | "suspended"
-  rating: number
-  totalTrips: number
-  completedTrips: number
-  joinDate: string
-  lastActive: string
-  earnings: number
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  licenseNumber: string;
+  vehicleType: string;
+  status: "active" | "inactive" | "suspended";
+  rating: number;
+  totalTrips: number;
+  completedTrips: number;
+  joinDate: string;
+  lastActive: string;
+  earnings: number;
   vehicle?: {
-    plate: string
-    model: string
-    year: number
-  }
+    plate: string;
+    model: string;
+    year: number;
+  };
   documents?: {
-    license: string
-    insurance: string
-    inspection: string
-  }
+    license: string;
+    insurance: string;
+    inspection: string;
+  };
 }
 
-type SortField = "fullName" | "rating" | "totalTrips" | "earnings" | "joinDate"
-type SortOrder = "asc" | "desc"
+type SortField = "fullName" | "rating" | "totalTrips" | "earnings" | "joinDate";
+type SortOrder = "asc" | "desc";
 
 export default function DriverManagement() {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [filterStatus, setFilterStatus] = useState("all")
-  const [filterRating, setFilterRating] = useState("all")
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
-  const [sortField, setSortField] = useState<SortField>("fullName")
-  const [sortOrder, setSortOrder] = useState<SortOrder>("asc")
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 5
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive" | "suspended">("all");
+  const [filterRating, setFilterRating] = useState<"all" | "high" | "medium" | "low">("all");
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [sortField, setSortField] = useState<SortField>("fullName");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalDrivers, setTotalDrivers] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const itemsPerPage = 5;
+  const navigate = useNavigate();
 
-  // Mock data
-  const drivers: Driver[] = [
-    {
-      id: "DRV001",
-      fullName: "Nguyễn Văn A",
-      email: "nguyenvana@email.com",
-      phone: "0912345678",
-      licenseNumber: "A123456",
-      vehicleType: "Xe tải nhỏ",
-      status: "active",
-      rating: 4.8,
-      totalTrips: 245,
-      completedTrips: 243,
-      joinDate: "2023-06-15",
-      lastActive: "2024-01-15 14:30",
-      earnings: 45600000,
-      vehicle: {
-        plate: "29A-12345",
-        model: "Hyundai H100",
-        year: 2022,
-      },
-      documents: {
-        license: "✓ Hợp lệ",
-        insurance: "✓ Hợp lệ",
-        inspection: "✓ Hợp lệ",
-      },
-    },
-    {
-      id: "DRV002",
-      fullName: "Trần Thị B",
-      email: "tranthib@email.com",
-      phone: "0987654321",
-      licenseNumber: "B654321",
-      vehicleType: "Xe bán tải",
-      status: "active",
-      rating: 4.5,
-      totalTrips: 189,
-      completedTrips: 187,
-      joinDate: "2023-08-20",
-      lastActive: "2024-01-15 16:45",
-      earnings: 38200000,
-      vehicle: {
-        plate: "29A-54321",
-        model: "Toyota Hilux",
-        year: 2021,
-      },
-      documents: {
-        license: "✓ Hợp lệ",
-        insurance: "✓ Hợp lệ",
-        inspection: "⚠ Sắp hết hạn",
-      },
-    },
-    {
-      id: "DRV003",
-      fullName: "Lê Văn C",
-      email: "levanc@email.com",
-      phone: "0901234567",
-      licenseNumber: "C789012",
-      vehicleType: "Xe container",
-      status: "active",
-      rating: 4.9,
-      totalTrips: 312,
-      completedTrips: 310,
-      joinDate: "2023-04-10",
-      lastActive: "2024-01-15 18:20",
-      earnings: 62400000,
-      vehicle: {
-        plate: "29A-99999",
-        model: "Howo A7",
-        year: 2023,
-      },
-      documents: {
-        license: "✓ Hợp lệ",
-        insurance: "✓ Hợp lệ",
-        inspection: "✓ Hợp lệ",
-      },
-    },
-    {
-      id: "DRV004",
-      fullName: "Phạm Minh D",
-      email: "phamminnd@email.com",
-      phone: "0923456789",
-      licenseNumber: "D345678",
-      vehicleType: "Xe tải nhỏ",
-      status: "inactive",
-      rating: 3.8,
-      totalTrips: 45,
-      completedTrips: 42,
-      joinDate: "2024-01-01",
-      lastActive: "2024-01-10 10:15",
-      earnings: 8900000,
-      vehicle: {
-        plate: "29A-11111",
-        model: "Suzuki Carry",
-        year: 2020,
-      },
-      documents: {
-        license: "✓ Hợp lệ",
-        insurance: "✗ Hết hạn",
-        inspection: "✓ Hợp lệ",
-      },
-    },
-    {
-      id: "DRV005",
-      fullName: "Hoàng Anh E",
-      email: "hoanganhе@email.com",
-      phone: "0934567890",
-      licenseNumber: "E901234",
-      vehicleType: "Xe bán tải",
-      status: "active",
-      rating: 4.6,
-      totalTrips: 156,
-      completedTrips: 154,
-      joinDate: "2023-09-05",
-      lastActive: "2024-01-15 12:00",
-      earnings: 32100000,
-      vehicle: {
-        plate: "29A-22222",
-        model: "Ford Ranger",
-        year: 2022,
-      },
-      documents: {
-        license: "✓ Hợp lệ",
-        insurance: "✓ Hợp lệ",
-        inspection: "✓ Hợp lệ",
-      },
-    },
-  ]
+  // 🚀 Fetch dữ liệu tài xế từ API
+  useEffect(() => {
+    const fetchDrivers = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await adminApi.getUsersByRole("drivers", currentPage, itemsPerPage);
+        setDrivers(response.users);
+        setTotalPages(response.totalPages);
+        setTotalDrivers(response.total);
+      } catch (err: any) {
+        console.error("❌ Lỗi khi tải danh sách tài xế:", err);
+        setError(err.message || "Lỗi khi tải danh sách tài xế");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDrivers();
+  }, [currentPage]);
+
+  // ⚙️ Hàm xử lý hành động
+  const handleViewDriver = async (driverId: string) => {
+    try {
+      const driver = await adminApi.getUserDetail(driverId);
+      navigate(`/admin/drivers/${driverId}`);
+    } catch (err: any) {
+      setError("Lỗi khi lấy chi tiết tài xế");
+      console.error(err);
+    }
+  };
+
+  const handleEditDriver = (driverId: string) => {
+    navigate(`/admin/drivers/edit/${driverId}`);
+  };
+
+  const handleDeleteDriver = async (driverId: string) => {
+    if (window.confirm("Bạn có chắc muốn xóa tài xế này?")) {
+      try {
+        await adminApi.deleteUser(driverId);
+        setDrivers(drivers.filter((driver) => driver.id !== driverId));
+        if (filteredAndSortedDrivers.length === 1 && currentPage > 1) {
+          setCurrentPage(currentPage - 1);
+        }
+      } catch (err: any) {
+        setError("Lỗi khi xóa tài xế");
+        console.error(err);
+      }
+    }
+  };
 
   const toggleExpandRow = (driverId: string) => {
-    const newExpanded = new Set(expandedRows)
+    const newExpanded = new Set(expandedRows);
     if (newExpanded.has(driverId)) {
-      newExpanded.delete(driverId)
+      newExpanded.delete(driverId);
     } else {
-      newExpanded.add(driverId)
+      newExpanded.add(driverId);
     }
-    setExpandedRows(newExpanded)
-  }
+    setExpandedRows(newExpanded);
+  };
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc")
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
-      setSortField(field)
-      setSortOrder("asc")
+      setSortField(field);
+      setSortOrder("asc");
     }
-  }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800";
       case "inactive":
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
       case "suspended":
-        return "bg-red-100 text-red-800"
+        return "bg-red-100 text-red-800";
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
     }
-  }
+  };
 
   const getStatusText = (status: string) => {
     switch (status) {
       case "active":
-        return "Hoạt động"
+        return "Hoạt động";
       case "inactive":
-        return "Không hoạt động"
+        return "Không hoạt động";
       case "suspended":
-        return "Bị khóa"
+        return "Bị khóa";
       default:
-        return "Không xác định"
+        return "Không xác định";
     }
-  }
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "active":
-        return <CheckCircle className="w-4 h-4" />
+        return <CheckCircle className="w-4 h-4" />;
       case "inactive":
-        return <AlertCircle className="w-4 h-4" />
+        return <AlertCircle className="w-4 h-4" />;
       case "suspended":
-        return <AlertCircle className="w-4 h-4" />
+        return <AlertCircle className="w-4 h-4" />;
       default:
-        return <AlertCircle className="w-4 h-4" />
+        return <AlertCircle className="w-4 h-4" />;
     }
-  }
+  };
 
   const getRatingColor = (rating: number) => {
-    if (rating >= 4.7) return "text-green-600"
-    if (rating >= 4.0) return "text-yellow-600"
-    return "text-red-600"
-  }
+    if (rating >= 4.7) return "text-green-600";
+    if (rating >= 4.0) return "text-yellow-600";
+    return "text-red-600";
+  };
 
   const filteredAndSortedDrivers = drivers
     .filter((driver) => {
@@ -258,38 +188,57 @@ export default function DriverManagement() {
         driver.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         driver.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
         driver.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        driver.phone.includes(searchTerm)
+        driver.phone.includes(searchTerm);
 
-      const matchesStatus = filterStatus === "all" || driver.status === filterStatus
+      const matchesStatus = filterStatus === "all" || driver.status === filterStatus;
       const matchesRating =
         filterRating === "all" ||
         (filterRating === "high" && driver.rating >= 4.5) ||
         (filterRating === "medium" && driver.rating >= 4.0 && driver.rating < 4.5) ||
-        (filterRating === "low" && driver.rating < 4.0)
+        (filterRating === "low" && driver.rating < 4.0);
 
-      return matchesSearch && matchesStatus && matchesRating
+      return matchesSearch && matchesStatus && matchesRating;
     })
     .sort((a, b) => {
-      const aValue: any = a[sortField]
-      const bValue: any = b[sortField]
+      const aValue: any = a[sortField];
+      const bValue: any = b[sortField];
 
       if (sortOrder === "asc") {
-        return aValue > bValue ? 1 : -1
+        return aValue > bValue ? 1 : -1;
       } else {
-        return aValue < bValue ? 1 : -1
+        return aValue < bValue ? 1 : -1;
       }
-    })
+    });
 
-  const totalPages = Math.ceil(filteredAndSortedDrivers.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const paginatedDrivers = filteredAndSortedDrivers.slice(startIndex, startIndex + itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedDrivers = filteredAndSortedDrivers.slice(startIndex, startIndex + itemsPerPage);
+
+  // 🧭 Loading & Error
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64 text-gray-500">
+        Đang tải danh sách tài xế...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center text-red-600 font-semibold mt-10">
+        ❌ Lỗi: {error}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Quản lý tài xế</h1>
-        <button className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2">
+        <button
+          onClick={() => navigate("/admin/drivers/add")}
+          className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+        >
           <Plus className="w-4 h-4" />
           Thêm tài xế
         </button>
@@ -301,7 +250,7 @@ export default function DriverManagement() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Tổng tài xế</p>
-              <p className="text-2xl font-bold text-gray-900">{drivers.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{totalDrivers}</p>
             </div>
             <Truck className="w-8 h-8 text-orange-500 opacity-20" />
           </div>
@@ -310,7 +259,9 @@ export default function DriverManagement() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Đang hoạt động</p>
-              <p className="text-2xl font-bold text-green-600">{drivers.filter((d) => d.status === "active").length}</p>
+              <p className="text-2xl font-bold text-green-600">
+                {drivers.filter((d) => d.status === "active").length}
+              </p>
             </div>
             <CheckCircle className="w-8 h-8 text-green-500 opacity-20" />
           </div>
@@ -320,7 +271,7 @@ export default function DriverManagement() {
             <div>
               <p className="text-sm text-gray-600">Trung bình rating</p>
               <p className="text-2xl font-bold text-yellow-600">
-                {(drivers.reduce((sum, d) => sum + d.rating, 0) / drivers.length).toFixed(1)}
+                {(drivers.reduce((sum, d) => sum + d.rating, 0) / drivers.length || 0).toFixed(1)}
               </p>
             </div>
             <Star className="w-8 h-8 text-yellow-500 opacity-20" />
@@ -357,7 +308,7 @@ export default function DriverManagement() {
           <div className="flex gap-4">
             <select
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
+              onChange={(e) => setFilterStatus(e.target.value as any)}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
             >
               <option value="all">Tất cả trạng thái</option>
@@ -367,7 +318,7 @@ export default function DriverManagement() {
             </select>
             <select
               value={filterRating}
-              onChange={(e) => setFilterRating(e.target.value)}
+              onChange={(e) => setFilterRating(e.target.value as any)}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
             >
               <option value="all">Tất cả rating</option>
@@ -469,8 +420,8 @@ export default function DriverManagement() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{driver.vehicleType}</div>
-                      <div className="text-sm text-gray-500">{driver.licenseNumber}</div>
+                      <div className="text-sm text-gray-900">{driver.vehicleType || "Không xác định"}</div>
+                      <div className="text-sm text-gray-500">{driver.licenseNumber || "Không xác định"}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -485,7 +436,10 @@ export default function DriverManagement() {
                         {driver.completedTrips}/{driver.totalTrips}
                       </div>
                       <div className="text-xs text-gray-500">
-                        {((driver.completedTrips / driver.totalTrips) * 100).toFixed(0)}% hoàn thành
+                        {driver.totalTrips > 0
+                          ? ((driver.completedTrips / driver.totalTrips) * 100).toFixed(0)
+                          : 0}
+                        % hoàn thành
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -496,7 +450,7 @@ export default function DriverManagement() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
-                          driver.status,
+                          driver.status
                         )}`}
                       >
                         {getStatusIcon(driver.status)}
@@ -505,13 +459,25 @@ export default function DriverManagement() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
-                        <button className="text-blue-600 hover:text-blue-900 p-1">
+                        <button
+                          onClick={() => handleViewDriver(driver.id)}
+                          className="text-blue-600 hover:text-blue-900 p-1"
+                          title="Xem chi tiết"
+                        >
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button className="text-orange-600 hover:text-orange-900 p-1">
+                        <button
+                          onClick={() => handleEditDriver(driver.id)}
+                          className="text-orange-600 hover:text-orange-900 p-1"
+                          title="Chỉnh sửa"
+                        >
                           <Edit className="w-4 h-4" />
                         </button>
-                        <button className="text-red-600 hover:text-red-900 p-1">
+                        <button
+                          onClick={() => handleDeleteDriver(driver.id)}
+                          className="text-red-600 hover:text-red-900 p-1"
+                          title="Xóa"
+                        >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -526,15 +492,21 @@ export default function DriverManagement() {
                             <div className="space-y-2 text-sm">
                               <div>
                                 <span className="text-gray-600">Biển số:</span>
-                                <span className="ml-2 font-medium text-gray-900">{driver.vehicle?.plate}</span>
+                                <span className="ml-2 font-medium text-gray-900">
+                                  {driver.vehicle?.plate || "Không xác định"}
+                                </span>
                               </div>
                               <div>
                                 <span className="text-gray-600">Model:</span>
-                                <span className="ml-2 font-medium text-gray-900">{driver.vehicle?.model}</span>
+                                <span className="ml-2 font-medium text-gray-900">
+                                  {driver.vehicle?.model || "Không xác định"}
+                                </span>
                               </div>
                               <div>
                                 <span className="text-gray-600">Năm sản xuất:</span>
-                                <span className="ml-2 font-medium text-gray-900">{driver.vehicle?.year}</span>
+                                <span className="ml-2 font-medium text-gray-900">
+                                  {driver.vehicle?.year || "Không xác định"}
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -543,15 +515,21 @@ export default function DriverManagement() {
                             <div className="space-y-2 text-sm">
                               <div>
                                 <span className="text-gray-600">Bằng lái:</span>
-                                <span className="ml-2 font-medium text-gray-900">{driver.documents?.license}</span>
+                                <span className="ml-2 font-medium text-gray-900">
+                                  {driver.documents?.license || "Không xác định"}
+                                </span>
                               </div>
                               <div>
                                 <span className="text-gray-600">Bảo hiểm:</span>
-                                <span className="ml-2 font-medium text-gray-900">{driver.documents?.insurance}</span>
+                                <span className="ml-2 font-medium text-gray-900">
+                                  {driver.documents?.insurance || "Không xác định"}
+                                </span>
                               </div>
                               <div>
                                 <span className="text-gray-600">Kiểm định:</span>
-                                <span className="ml-2 font-medium text-gray-900">{driver.documents?.inspection}</span>
+                                <span className="ml-2 font-medium text-gray-900">
+                                  {driver.documents?.inspection || "Không xác định"}
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -568,8 +546,8 @@ export default function DriverManagement() {
         {/* Pagination */}
         <div className="bg-white px-4 py-3 border-t border-gray-200 flex items-center justify-between">
           <div className="text-sm text-gray-700">
-            Hiển thị {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredAndSortedDrivers.length)} của{" "}
-            {filteredAndSortedDrivers.length} tài xế
+            Hiển thị {startIndex + 1}-{Math.min(startIndex + itemsPerPage, totalDrivers)} của{" "}
+            {totalDrivers} tài xế
           </div>
           <div className="flex gap-2">
             <button
@@ -601,5 +579,5 @@ export default function DriverManagement() {
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,12 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   LayoutDashboard, 
   Package, 
   Users, 
   MessageSquare, 
   Star, 
-  DollarSign, 
-  Truck,
   Menu,
   X,
   LogOut,
@@ -14,16 +12,19 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { clearAuthData, getCurrentUserRole } from "../lib/auth";
+import { adminApi } from "../services/admin.service"; // Giả sử đường dẫn import đúng đến file service adminApi
 
 // Import các component quản lý
 import OrderManagement from "../components/admin/OrderManagement";
-import UserManagement from "../components/admin/UserManagement";
+import CustomerManagement from "../components/admin/CustomerManagement";
 import ComplaintManagement from "../components/admin/ComplaintManagement";
 import QualityManagement from "../components/admin/QualityManagement";
-
+import DriverManagement from "../components/admin/DriverManagement";
 type AdminSection = 
   | "dashboard" 
   | "orders" 
+  | "drivers" 
+  | "sellers"
   | "users" 
   | "complaints" 
   | "quality" 
@@ -38,7 +39,8 @@ export default function AdminDashboard() {
   const menuItems = [
     { id: "dashboard" as AdminSection, label: "Tổng quan", icon: LayoutDashboard },
     { id: "orders" as AdminSection, label: "Quản lý đơn hàng", icon: Package },
-    { id: "users" as AdminSection, label: "Quản lý tài khoản", icon: Users },
+    { id: "users" as AdminSection, label: "Quản lý khách hàng", icon: Users },
+    { id: "drivers" as AdminSection, label: "Quản lý tài xế", icon: Users },
     { id: "complaints" as AdminSection, label: "Xử lý sự cố", icon: MessageSquare },
     { id: "quality" as AdminSection, label: "Quản lý chất lượng", icon: Star }
   ];
@@ -55,7 +57,9 @@ export default function AdminDashboard() {
       case "orders":
         return <OrderManagement />;
       case "users":
-        return <UserManagement />;
+        return <CustomerManagement />;
+      case "drivers":
+        return <DriverManagement/>;
       case "complaints":
         return <ComplaintManagement />;
       case "quality":
@@ -162,17 +166,78 @@ export default function AdminDashboard() {
 
 // Component tổng quan dashboard
 function DashboardOverview() {
-  const stats = [
-    { label: "Tổng đơn hàng", value: "1,234", change: "+12%", color: "blue" },
-    { label: "Tài khoản người dùng", value: "5,678", change: "+8%", color: "green" },
-    { label: "Khiếu nại", value: "23", change: "-5%", color: "red" },
-    { label: "Doanh thu tháng", value: "₫45.6M", change: "+15%", color: "orange" },
-  ];
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const recentOrders = [
-    { id: "#1234", customer: "Nguyễn Văn A", amount: "₫150,000", status: "Đang giao" },
-    { id: "#1235", customer: "Trần Thị B", amount: "₫200,000", status: "Hoàn thành" },
-    { id: "#1236", customer: "Lê Văn C", amount: "₫300,000", status: "Đang xử lý" },
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        const stats = await adminApi.getDashboard();
+        
+        // Tính tổng tài khoản người dùng
+        const totalUsers = stats.totalCustomers + stats.totalDrivers + stats.totalSellers;
+        
+        // Tính doanh thu tháng (giả sử lấy từ revenueByTime, hoặc dùng totalRevenue nếu không có)
+        // Để chính xác hơn, có thể gọi getRevenueStats với ngày đầu/thuôi tháng
+        const currentDate = new Date();
+        const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString().split('T')[0];
+        const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).toISOString().split('T')[0];
+        const revenueData = await adminApi.getRevenueStats(startOfMonth, endOfMonth);
+        
+        let monthlyRevenue = 0;
+        if (revenueData && Array.isArray(revenueData)) {
+          monthlyRevenue = revenueData.reduce((sum, day) => sum + day.totalRevenue, 0);
+        } else {
+          monthlyRevenue = stats.totalRevenue; // Fallback
+        }
+
+        // Giả sử "Khiếu nại" chưa có API, giữ mock hoặc thêm sau. Ở đây dùng 0 làm placeholder
+        const complaints = 0; // Thay bằng API nếu có
+
+        // Cập nhật stats
+        setDashboardData({
+          totalOrders: stats.totalOrders,
+          totalUsers,
+          complaints,
+          monthlyRevenue,
+          // Có thể thêm change % nếu cần tính toán từ dữ liệu trước, nhưng hiện tại giữ mock change
+        });
+
+        // Lấy recent orders (lấy 3 đơn hàng gần nhất)
+        const ordersResponse = await adminApi.getOrders(1, 3);
+        setRecentOrders(ordersResponse.orders.map(order => ({
+          id: order.code || `#${order.id}`,
+          customer: order.customer?.fullName || 'Khách hàng không xác định',
+          amount: `₫${order.price.toLocaleString()}`,
+          status: order.status,
+        })));
+      } catch (err) {
+        setError('Lỗi khi tải dữ liệu dashboard');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  if (loading) {
+    return <div className="text-center py-10">Đang tải dữ liệu...</div>;
+  }
+
+  if (error) {
+    return <div className="text-center py-10 text-red-600">{error}</div>;
+  }
+
+  const stats = [
+    { label: "Tổng đơn hàng", value: dashboardData.totalOrders.toLocaleString(), change: "+12%", color: "blue" }, // Change % mock, có thể tính thực nếu có data trước
+    { label: "Tài khoản người dùng", value: dashboardData.totalUsers.toLocaleString(), change: "+8%", color: "green" },
+    { label: "Khiếu nại", value: dashboardData.complaints.toLocaleString(), change: "-5%", color: "red" },
+    { label: "Doanh thu tháng", value: `₫${dashboardData.monthlyRevenue.toLocaleString()}`, change: "+15%", color: "orange" },
   ];
 
   return (
