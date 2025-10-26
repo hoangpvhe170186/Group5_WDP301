@@ -1,16 +1,26 @@
 "use client";
-import { Menu, Bell, User } from "lucide-react";
+import { Menu, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 
 interface DashboardHeaderProps {
   onMenuClick: () => void;
 }
 
 export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
+  const handleLogout = () => {
+    // Xóa token đăng nhập
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("token");
+    sessionStorage.removeItem("auth_token");
+
+    // Điều hướng về trang đăng nhập
+    window.location.href = "/auth/login";
+  };
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
       <div className="flex h-16 items-center justify-between px-4 md:px-6">
+        {/* Logo + Menu */}
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
@@ -36,20 +46,26 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
               </svg>
             </div>
             <div>
-              <h1 className="text-lg font-bold text-foreground">HOME EXPRESS</h1>
-              <p className="text-xs text-muted-foreground">Logistics Platform</p>
+              <h1 className="text-lg font-bold text-foreground">
+                HOME EXPRESS
+              </h1>
+              <p className="text-xs text-muted-foreground">
+                Logistics Platform
+              </p>
             </div>
           </div>
         </div>
+
+        {/* User + Logout */}
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            <Badge className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 text-xs">
-              3
-            </Badge>
-          </Button>
-          <Button variant="ghost" size="icon">
-            <User className="h-5 w-5" />
+         
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-destructive border-destructive hover:bg-destructive hover:text-white transition"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-4 w-4 mr-1" /> Đăng xuất
           </Button>
         </div>
       </div>

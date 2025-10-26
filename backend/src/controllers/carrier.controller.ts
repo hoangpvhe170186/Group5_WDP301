@@ -29,6 +29,37 @@ const toPlainItem = (it: any) => ({
   fragile: !!it.fragile,
 });
 
+// controllers/carrier.controller.ts
+export const updateCarrierProfile = async (req, res) => {
+  try {
+    const { fullName, phone, licenseNumber, vehiclePlate, avatarUrl } = req.body;
+    const user = await User.findById(req.user._id);
+
+    if (!user) return res.status(404).json({ message: "Không tìm thấy user" });
+
+    user.full_name = fullName ?? user.full_name;
+    user.phone = phone ?? user.phone;
+    user.licenseNumber = licenseNumber ?? user.licenseNumber;
+    user.vehiclePlate = vehiclePlate ?? user.vehiclePlate;
+    if (avatarUrl) user.avatar = avatarUrl; // ✅ thêm dòng này
+
+    await user.save();
+
+    return res.json({
+      fullName: user.full_name,
+      phone: user.phone,
+      licenseNumber: user.licenseNumber,
+      vehiclePlate: user.vehiclePlate,
+      avatarUrl: user.avatar, // ✅ trả về để FE hiển thị
+    });
+  } catch (err) {
+    console.error("updateCarrierProfile error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+
 /* ============================================================================
  * Profile
  * ==========================================================================*/
@@ -42,30 +73,21 @@ export const getMe = async (req: any, res: Response, next: NextFunction) => {
 
 import User from "../models/User";
 
-export const getCarrierProfile = async (req, res, next) => {
+export const getCarrierProfile = async (req, res) => {
   try {
-    // kiểm tra middleware requireAuth có inject user chưa
-    if (!req.user || !req.user._id) {
-      return res.status(401).json({ message: "Unauthorized: missing user context" });
-    }
-
-    // tìm user trong database
-    const carrier = await User.findById(req.user._id).select("full_name email role avatar");
-
-    if (!carrier) {
-      return res.status(404).json({ message: "Carrier not found" });
-    }
+    const user = await User.findById(req.user._id).lean();
+    if (!user) return res.status(404).json({ message: "Không tìm thấy carrier" });
 
     res.json({
-      id: carrier._id,
-      full_name: carrier.full_name,
-      email: carrier.email,
-      role: carrier.role,
-      avatar: carrier.avatar,
+      fullName: user.full_name,
+      phone: user.phone,
+      licenseNumber: user.licenseNumber,
+      vehiclePlate: user.vehiclePlate,
+      avatarUrl: user.avatar,
+      verified: user.status === "Active"
     });
   } catch (err) {
-    console.error("❌ Error in getCarrierProfile:", err);
-    res.status(500).json({ message: err.message || "Internal Server Error" });
+    res.status(500).json({ message: err.message });
   }
 };
 

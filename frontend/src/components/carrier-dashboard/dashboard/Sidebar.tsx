@@ -96,8 +96,9 @@ export function DashboardSidebar({
               </div>
               <div className="flex-1 overflow-hidden">
                 <p className="truncate text-sm font-medium">
-                  {user?.full_name || "Đang tải..."}
+                  {user?.fullName || "Đang tải..."}
                 </p>
+
                 <p className="truncate text-xs text-muted-foreground">
                   {user?.role || "Carrier"}
                 </p>

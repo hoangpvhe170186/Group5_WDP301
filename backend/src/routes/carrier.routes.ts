@@ -20,7 +20,8 @@ import {
   claimOrder,
   declineAssignedOrder,
   getCarrierProfile,
-  acceptAssignedOrder,     // ✅ tracking riêng
+  acceptAssignedOrder,
+  updateCarrierProfile,     // ✅ tracking riêng
 } from "../controllers/carrier.controller";
 import crypto from "crypto";
 import path from "path";
@@ -71,6 +72,7 @@ router.get("/order-tracking/:orderId", getTrackings);
 router.post("/orders/:id/claim", requireAuth, withIO, claimOrder); // 🟢 Đây là route đúng, nếu bạn đã thêm withIO
 router.post("/decline/:id", requireAuth, withIO, declineAssignedOrder);
 router.get("/profile", requireAuth, getCarrierProfile);
+router.put("/profile", requireAuth, updateCarrierProfile);
 router.post("/orders/:id/accept-assigned", requireAuth, withIO, acceptAssignedOrder);
 router.post("/orders/:id/decline-assigned", requireAuth, withIO, declineAssignedOrder);
 router.get("/orders", requireAuth, async (req, res) => {
