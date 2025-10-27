@@ -77,11 +77,46 @@ export const updateUser = async (req: Request, res: Response) => {
     });
   }
 };
+
+// DELETE /api/users/:id
+export const deleteUser = async (req : Request, res: Response) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) return res.status(404).json({ message: "Không tìm thấy user" });
+    res.json({ message: "Đã xóa user thành công" });
+  } catch {
+    res.status(500).json({ error: "Không thể xóa user" });
+  }
+};
+
+export const updateUserStatus = async (req : Request, res: Response) => {
+  const { status } = req.body;
+  if (!Object.values(status).includes(status)) {
+    return res.status(400).json({ message: "Trạng thái không hợp lệ" });
+  }
+
+  const user = await User.findByIdAndUpdate(req.params.id, { status }, { new: true });
+  res.json(user);
+};
+
+
+export const searchUsers = async (req : Request, res : Response) => {
+  const { role, status, q } = req.query;
+  const query: any = {};
+
+  if (role) query.role = role;
+  if (status) query.status = status;
+  if (q) query.full_name = { $regex: q, $options: "i" };
+
+  const users = await User.find(query).limit(50).select("-password_hash");
+  res.json(users);
+};
+
+
 export const getAllOrders = async (req: Request, res: Response) => {
   try {
     const orders = await Order.find()
       .populate("seller_id")
-      .populate("carrier_id")
       .populate("package_id")
       .populate("driver_id")
       .populate("customer_id")
@@ -196,7 +231,6 @@ export const getOrderById = async (req: Request, res: Response) => {
   try {
     const order = await Order.findById(req.params.id)
       .populate("seller_id")
-      .populate("carrier_id")
       .populate("package_id")
       .populate("driver_id")
       .populate("customer_id");  
@@ -311,6 +345,9 @@ export const confirmOrder = async (req: Request, res: Response) => {
     });
   }
 };
+
+
+
 export const getOrdersByCustomer = async (req: Request, res: Response) => {
   try {
     const { customer_id } = req.params; // 🔹 Lấy id từ URL, ví dụ /orders/customer/:customer_id

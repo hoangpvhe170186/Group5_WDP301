@@ -147,9 +147,6 @@ export default function LoginPage() {
           navigate("/admin/dashboard");
           break;
         case "driver":
-          navigate("/driver/home");
-          break;
-        case "carrier":
           navigate("/carrier/home");
           break;
         case "seller":

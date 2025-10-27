@@ -27,6 +27,7 @@ export default function OrderTracking() {
       try {
         setLoading(true);
         const { orders: fetchedOrders } = await orderApi.listMyOrders();
+        console.log("fetchedOrders", fetchedOrders);
         setOrders(fetchedOrders || []);
         if (fetchedOrders && fetchedOrders.length > 0) {
           setSelectedOrder(fetchedOrders[0].id);
@@ -46,37 +47,12 @@ export default function OrderTracking() {
     [orders, selectedOrder]
   );
 
-  // 🔹 Gọi API để lấy order items thật từ DB
-  useEffect(() => {
-    const fetchOrderItems = async () => {
-      if (!selectedOrder) return;
-      try {
-        const token = localStorage.getItem("auth_token");
-        const res = await fetch(`${API_BASE}/api/orders/${selectedOrder}/items`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-        const data = await res.json();
-        if (res.ok) {
-          setOrderItems(data.items || []);
-        } else {
-          setOrderItems([]);
-        }
-      } catch (err) {
-        console.error("❌ Lỗi lấy danh sách items:", err);
-        setOrderItems([]);
-      }
-    };
-    fetchOrderItems();
-  }, [selectedOrder]);
-
-  // 🔹 Chuẩn hoá dữ liệu order cho UI
+  console.log("currentOrder", currentOrder);
+  // Chuẩn hoá dữ liệu cho UI
   const mapOrderData = (order: any) => ({
     id: order.id,
-    orderNumber: `#${order.id}`,
-    status: (order.status || "").toLowerCase(),
+    orderNumber: order.code,
+    status: (order.status || "").toLowerCase(), // expect: "pending" | "in-transit" | "delivered" ...
     date: order.createdAt ? new Date(order.createdAt).toLocaleDateString("vi-VN") : "—",
     total: `₫ ${Number(order.totalPrice || 0).toLocaleString("vi-VN")}`,
     items: orderItems.length || 0, // 🟢 hiển thị số lượng items thực
@@ -136,6 +112,8 @@ export default function OrderTracking() {
 
   const mappedCurrent = currentOrder ? mapOrderData(currentOrder) : null;
 
+  const mappedCurrent = currentOrder ? mapOrderData(currentOrder) : null;
+  
   return (
     <div className="min-h-screen bg-background">
       <OrderHeader />
