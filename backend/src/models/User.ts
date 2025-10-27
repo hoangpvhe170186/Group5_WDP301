@@ -1,6 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
 
-// Enum cho role và status
 export enum Role {
   Admin = "Admin",
   Seller = "Seller",
@@ -15,20 +14,21 @@ export enum Status {
   Suspended = "Suspended",
 }
 
-// Định nghĩa interface cho User Document
 interface IUser extends Document {
   full_name: string;
   email: string;
   password_hash: string;
+  phone?: string;
+  licenseNumber?: string;   // 🟩 GPLX
+  vehiclePlate?: string;    // 🟩 Biển số
   role: Role;
-  avatar: string;
+  avatar?: string;
   status: Status;
-  created_by: number;
+  created_by?: number;
   created_at: Date;
   updated_at: Date;
 }
 
-// Định nghĩa Mongoose Schema cho User
 const UserSchema: Schema = new Schema(
   {
     full_name: { type: String, required: true, maxlength: 100 },
@@ -36,9 +36,10 @@ const UserSchema: Schema = new Schema(
     phone: {
       type: String,
       maxlength: 20,
-      unique: false, 
-      match: [/^\d+$/, "Please use a valid phone number."], 
+      match: [/^\d+$/, "Please use a valid phone number."],
     },
+    licenseNumber: { type: String, maxlength: 50, default: "" }, // ✅ mới
+    vehiclePlate: { type: String, maxlength: 20, default: "" },  // ✅ mới
     password_hash: { type: String, maxlength: 255 },
     role: {
       type: String,
@@ -57,12 +58,7 @@ const UserSchema: Schema = new Schema(
     created_at: { type: Date, default: Date.now },
     updated_at: { type: Date, default: Date.now },
   },
-  {
-    timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
-  }
+  { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
 );
 
-// Tạo Model từ Schema
-const User = mongoose.model<IUser>("User", UserSchema);
-
-export default User;
+export default mongoose.model<IUser>("User", UserSchema);

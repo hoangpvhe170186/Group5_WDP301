@@ -1,5 +1,6 @@
 // src/services/order.service.ts
 import api from "@/lib/axios";
+import axios from "../lib/axios";
 
 /**
  * Lấy token xác thực từ localStorage / sessionStorage
@@ -47,6 +48,12 @@ const normalizeOrder = (o: any): Order => ({
   deliveryAddress: o.delivery_address || "",
   scheduledTime: o.scheduled_time
 });
+export default {
+  acceptOrder: (orderId: string) => axios.post(`/orders/${orderId}/carrier-accept`),
+  sellerAccept: (orderId: string) => axios.post(`/orders/${orderId}/seller-accept`),
+  assignOrder: (orderId: string, carrierId: string) => axios.post(`/orders/${orderId}/assign`, { carrierId }),
+  declineAssignment: (orderId: string) => axios.post(`/orders/${orderId}/decline`)
+};
 /**
  * Service xử lý các yêu cầu liên quan đến đơn hàng
  */

@@ -193,8 +193,7 @@ export default function HomeHeader() {
 
           {/* Tuyển dụng */}
           <Dropdown label="Tuyển dụng" isScrolled={isScrolled} openKey="tuyendung" currentOpen={openMenu} setCurrentOpen={setOpenMenu}>
-            <Link to="/tuyen-tai-xe" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">Tuyển tài xế</Link>
-            <Link to="/tuyen-boc-xep" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">Tuyển người bốc xếp</Link>
+            <Link to="/driver-recruit" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">Tuyển tài xế</Link>
           </Dropdown>
 
 
@@ -213,6 +212,7 @@ export default function HomeHeader() {
                 <Dropdown label={`Hello, ${user.full_name}`} isScrolled={isScrolled} openKey="userMenu" currentOpen={openMenu} setCurrentOpen={setOpenMenu} btnClass="font-semibold">
                    <Link to="/profile" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">Profile</Link>
                    <Link to="/myorder/tracking" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">My Order</Link>
+                   <Link to="/myorder/history" className="block rounded-lg px-3 py-2 hover:bg-gray-50" role="menuitem">Lịch sử đơn hàng</Link>
                    <button onClick={onLogout} className="w-full text-left rounded-lg px-3 py-2 text-red-600 hover:bg-red-50" role="menuitem">
                      Đăng xuất
                    </button>

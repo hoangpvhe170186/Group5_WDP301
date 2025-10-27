@@ -83,13 +83,13 @@ const OrderManagementScreen = () => {
   // 🏷️ Status Badge
   const StatusBadge = ({ text }) => {
     const colors = {
-      Pending: "bg-yellow-100 text-yellow-800",
-      Assigned: "bg-purple-100 text-purple-800",
+      PENDING: "bg-yellow-100 text-yellow-800",
+      ASSIGNED: "bg-purple-100 text-purple-800",
       ACCEPTED: "bg-green-100 text-green-800",
-      Confirmed: "bg-blue-100 text-blue-800",
-      On_the_way: "bg-indigo-100 text-indigo-800",
+      CONFIRMED: "bg-blue-100 text-blue-800",
+      ON_THE_WAY: "bg-indigo-100 text-indigo-800",
       ARRIVED: "bg-cyan-100 text-cyan-800",
-      Completed: "bg-emerald-100 text-emerald-800",
+      COMPLETED: "bg-emerald-100 text-emerald-800",
       DECLINED
 
 : "bg-red-100 text-red-800",
@@ -253,7 +253,7 @@ const OrderManagementScreen = () => {
                     )}
 
                     {/* Cập nhật / Giao việc */}
-                    {(order.status === "Assigned" || order.status === "Decline") && (
+                    {(order.status === "ASSIGNED" || order.status === "DECLINED") && (
                       <button
                         onClick={() => {
                           setSelectedOrderId(order._id);

@@ -5,28 +5,28 @@ import Order from "../models/Order";
 cron.schedule("*/10 * * * * *", async () => {
   try {
     const now = new Date();
-    const tenMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
+    const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000); // 30 phút trước
 
-    // 🔍 Tìm các đơn pending quá 10 phút mà chưa có driver
+    // 🔍 Tìm các đơn CONFIRMED quá 10 phút mà chưa có carrier
     const pendingOrders = await Order.find({
       status: { $regex: /^confirmed$/i },
       $or: [
-  { driver_id: { $exists: false } },
-  { driver_id: null },
-],
-      createdAt: { $lte: tenMinutesAgo },
+        { carrier_id: { $exists: false } },
+        { carrier_id: null },
+      ],
+      createdAt: { $lte: thirtyMinutesAgo },
     });
 
     for (const order of pendingOrders) {
-      order.status = "Assigned";
+      order.status = "ASSIGNED";
       order.auditLogs.push({
         at: new Date(),
         by: "system",
         action: "ASSIGNED_AUTO",
-        note: "Tự động chuyển sang trạng thái assigned sau 10 phút không ai nhận.",
+        note: "Tự động chuyển sang trạng thái 'ASSIGNED' sau 10 phút không có carrier nhận đơn.",
       });
       await order.save();
-      console.log(`✅ Đã tự động chuyển đơn ${order._id} sang trạng thái 'assigned'`);
+      console.log(`✅ Đã tự động chuyển đơn ${order._id} sang trạng thái 'ASSIGNED'`);
     }
 
     if (pendingOrders.length > 0) {

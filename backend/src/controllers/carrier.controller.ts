@@ -11,7 +11,9 @@ import {
   assertTransition,
 } from "../modules/carrier/order-helpers";
 import mongoose from "mongoose";
-
+function oid(id: string) {
+  return new mongoose.Types.ObjectId(id);
+}
 /** Utils */
 const getUserId = (req: any) => req?.user?.id || req?.user?._id;
 
@@ -22,10 +24,41 @@ const toPlainItem = (it: any) => ({
   weight: it?.weight?.$numberDecimal
     ? Number(it.weight.$numberDecimal)
     : typeof it?.weight === "object" && it?.weight?._bsontype === "Decimal128"
-    ? Number(it.weight.toString())
-    : Number(it?.weight ?? 0),
+      ? Number(it.weight.toString())
+      : Number(it?.weight ?? 0),
   fragile: !!it.fragile,
 });
+
+// controllers/carrier.controller.ts
+export const updateCarrierProfile = async (req, res) => {
+  try {
+    const { fullName, phone, licenseNumber, vehiclePlate, avatarUrl } = req.body;
+    const user = await User.findById(req.user._id);
+
+    if (!user) return res.status(404).json({ message: "Không tìm thấy user" });
+
+    user.full_name = fullName ?? user.full_name;
+    user.phone = phone ?? user.phone;
+    user.licenseNumber = licenseNumber ?? user.licenseNumber;
+    user.vehiclePlate = vehiclePlate ?? user.vehiclePlate;
+    if (avatarUrl) user.avatar = avatarUrl; // ✅ thêm dòng này
+
+    await user.save();
+
+    return res.json({
+      fullName: user.full_name,
+      phone: user.phone,
+      licenseNumber: user.licenseNumber,
+      vehiclePlate: user.vehiclePlate,
+      avatarUrl: user.avatar, // ✅ trả về để FE hiển thị
+    });
+  } catch (err) {
+    console.error("updateCarrierProfile error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+
 
 /* ============================================================================
  * Profile
@@ -37,6 +70,28 @@ export const getMe = async (req: any, res: Response, next: NextFunction) => {
     next(err);
   }
 };
+
+import User from "../models/User";
+
+export const getCarrierProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).lean();
+    if (!user) return res.status(404).json({ message: "Không tìm thấy carrier" });
+
+    res.json({
+      fullName: user.full_name,
+      phone: user.phone,
+      licenseNumber: user.licenseNumber,
+      vehiclePlate: user.vehiclePlate,
+      avatarUrl: user.avatar,
+      verified: user.status === "Active"
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
 
 export const updateMe = async (req: any, res: Response, next: NextFunction) => {
   try {
@@ -51,14 +106,21 @@ export const updateMe = async (req: any, res: Response, next: NextFunction) => {
  * Orders (List & Detail)
  * ==========================================================================*/
 // GET /carrier/orders?include=all|active
+// GET /carrier/orders?include=all|active
 export const getCarrierOrders = async (req: any, res: Response, next: NextFunction) => {
   try {
     const carrierId = getUserId(req);
     const include = String(req.query.include || "active");
 
-    const filter: any = { carrier_id: carrierId };
+    const filter: any = {
+      $or: [
+        { assignedCarrier: carrierId }, // ✅ Đơn được seller assign cho carrier này
+        { assignedCarrier: null, status: "CONFIRMED" } // ✅ Đơn tự claim được
+      ]
+    };
+
     if (include !== "all") {
-      filter.status = { $nin: ["DECLINED", "CANCELLED"] };
+      filter.status = { $nin: ["DECLINED", "CANCELLED", "COMPLETED"] };
     }
 
     const orders = await Order.find(filter).sort({ createdAt: -1 }).lean();
@@ -68,6 +130,32 @@ export const getCarrierOrders = async (req: any, res: Response, next: NextFuncti
     next(err);
   }
 };
+
+export const acceptAssignedOrder = async (req: any, res: Response) => {
+  try {
+    const carrierId = oid(getUserId(req));
+    const orderId = oid(req.params.id);
+
+    const order = await Order.findOne({
+      _id: orderId,
+      status: "ASSIGNED",
+      assignedCarrier: carrierId
+    });
+
+    if (!order) return res.status(404).json({ message: "Order not assigned to you or not in ASSIGNED state" });
+
+    order.status = "ACCEPTED";
+    order.auditLogs.push({ at: new Date(), by: carrierId, action: "ASSIGN_ACCEPTED" });
+    await order.save();
+
+    res.json({ message: "Order accepted successfully", order });
+  } catch (err: any) {
+    console.error("❌ acceptAssignedOrder:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
 
 // GET /carrier/orders/:orderId
 export const getCarrierOrderDetail = async (req: any, res: Response, next: NextFunction) => {
@@ -116,6 +204,104 @@ export const getOrder = async (req: any, res: Response, next: NextFunction) => {
 /* ============================================================================
  * Actions (Accept / Decline / Confirm Contract / Progress / Confirm Delivery)
  * ==========================================================================*/
+// ✅ Carrier nhận đơn (claim)
+// ✅ Carrier nhận đơn (claim)
+export async function claimOrder(req: Request, res: Response) {
+  try {
+    const carrierId = oid(String((req as any).user?._id));
+    const orderId = oid(String(req.params.id));
+    const now = new Date();
+
+    // chỉ nhận đơn còn CONFIRMED và chưa có assignedCarrier
+    const updated = await Order.findOneAndUpdate(
+      { _id: orderId, status: "CONFIRMED", assignedCarrier: null },
+      {
+        $set: {
+          assignedCarrier: carrierId,
+          carrier_id: carrierId, // 🟩 GÁN CARRIER CHÍNH THỨC CHO ĐƠN
+          status: "ACCEPTED",
+          acceptedAt: now,
+        },
+      },
+      { new: true }
+    )
+      .populate("seller_id", "_id")
+      .populate("assignedCarrier", "_id");
+
+    if (!updated)
+      return res
+        .status(409)
+        .json({ message: "Đơn này đã được người khác nhận hoặc không khả dụng." });
+
+    // 🟩 Ghi log để dễ truy vết sau này
+    updated.auditLogs = updated.auditLogs || [];
+    updated.auditLogs.push({
+      at: new Date(),
+      by: carrierId,
+      action: "CLAIM_ORDER",
+      note: "Carrier đã nhận đơn và được gán làm người vận chuyển chính",
+    });
+    await updated.save();
+
+    // ✅ Emit socket event nếu có IO
+    const io = (req as any).io;
+    if (io) {
+      io.to("carrier:all").emit("order:claimed", {
+        orderId: String(updated._id),
+        status: updated.status,
+        carrierId: String(updated.assignedCarrier),
+      });
+    }
+
+    res.json({ message: "Nhận đơn thành công", order: updated });
+  } catch (err: any) {
+    console.error("❌ Claim order failed:", err);
+    res.status(500).json({ message: err.message });
+  }
+}
+
+// ========== Carrier từ chối đơn assign ==========
+// ========== Carrier từ chối đơn assign ==========
+export async function declineAssignedOrder(req: Request, res: Response) {
+  try {
+    const carrierId = oid(String((req as any).user?._id));
+    const orderId = oid(String(req.params.id));
+    const now = new Date();
+
+    const updated = await Order.findOneAndUpdate(
+      { _id: orderId, status: "ASSIGNED", assignedCarrier: carrierId },
+      {
+        $set: { status: "DECLINED", declinedAt: now },
+        $unset: { assignedCarrier: 1 },
+      },
+      { new: true }
+    ).populate("seller_id", "_id");
+
+    if (!updated)
+      return res.status(403).json({
+        message:
+          "Order is not assigned to you or not in 'assign' status to decline",
+      });
+
+    const io = (req as any).io;
+    if (io) {
+      io.to(`seller:${updated.seller_id}`).emit("order:declined", {
+        orderId: String(updated._id),
+        status: updated.status,
+      });
+      io.to("carrier:all").emit("order:declined", {
+        orderId: String(updated._id),
+        status: updated.status,
+      });
+    }
+
+    res.json({ message: "Order declined", order: updated });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message });
+  }
+}
+
+
 
 // POST /carrier/orders/:orderId/accept
 export const acceptOrder = async (req: any, res: Response, next: NextFunction) => {

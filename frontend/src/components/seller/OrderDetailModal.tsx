@@ -15,6 +15,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ orderId, onClose })
     const fetchOrder = async () => {
       try {
         const res = await axios.get(`http://localhost:4000/api/users/orders/${orderId}`);
+        // Giả định API trả về: { data: { ..., items: [...] } }
         setOrder(res.data?.data || res.data);
       } catch (err) {
         console.error("❌ Lỗi khi tải chi tiết đơn hàng:", err);
@@ -51,7 +52,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ orderId, onClose })
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-      <div className="bg-white w-full max-w-2xl rounded-2xl shadow-xl p-6 relative">
+      <div className="bg-white w-full max-w-3xl rounded-2xl shadow-xl p-6 relative">
         {/* Nút đóng */}
         <button
           onClick={onClose}
@@ -66,16 +67,52 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ orderId, onClose })
 
         <div className="space-y-3 text-sm text-gray-700">
           <p><strong>Trạng thái:</strong> {order.status}</p>
-          <p><strong>Người bán:</strong> {order.seller_id?.full_name || "—"}</p>
           <p><strong>Khách hàng:</strong> {order.customer_id?.full_name || "—"}</p>
-          <p><strong>Driver:</strong> {order.driver_id?.full_name || "—"}</p>
-          <p><strong>Carrier:</strong> {order.carrier_id?.full_name || "—"}</p>
+          <p><strong>Driver:</strong> {order.carrier_id?.full_name || "—"}</p>
           <p><strong>Địa chỉ lấy hàng:</strong> {order.pickup_address}</p>
           <p><strong>Địa chỉ giao hàng:</strong> {order.delivery_address}</p>
-          <p><strong>Tổng tiền:</strong> {order.total_amount?.toLocaleString()}₫</p>
+          <p><strong>Tổng tiền:</strong> {order.total_price?.toLocaleString()}₫</p>
           <p><strong>Ngày tạo:</strong> {new Date(order.createdAt).toLocaleString()}</p>
-          <p><strong>Ngày cập nhật:</strong> {new Date(order.updatedAt).toLocaleString()}</p>
         </div>
+
+        {/* 🧾 Danh sách OrderItem */}
+        {order.items && order.items.length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-lg font-medium mb-2 text-gray-800">Danh sách hàng hóa</h3>
+            <div className="overflow-x-auto border rounded-lg">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-gray-100 text-gray-700">
+                  <tr>
+                    <th className="p-3">Mô tả</th>
+                    <th className="p-3">Số lượng</th>
+                    <th className="p-3">Khối lượng (kg)</th>
+                    <th className="p-3 text-center">Dễ vỡ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {order.items.map((item: any, idx: number) => (
+                    <tr key={idx} className="border-t hover:bg-gray-50">
+                      <td className="p-3">{item.description || "—"}</td>
+                      <td className="p-3">{item.quantity}</td>
+                      <td className="p-3">
+  {item.weight
+    ? parseFloat(item.weight.$numberDecimal || item.weight).toFixed(2)
+    : "—"}
+</td>
+                      <td className="p-3 text-center">
+                        {item.fragile ? (
+                          <span className="text-red-500 font-semibold">Có</span>
+                        ) : (
+                          <span className="text-gray-500">Không</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         <div className="mt-6 flex justify-end">
           <button

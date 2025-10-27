@@ -3,7 +3,7 @@ import { createServer } from "http";
 import app from "./app";
 import { connectMongo } from "./db/mongo";
 import { config } from "./config";
-import { initRealtime } from "./realtime";
+import { getIO, initRealtime } from "./realtime";
 
 async function start() {
   await connectMongo(); // ✅ Kết nối DB trước
@@ -13,6 +13,11 @@ async function start() {
 
   const server = createServer(app);
   initRealtime(server);
+  // Middleware để gắn io vào req
+  app.use((req, res, next) => {
+    (req as any).io = getIO();
+    next();
+  });
 
   const PORT = Number(config.PORT) || 4000;
   server.listen(PORT, () => {

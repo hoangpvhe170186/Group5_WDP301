@@ -1,6 +1,7 @@
 import React from 'react';
-import { PackageIcon, AlertOctagonIcon, HistoryIcon, SettingsIcon, BellIcon } from './Icons';
+import { PackageIcon, AlertOctagonIcon, HistoryIcon, SettingsIcon } from './Icons';
 import SupportInbox from "./SupportInbox";
+import SellerNotifications from "./SellerNotifications";
 
 const Navbar = ({ currentPage, setPage }) => {
   const navItems = [
@@ -31,7 +32,7 @@ const Navbar = ({ currentPage, setPage }) => {
         </div>
       </div>
       <div className="flex items-center gap-4">
-        <button className="text-gray-500 transition-colors hover:text-gray-800"><BellIcon /></button>
+        <SellerNotifications />
         <button className="text-gray-500 transition-colors hover:text-gray-800"><SettingsIcon /></button>
         <div className="h-9 w-9 cursor-pointer rounded-full bg-gray-200">
           <img src="https://placehold.co/100x100/orange/white?text=S" alt="Seller Avatar" className="h-full w-full rounded-full object-cover" />

@@ -15,16 +15,18 @@ import AdminDashboard from "./pages/AdminDashboard";
 import Seller from "./pages/SellerPage";
 import OrderCreatePage from "./pages/OrderCreatePage";
 import OrderSearchPage from "./pages/OrderSearchPage";
-
 // ✅ IMPORT CARRIER PAGE
 import CarrierHomePage from "./pages/carrier/CarrierHomePage";
 import OrderPreviewPage from "./components/OrderPreviewPage";
 // ✅ IMPORT USER ORDER
-
+import SellerDriverApplications from "./components/seller/SellerDriverApplications";
 import UserOrderLayout from "./layouts/User_Order_Layout";
 import OrderTracking from "./components/user_order/order-tracking";
 import ComparePage from "./components/carrier-dashboard/dashboard/compare";
 import BlogDetail from "./pages/BlogDetail";
+import DriverInterviewPage from "./components/carrier-dashboard/dashboard/DriverRecruitPage";
+import OrderHistoryPage from "./pages/OrderHistoryPage";
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -51,9 +53,13 @@ export default function App() {
           <Route path="forgot-password" element={<ForgotPasswordPage />} />
         </Route>
         <Route path="/seller/home" element={<Seller />}></Route>
+        <Route path="/driver-recruit" element={<DriverInterviewPage />} />
+        <Route path="/seller/driver-applications" element={<SellerDriverApplications />} />
         <Route path="/myorder" element={<UserOrderLayout />}>
           <Route path="tracking" element={<OrderTracking />} />
+          <Route path="history" element={<OrderHistoryPage />} />
         </Route>
+        
       </Routes>
     </BrowserRouter>
   );

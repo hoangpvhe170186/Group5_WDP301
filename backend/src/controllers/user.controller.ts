@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import User from "../models/User";
 import Order from "../models/Order";
+import Feedback from "../models/Feedback";
+import Incident from "../models/Incident";
+import OrderItem from "../models/OrderItem";
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
     const users = await User.find({}).select("-password_hash");
@@ -232,29 +235,39 @@ export const getOrderById = async (req: Request, res: Response) => {
       .populate("driver_id")
       .populate("customer_id");  
     if (!order) return res.status(404).json({ message: "Order not found" });
-    res.json(order);
+    const orderItems = await OrderItem.find({ order_id: req.params.id });
+
+    res.json({ data: { ...order.toObject(), items: orderItems } });
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
   }
 };
 export const updateOrder = async (req: Request, res: Response) => {
   try {
-    const { driver_id, scheduled_time } = req.body;
+    const { carrier_id, scheduled_time } = req.body;
 
     const updateData: any = {};
-    if (driver_id) updateData.driver_id = driver_id;
-    if (scheduled_time) updateData.scheduled_time = scheduled_time;
 
-    // Nếu bạn muốn ghi log khi driver được chỉ định
-    if (driver_id) {
+    if (carrier_id) {
+      updateData.carrier_id = carrier_id;
+      updateData.assignedCarrier = carrier_id; // 🟩 Thêm dòng này để Carrier thấy đơn
+
+      // ✅ Ghi log khi chỉ định carrier mới
       updateData.$push = {
         auditLogs: {
           at: new Date(),
           by: req.user?.id || "system",
-          action: "ASSIGNED_DRIVER",
-          note: `Chỉ định driver ${driver_id}`,
+          action: "ASSIGNED_CARRIER",
+          note: `Chỉ định carrier ${carrier_id}`,
         },
       };
+
+      // ✅ Đồng thời chuyển trạng thái sang ASSIGNED nếu chưa có carrier
+      updateData.status = "ASSIGNED";
+    }
+
+    if (scheduled_time) {
+      updateData.scheduled_time = scheduled_time;
     }
 
     const order = await Order.findByIdAndUpdate(req.params.id, updateData, {
@@ -271,12 +284,12 @@ export const updateOrder = async (req: Request, res: Response) => {
     res.status(200).json({ success: true, data: order });
   } catch (error) {
     console.error("❌ Error updating order:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Lỗi server khi cập nhật đơn hàng" });
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server khi cập nhật đơn hàng",
+    });
   }
 };
-
 export const getDriverSchedule = async (req: Request, res: Response) => {
   try {
     const today = new Date();
@@ -316,7 +329,7 @@ export const confirmOrder = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: "Chỉ đơn ở trạng thái Pending mới được xác nhận" });
     }
 
-    order.status = "Confirmed";
+    order.status = "CONFIRMED";
     await order.save();
 
     res.status(200).json({
@@ -335,3 +348,119 @@ export const confirmOrder = async (req: Request, res: Response) => {
 
 
 
+export const getOrdersByCustomer = async (req: Request, res: Response) => {
+  try {
+    const { customer_id } = req.params; // 🔹 Lấy id từ URL, ví dụ /orders/customer/:customer_id
+
+    const orders = await Order.find({
+      customer_id, 
+      status: { $in: ["CANCELLED", "COMPLETED"] } // 🔍 Chỉ lấy đơn có status trong 2 loại này
+    })
+      .populate("seller_id")
+      .populate("carrier_id")
+      .populate("package_id")
+      .populate("driver_id")
+      .populate("customer_id")
+      .sort({ createdAt: -1 }); // 🕒 Mới nhất lên đầu
+
+    if (!orders || orders.length === 0) {
+      return res.status(404).json({ message: "Không tìm thấy đơn hàng nào" });
+    }
+
+    res.json(orders);
+  } catch (error) {
+    console.error("❌ Lỗi khi lấy danh sách đơn hàng:", error);
+    res.status(500).json({ message: "Lỗi máy chủ", error });
+  }
+};
+export const RatingOrders = async (req: Request, res: Response) => {
+  try {
+    const feedback = await Feedback.create(req.body);
+    res.status(200).json(feedback);
+  } catch (error) {
+    console.error("Error getting feedback:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server khi rate cho đơn hàng"
+    });
+  }
+};
+export const getFeedbackByOrderId = async (req: Request, res: Response) => {
+  try {
+    const fb = await Feedback.findOne({ order_id: req.params.order_id });
+    res.json(fb);
+  } catch (error) {
+    console.error("Error getting feedback:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server khi lấy feedback by order ID"
+    });
+  }
+};
+export const reportIncident = async (req: Request, res: Response) => {
+  try {
+    const incident = new Incident(req.body);
+    await incident.save();
+    res.status(201).json({ message: "Báo cáo sự cố thành công", incident });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Lỗi khi gửi báo cáo", error: err });
+  }
+};
+export const getIcidentByOrderId = async (req: Request, res: Response) => {
+  try {
+    const incidents = await Incident.find({ order_id: req.params.order_id });
+   
+    if (!incidents || incidents.length === 0) return res.status(404).json({ message: "Incident not found" });
+    res.json(incidents);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error });
+  }
+};
+export const getAllIncidents = async (req: Request, res: Response) => {
+  try {
+    const incidents = await Incident.find().populate("reported_by").populate("order_id").sort({ createdAt: -1 });
+   
+    if (!incidents || incidents.length === 0) return res.status(404).json({ message: "Incident not found" });
+    res.json(incidents);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error });
+  }
+};
+export const resolveIncident = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { resolution, staffId, status } = req.body; 
+    // status ở đây sẽ là "Resolved" hoặc "Rejected"
+
+    const incident = await Incident.findById(id);
+    if (!incident) return res.status(404).json({ message: "Không tìm thấy khiếu nại" });
+
+    // ✅ Cập nhật thông tin xử lý
+    incident.status = status || "Resolved"; // nếu không gửi thì mặc định là Resolved
+    incident.resolution = resolution;
+    incident.resolved_by = staffId;
+    incident.resolved_at = new Date();
+
+    await incident.save();
+
+    res.json({ message: `✅ Khiếu nại đã được ${incident.status === "Resolved" ? "giải quyết" : "từ chối"}`, incident });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Lỗi khi cập nhật khiếu nại" });
+  }
+};
+export const getCompletedAndCancelledOrders = async (req: Request, res: Response) => {
+  try {
+    const orders = await Order.find({
+      status: { $in: ["COMPLETED", "CANCELLED"] },
+    })
+      .populate("customer_id seller_id carrier_id driver_id")
+      .sort({ createdAt: -1 });
+
+    res.json(orders);
+  } catch (err) {
+    console.error("❌ Lỗi tải lịch sử đơn:", err);
+    res.status(500).json({ message: "Lỗi server khi lấy lịch sử đơn" });
+  }
+};

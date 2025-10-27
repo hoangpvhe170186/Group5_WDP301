@@ -20,7 +20,7 @@ type NavVehicle = {
 
 function getPackageName(cap: number): string {
   if (cap <= 500) return "Gói Nhỏ";
-  if (cap <= 1500) return "Gói Tiêu Chuẩn";
+  if (cap <= 1500) return "Gói Chung";
   return "Gói Lớn";
 }
 
@@ -42,7 +42,7 @@ export default function VehiclePricingPage() {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
       })
-      .then((j) => setVehicle(j))
+      .then((j) => setVehicle(j.vehicle || j))
       .catch((e) => {
         console.error(e);
         setError("Không tải được thông tin xe");

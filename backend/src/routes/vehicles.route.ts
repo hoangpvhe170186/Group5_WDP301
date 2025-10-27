@@ -49,5 +49,42 @@ router.patch("/:plate/image", async (req, res, next) => {
     next(err);
   }
 });
-
+router.get("/navigation-list", async (_req, res, next) => {
+  try {
+    const vehicles = await Vehicle.find({}, "_id capacity")
+      .sort({ capacity: 1 })
+      .lean();
+    res.json(vehicles);
+  } catch (err) {
+    next(err);
+  }
+});
 export default router;
+// 🆕 GET /api/vehicles/:id — Lấy chi tiết xe theo ID
+router.get("/:id", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const vehicle = await Vehicle.findById(id).lean();
+
+    if (!vehicle) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy xe" });
+    }
+
+    const pid = vehicle?.image?.public_id;
+    const original =
+      vehicle?.image?.original ||
+      (pid ? cldUrl(pid) : undefined) ||
+      vehicle?.image?.url;
+    const thumb =
+      vehicle?.image?.thumb ||
+      (pid ? cldUrl(pid, "w_800,h_600,c_fill,q_auto,f_auto") : undefined) ||
+      original;
+
+    res.json({
+      success: true,
+      vehicle: { ...vehicle, image: { ...vehicle.image, original, thumb } },
+    });
+  } catch (err) {
+    next(err);
+  }
+});

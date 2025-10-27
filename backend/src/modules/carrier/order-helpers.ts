@@ -3,17 +3,33 @@ import Order from "../../models/Order";
 
 export type CarrierId = string | Types.ObjectId;
 
+// Các trạng thái không cho phép cập nhật
 export const BLOCKED_FOR_UPDATE = new Set(["DECLINED", "CANCELLED", "COMPLETED"]);
 
+/**
+ * ✅ Kiểm tra quyền truy cập của Carrier với đơn hàng
+ * Cho phép carrier xem:
+ *  - Đơn được assign cho chính họ
+ *  - Đơn chưa có carrier (đang chờ claim)
+ */
 export function assertCarrierAccess(order: any, carrierId: CarrierId) {
   if (!order) throw new Error("ORDER_NOT_FOUND");
-  if (String(order.carrier_id) !== String(carrierId)) {
+
+  const assigned = order.assignedCarrier || order.carrier_id;
+
+  // Nếu đơn đã có assignedCarrier khác => chặn
+  if (assigned && String(assigned) !== String(carrierId)) {
     const err: any = new Error("FORBIDDEN");
     err.status = 403;
     throw err;
   }
+
+  // Nếu chưa có assignedCarrier => cho phép xem (để claim)
 }
 
+/**
+ * ✅ Kiểm tra xem đơn có thể cập nhật tiến độ không
+ */
 export function assertUpdatable(order: any) {
   if (BLOCKED_FOR_UPDATE.has(order.status)) {
     const err: any = new Error("ORDER_NOT_UPDATABLE");
@@ -23,7 +39,11 @@ export function assertUpdatable(order: any) {
   }
 }
 
+/**
+ * ✅ Xác định các trạng thái chuyển tiếp hợp lệ
+ */
 const ALLOWED_NEXT = new Map<string, string[]>([
+  ["AVAILABLE", ["ASSIGNED"]],
   ["ASSIGNED", ["ACCEPTED"]],
   ["ACCEPTED", ["CONFIRMED", "ON_THE_WAY"]],
   ["CONFIRMED", ["ON_THE_WAY"]],
@@ -44,6 +64,9 @@ export function assertTransition(current: string, next: string) {
   }
 }
 
+/**
+ * ✅ Load Order, nếu không tồn tại thì ném lỗi
+ */
 export async function loadOrderOrThrow(id: string) {
   const order = await Order.findById(id);
   if (!order) {
@@ -54,8 +77,11 @@ export async function loadOrderOrThrow(id: string) {
   return order;
 }
 
-// ✅ Map hỗ trợ FE để render danh sách trạng thái tiếp theo
+/**
+ * ✅ Dùng cho FE hiển thị các trạng thái tiếp theo hợp lệ
+ */
 export const NEXT_MAP = new Map<string, string[]>([
+  ["AVAILABLE", ["ASSIGNED"]],
   ["ASSIGNED", ["ACCEPTED"]],
   ["ACCEPTED", ["CONFIRMED", "ON_THE_WAY"]],
   ["CONFIRMED", ["ON_THE_WAY"]],

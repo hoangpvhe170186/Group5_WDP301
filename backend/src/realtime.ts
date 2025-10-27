@@ -31,6 +31,7 @@ export function initRealtime(server: HTTPServer) {
     // Seller/CS join vào kênh support
     socket.on("join_support", () => {
       socket.join("support_staff");
+      console.log("Seller joined support_staff room");
     });
 
     // Client (mỗi khách/seller mở hội thoại) join 1 room cụ thể
@@ -38,7 +39,17 @@ export function initRealtime(server: HTTPServer) {
       if (!roomId) return;
       socket.join(roomId);
     });
-
+socket.on("join_driver_interview_room", () => {
+      socket.join("driver_interview_notifications");
+    });
+    
+  socket.on("join", (user) => {
+    if (user.role === "carrier") {
+      socket.join("carrier:all");
+      socket.join(`carrier:${user.id}`);
+      console.log(`🚚 Carrier ${user.id} joined carrier:all`);
+    }
+  });
     // KH ping nhờ hỗ trợ => bắn noti + badge tới staff
    socket.on("notify_support", (payload: SupportPayload) => {
   const data = {

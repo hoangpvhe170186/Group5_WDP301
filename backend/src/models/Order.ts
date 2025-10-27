@@ -1,7 +1,8 @@
 import mongoose from "mongoose";
 import { generateCode } from "../utils/generateOrderCode";
+
 const orderSchema = new mongoose.Schema(
-  { 
+  {
     orderCode: { type: String, unique: true },
     customer_id: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     seller_id: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
@@ -13,25 +14,52 @@ const orderSchema = new mongoose.Schema(
     pickup_address: { type: String, required: true },
     delivery_address: { type: String, required: true },
     scheduled_time: { type: Date },
-    status: { type: String, default: "Pending" },
+
+    // ✅ Updated: full delivery workflow (bỏ DELIVERING, DELIVERED)
+    status: {
+      type: String,
+      enum: [
+        "Pending",
+        "CONFIRMED",
+        "AVAILABLE",
+        "ASSIGNED",
+        "ACCEPTED",
+        "ON_THE_WAY",
+        "ARRIVED",
+        "INCIDENT",
+         "DELIVERED",
+        "PAUSED",
+        "DECLINED",
+        "COMPLETED",
+        "CANCELLED",
+        "NOTE"
+      ],
+      default: "Pending",
+    },
+
     total_price: { type: Number, required: true },
     isPaid: { type: Boolean, default: false },
 
-    // ✅ NEW FIELDS ADDED BELOW
+    assignedCarrier: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    acceptedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    availableAt: { type: Date, default: null },
+
     declineReason: { type: String, default: null },
     signatureUrl: { type: String, default: null },
 
     auditLogs: [
       {
         at: { type: Date, default: Date.now },
-        by: { type: String }, // user_id / carrier_id
-        action: { type: String }, // e.g. "ACCEPTED", "DECLINED", "PROGRESS:DELIVERING"
-        note: { type: String, default: "" }, // optional comment
+        by: { type: String },
+        action: { type: String },
+        note: { type: String, default: "" },
       },
     ],
   },
   { timestamps: true }
 );
+
+// 🧠 Auto-generate unique orderCode
 orderSchema.pre("save", async function (next) {
   if (!this.orderCode) {
     let unique = false;
@@ -46,4 +74,5 @@ orderSchema.pre("save", async function (next) {
   }
   next();
 });
+
 export default mongoose.model("Order", orderSchema);

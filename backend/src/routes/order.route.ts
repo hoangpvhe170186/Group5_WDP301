@@ -7,11 +7,14 @@ import {
   searchOrder,
   updateOrderStatus,
   createTemporaryOrder,
-   addOrderItems ,
-  deleteOrder // ✅ phải có dòng này
+  addOrderItems,
+  cancelOrder,
+  deleteOrder, 
+  getOrderItemsByOrderId
 } from "../controllers/order.controller";
 
 const router = Router();
+router.get("/:orderId/items", requireAuth, getOrderItemsByOrderId);
 router.post("/temporary", createTemporaryOrder); // tạo đơn tạm
 router.post("/items", addOrderItems);            // thêm hàng hóa & xác nhận đơn
 router.use(requireAuth);
@@ -20,6 +23,7 @@ router.post("/", createOrder);
 router.get("/myorder", getMyOrders);
 router.get("/:id", getOrderById);
 router.put("/:id", updateOrderStatus);
-router.delete("/:id", deleteOrder); // ✅ đúng cú pháp
+router.patch("/:id/cancel", requireAuth, cancelOrder); // hủy đơn hàng
+router.delete("/:id", deleteOrder); //  đúng cú pháp
 
 export default router;
