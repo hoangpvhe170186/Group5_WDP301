@@ -28,7 +28,13 @@ const OrderManagementScreen = () => {
   // 🧠 Lấy danh sách đơn hàng
   const fetchOrders = async () => {
     try {
-      const res = await axios.get("http://localhost:4000/api/users/orders/");
+      const token  = localStorage.getItem("auth_token");
+      const res = await axios.get("http://localhost:4000/api/users/orders", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+      
       setOrders(res.data || []);
     } catch (err) {
       console.error("❌ Lỗi khi tải danh sách đơn hàng:", err);
