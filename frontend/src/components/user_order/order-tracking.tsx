@@ -23,6 +23,7 @@ export default function OrderTracking() {
       try {
         setLoading(true);
         const { orders: fetchedOrders } = await orderApi.listMyOrders();
+        console.log("fetchedOrders", fetchedOrders);
         setOrders(fetchedOrders || []);
         if (fetchedOrders && fetchedOrders.length > 0) {
           setSelectedOrder(fetchedOrders[0].id); // keep id only
@@ -41,10 +42,11 @@ export default function OrderTracking() {
     [orders, selectedOrder]
   );
 
+  console.log("currentOrder", currentOrder);
   // Chuẩn hoá dữ liệu cho UI
   const mapOrderData = (order: any) => ({
     id: order.id,
-    orderNumber: `#${order.id}`,
+    orderNumber: order.code,
     status: (order.status || "").toLowerCase(), // expect: "pending" | "in-transit" | "delivered" ...
     date: order.createdAt ? new Date(order.createdAt).toLocaleDateString("vi-VN") : "—",
     total: `₫ ${Number(order.totalPrice || 0).toLocaleString("vi-VN")}`,
@@ -103,9 +105,9 @@ export default function OrderTracking() {
     ],
   });
 
-  // Dùng một biến đã map cho phần chi tiết để tránh lặp xử lý
-  const mappedCurrent = currentOrder ? mapOrderData(currentOrder) : null;
 
+  const mappedCurrent = currentOrder ? mapOrderData(currentOrder) : null;
+  
   return (
     <div className="min-h-screen bg-background">
       <OrderHeader />

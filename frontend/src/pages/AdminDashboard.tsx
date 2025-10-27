@@ -210,7 +210,7 @@ function DashboardOverview() {
         const ordersResponse = await adminApi.getOrders(1, 3);
         setRecentOrders(ordersResponse.orders.map(order => ({
           id: order.code || `#${order.id}`,
-          customer: order.customer?.fullName || 'Khách hàng không xác định',
+          customer: order.customer?.full_name || 'Khách hàng không xác định',
           amount: `₫${order.price.toLocaleString()}`,
           status: order.status,
         })));

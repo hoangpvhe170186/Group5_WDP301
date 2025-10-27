@@ -60,10 +60,9 @@ export const orderApi = {
       const { data } = await api.get("/orders/myorder", {
         headers: { Authorization: `Bearer ${getAuthToken()}` },
       });
-      console.log("Dữ liệu thô từ API:", data);
       const rawOrders = data.data || []; // Lấy mảng từ data.data
-      console.log("Mảng rawOrders:", rawOrders);
       const orders: Order[] = rawOrders.map((o: any) => ({
+        code: o.orderCode || "",
         id: String(o._id),
         pickupAddress: o.pickup_address || "",
         deliveryAddress: o.delivery_address || "",
@@ -77,8 +76,6 @@ export const orderApi = {
         driverId: o.driver_id,
         carrierId: o.carrier_id,
       }));
-
-      console.log("Danh sách đơn hàng:", orders); 
       return { orders };
     } catch (error: any) {
       console.error(

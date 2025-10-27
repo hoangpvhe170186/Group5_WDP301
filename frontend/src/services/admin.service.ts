@@ -36,6 +36,8 @@ export interface Order {
   code: string;
   status: string;
   price: number;
+  pickupAddress: string;
+  deliveryAddress: string;
   seller?: any;
   driver?: any;
   customer?: any;
@@ -79,7 +81,7 @@ const normalizeUser = (u: any): User => ({
  */
 const normalizeOrder = (o: any): Order => ({
   id: String(o._id),
-  code: o.code || "",
+  code: o.orderCode || "",
   status: o.status || "",
   price: o.total_price || 0,
   seller: o.seller_id || null,
@@ -88,6 +90,8 @@ const normalizeOrder = (o: any): Order => ({
   createdAt: o.createdAt
     ? new Date(o.createdAt).toLocaleString("vi-VN")
     : "",
+  pickupAddress: o.pickup_address || "",
+  deliveryAddress: o.delivery_address || "",
 });
 
 /**
@@ -182,9 +186,11 @@ export const adminApi = {
    */
   async getOrders(page = 1, limit = 10) {
     const { data } = await api.get("/admin/orders/pagination", {
+      
       params: { page, limit },
       headers: { Authorization: `Bearer ${getAuthToken()}` },
     });
+    console.log(data);
     return {
       orders: data.data.map(normalizeOrder),
       total: data.total,
