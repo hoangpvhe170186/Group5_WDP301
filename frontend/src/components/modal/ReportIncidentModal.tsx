@@ -30,7 +30,8 @@ const ReportIncidentModal = ({ orderId, customerId, onClose }) => {
     setSubmitting(true);
     try {
       let evidenceUrl = "";
-
+      const token = localStorage.getItem("auth_token");
+      if (!token) return alert("Bạn cần đăng nhập!");
       if (file) {
         const formDataUpload = new FormData();
         formDataUpload.append("files", file);
@@ -38,7 +39,13 @@ const ReportIncidentModal = ({ orderId, customerId, onClose }) => {
         const uploadRes = await axios.post(
           "http://localhost:4000/api/upload/images",
           formDataUpload,
-          { headers: { "Content-Type": "multipart/form-data" }, withCredentials: true }
+          {
+      headers: {
+        "Content-Type": "multipart/form-data",
+        Authorization: `Bearer ${token}`, // ✅ gửi token
+      },
+      withCredentials: true, // nếu backend dùng cookie
+    }
         );
         evidenceUrl = uploadRes.data[0].url;
       }
