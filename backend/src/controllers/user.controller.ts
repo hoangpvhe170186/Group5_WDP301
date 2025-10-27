@@ -3,6 +3,7 @@ import User from "../models/User";
 import Order from "../models/Order";
 import Feedback from "../models/Feedback";
 import Incident from "../models/Incident";
+import OrderItem from "../models/OrderItem";
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
     const users = await User.find({}).select("-password_hash");
@@ -200,7 +201,9 @@ export const getOrderById = async (req: Request, res: Response) => {
       .populate("driver_id")
       .populate("customer_id");  
     if (!order) return res.status(404).json({ message: "Order not found" });
-    res.json(order);
+    const orderItems = await OrderItem.find({ order_id: req.params.id });
+
+    res.json({ data: { ...order.toObject(), items: orderItems } });
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
   }
@@ -379,7 +382,7 @@ export const getIcidentByOrderId = async (req: Request, res: Response) => {
 };
 export const getAllIncidents = async (req: Request, res: Response) => {
   try {
-    const incidents = await Incident.find();
+    const incidents = await Incident.find().populate("reported_by").populate("order_id").sort({ createdAt: -1 });
    
     if (!incidents || incidents.length === 0) return res.status(404).json({ message: "Incident not found" });
     res.json(incidents);
