@@ -18,7 +18,7 @@ export function ProfileManagement() {
   const [profile, setProfile] = useState<CarrierProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
-
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   // Load profile
   const load = async () => {
     try {
@@ -39,9 +39,30 @@ export function ProfileManagement() {
     load();
   }, []);
 
+
+  const phoneRegex = /^(0|\+84)(3|5|7|8|9)\d{8}$/;
+
+  // Hàm kiểm tra số điện thoại
+  const validatePhone = (phone: string) => {
+    if (!phone) return "Vui lòng nhập số điện thoại.";
+    if (!phoneRegex.test(phone))
+      return "Số điện thoại không hợp lệ";
+    return null;
+  };
+
   // Handle save info
   const handleSave = async () => {
     if (!profile) return;
+
+    // 🔹 Kiểm tra số điện thoại trước khi lưu
+    const phoneValidation = validatePhone(profile.phone ?? "");
+    if (phoneValidation) {
+      setPhoneError(phoneValidation);
+      return; // dừng lại, không gửi request
+    } else {
+      setPhoneError(null);
+    }
+
     try {
       setSaving(true);
       const updated = await carrierApi.updateProfile({
@@ -49,7 +70,7 @@ export function ProfileManagement() {
         phone: profile.phone,
         licenseNumber: profile.licenseNumber,
         vehiclePlate: profile.vehiclePlate,
-        avatarUrl: profile.avatarUrl, // lưu avatarUrl nếu có
+        avatarUrl: profile.avatarUrl,
       });
       setProfile(updated);
       setIsEditing(false);
@@ -198,11 +219,16 @@ export function ProfileManagement() {
                 id="phone"
                 value={profile.phone ?? ""}
                 disabled={!isEditing}
-                onChange={(e) =>
-                  setProfile({ ...profile, phone: e.target.value })
-                }
+                onChange={(e) => {
+                  setProfile({ ...profile, phone: e.target.value });
+                  setPhoneError(null); // reset lỗi khi gõ lại
+                }}
               />
+              {phoneError && (
+                <p className="text-sm text-destructive mt-1">{phoneError}</p>
+              )}
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="license">Số GPLX</Label>
               <Input
