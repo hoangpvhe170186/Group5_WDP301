@@ -50,9 +50,18 @@ const OrderManagementScreen = () => {
   // ✅ Hàm xác nhận đơn
   const handleConfirmOrder = async (orderId) => {
     try {
-      const res = await axios.post(
-        `http://localhost:4000/api/users/orders/${orderId}/confirm`
-      );
+      const token = localStorage.getItem("auth_token");
+if (!token) return alert("Bạn cần đăng nhập!");
+
+const res = await axios.post(
+  `http://localhost:4000/api/users/orders/${orderId}/confirm`,
+  {},
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  }
+);
       if (res.data.success) {
         setMessage("✅ Đơn hàng đã được xác nhận!");
         await fetchOrders();
