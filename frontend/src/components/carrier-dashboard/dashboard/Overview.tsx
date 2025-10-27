@@ -20,6 +20,21 @@ interface DashboardOverviewProps {
   onSelectJob: (jobId: string) => void;
 }
 
+// Gom nhóm trạng thái phục vụ thống kê
+const GROUPS = {
+  PENDING: ["PENDING", "ASSIGNED", "CONFIRMED", "AVAILABLE"],
+  DELIVERING: ["DELIVERING", "ON_THE_WAY", "ARRIVED"],
+  COMPLETED: ["COMPLETED", "DELIVERED"],
+} as const;
+
+
+const isIn = (status: string, list: readonly string[]) => list.includes(status);
+const norm = (s?: string) => String(s ?? "").toUpperCase();
+const getId = (o: Partial<JobItem> & { _id?: string }) =>
+  String((o as any)?.id ?? o?._id ?? "");
+
+const MAX_ALERT_ITEMS = 6;
+
 export function DashboardOverview({
   onViewOrders,
   onSelectJob,
@@ -56,40 +71,43 @@ export function DashboardOverview({
         // Nếu chính mình nhận đơn → đổi status thành ACCEPTED
         if (String(payload.carrierId) === String(userId)) {
           return prev.map((o) =>
-            String(o.id) === String(payload.orderId)
-              ? { ...o, status: "ACCEPTED" }
-              : o
+            getId(o) === String(payload.orderId) ? { ...o, status: "ACCEPTED" } : o
           );
         }
 
-        // Nếu người khác nhận → xoá khỏi danh sách pending
-        return prev.filter(
-          (o) =>
-            String(o.id) !== String(payload.orderId) &&
-            String(o._id) !== String(payload.orderId)
-        );
+        // Nếu người khác nhận → xoá khỏi danh sách pending/pool
+        return prev.filter((o) => getId(o) !== String(payload.orderId));
       });
     };
 
     socket.on("order:claimed", handleClaim);
-
-    return () => {
-      socket.off("order:claimed", handleClaim);
-    };
+    return () => socket.off("order:claimed", handleClaim);
   }, []);
 
   // 📊 Thống kê realtime
   const stats = useMemo(() => {
-    const pending = orders.filter((o) => o.status === "ASSIGNED").length;
-    const delivering = orders.filter(
-      (o) => o.status === "ACCEPTED" || o.status === "CONFIRMED"
-    ).length;
-    const completed = orders.filter((o) => o.status === "COMPLETED").length;
-    const rate = orders.length
-      ? Math.round((completed / orders.length) * 100)
-      : 0;
-    return { pending, delivering, completed, rate: `${rate}%` };
+    const pending = orders.filter((o) => isIn(norm(o.status), GROUPS.PENDING)).length;
+    const delivering = orders.filter((o) => isIn(norm(o.status), GROUPS.DELIVERING)).length;
+    const completed = orders.filter((o) => {
+      const s = norm(o.status);
+      return ["COMPLETED", "DELIVERED", "DELIVERING", "DONE", "FINISHED", "HOÀN TẤT"].includes(s);
+    }).length;
+
+
+    const total = orders.length;
+    const rateNum = total ? Math.round((completed / total) * 100) : 0;
+    return { pending, delivering, completed, rate: `${rateNum}%`, total };
   }, [orders]);
+
+  // 🟡 Danh sách chi tiết các đơn chờ xử lý
+  const pendingConfirmed = useMemo(
+    () => orders.filter((o) => norm(o.status) === "CONFIRMED"),
+    [orders]
+  );
+  const pendingAssigned = useMemo(
+    () => orders.filter((o) => norm(o.status) === "ASSIGNED"),
+    [orders]
+  );
 
   const recentOrders = useMemo(() => orders.slice(0, 5), [orders]);
 
@@ -111,52 +129,132 @@ export function DashboardOverview({
             <div>
               <p className="text-sm text-muted-foreground">Chờ xử lý</p>
               <p className="text-3xl font-bold">{stats.pending}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                CONFIRMED, ASSIGNED
+              </p>
             </div>
             <Package className="h-6 w-6 text-warning" />
           </CardContent>
         </Card>
+
         <Card>
           <CardContent className="p-6 flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Đang vận chuyển</p>
               <p className="text-3xl font-bold">{stats.delivering}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                DELIVERING, ON_THE_WAY
+              </p>
             </div>
             <Truck className="h-6 w-6 text-info" />
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-6 flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Hoàn thành</p>
-              <p className="text-3xl font-bold">{stats.completed}</p>
-            </div>
-            <CheckCircle2 className="h-6 w-6 text-success" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6 flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Tỷ lệ thành công</p>
-              <p className="text-3xl font-bold">{stats.rate}</p>
-            </div>
-            <TrendingUp className="h-6 w-6 text-primary" />
-          </CardContent>
-        </Card>
+
+       
       </div>
 
-      {/* Alert section */}
-      {orders.length > 0 && (
+      {/* Alert section: hiển thị chi tiết CONFIRMED & ASSIGNED */}
+      {(pendingConfirmed.length + pendingAssigned.length) > 0 && (
         <Card className="border-warning/50 bg-warning/5">
-          <CardHeader>
+          <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-lg">
               <AlertTriangle className="h-5 w-5 text-warning" />
               Thông báo
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm">
-              Hiện có {stats.pending} đơn đang chờ xử lý.
-            </p>
+          <CardContent className="space-y-4">
+            {/* CONFIRMED */}
+            <div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="uppercase">CONFIRMED</Badge>
+                  <span className="text-sm text-muted-foreground">
+                    Đơn cần xử lý
+                  </span>
+                </div>
+                <span className="text-sm font-medium">
+                  {pendingConfirmed.length}
+                </span>
+              </div>
+
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                {pendingConfirmed.slice(0, MAX_ALERT_ITEMS).map((o) => {
+                  const id = getId(o);
+                  return (
+                    <div
+                      key={`confirmed-${id}`}
+                      className="rounded-md border bg-card p-3 hover:bg-accent/50 cursor-pointer"
+                      onClick={() => onSelectJob(id)}
+                      title="Xem chi tiết đơn"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">{o.orderCode ?? id}</span>
+                        <Badge>CONFIRMED</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1 truncate">
+                        {o.pickup?.address || "—"} → {o.dropoff?.address || "—"}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {pendingConfirmed.length > MAX_ALERT_ITEMS && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  … và {pendingConfirmed.length - MAX_ALERT_ITEMS} đơn khác.
+                </p>
+              )}
+            </div>
+
+            {/* ASSIGNED */}
+            <div className="pt-2 border-t">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="uppercase">ASSIGNED</Badge>
+                  <span className="text-sm text-muted-foreground">
+                    Đơn mới được phân công
+                  </span>
+                </div>
+                <span className="text-sm font-medium">
+                  {pendingAssigned.length}
+                </span>
+              </div>
+
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                {pendingAssigned.slice(0, MAX_ALERT_ITEMS).map((o) => {
+                  const id = getId(o);
+                  return (
+                    <div
+                      key={`assigned-${id}`}
+                      className="rounded-md border bg-card p-3 hover:bg-accent/50 cursor-pointer"
+                      onClick={() => onSelectJob(id)}
+                      title="Xem chi tiết đơn"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">{o.orderCode ?? id}</span>
+                        <Badge>ASSIGNED</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1 truncate">
+                        {o.pickup?.address || "—"} → {o.dropoff?.address || "—"}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {pendingAssigned.length > MAX_ALERT_ITEMS && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  … và {pendingAssigned.length - MAX_ALERT_ITEMS} đơn khác.
+                </p>
+              )}
+            </div>
+
+            {/* CTA xem tất cả */}
+            <div className="pt-2">
+              <Button variant="ghost" size="sm" className="gap-2" onClick={onViewOrders}>
+                Xem tất cả đơn chờ xử lý <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -183,21 +281,24 @@ export function DashboardOverview({
               Không có đơn gần đây
             </p>
           )}
-          {recentOrders.map((o) => (
-            <div
-              key={o.id}
-              className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4 hover:bg-accent/50 transition cursor-pointer"
-              onClick={() => onSelectJob(o.id)}
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-semibold">{o.orderCode}</span>
-                <Badge>{o.status}</Badge>
+          {recentOrders.map((o) => {
+            const id = getId(o);
+            return (
+              <div
+                key={id}
+                className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4 hover:bg-accent/50 transition cursor-pointer"
+                onClick={() => onSelectJob(id)}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold">{o.orderCode ?? id}</span>
+                  <Badge>{norm(o.status)}</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {o.pickup?.address || "—"} → {o.dropoff?.address || "—"}
+                </p>
               </div>
-              <p className="text-sm text-muted-foreground">
-                {o.pickup?.address || "—"} → {o.dropoff?.address || "—"}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </CardContent>
       </Card>
     </div>
