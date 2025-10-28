@@ -96,6 +96,9 @@ export const addOrderItems = async (req, res) => {
         quantity: item.quantity,
         weight: item.weight,
         fragile: item.fragile || false,
+        type: item.type || [],
+        shipping_instructions: item.shipping_instructions || [],
+        driver_note: item.driver_note || "",
       }))
     );
 
@@ -151,11 +154,13 @@ export const createOrder = async (req: Request, res: Response) => {
     if (items && Array.isArray(items)) {
       await OrderItem.insertMany(
         items.map((item) => ({
-          order_id: order._id,
           description: item.description,
           quantity: item.quantity,
           weight: item.weight,
           fragile: item.fragile || false,
+          type: item.type || [],
+          shipping_instructions: item.shipping_instructions || [],
+          driver_note: item.driver_note || "",
         }))
       );
     }
@@ -173,8 +178,8 @@ export const createOrder = async (req: Request, res: Response) => {
 
 //  Lấy danh sách đơn hàng của người dùng
 export const getMyOrders = async (req: Request, res: Response) => {
-   try {
-    
+  try {
+
     const userId = req.user?.id;
     console.log(userId);
     if (!userId) {
@@ -190,9 +195,9 @@ export const getMyOrders = async (req: Request, res: Response) => {
     const orders = await Order.find({ customer_id: userId })
       .populate("vehicle_id", "type") // chỉ lấy trường cần thiết
       .populate("carrier_id", "name phone")
-      .sort({ createdAt: -1 }) 
+      .sort({ createdAt: -1 })
       .limit(limit)
-      .lean(); 
+      .lean();
 
     //  Đếm tổng số đơn hàng (phục vụ client phân trang)
     const totalOrders = await Order.countDocuments({ customer_id: userId });
@@ -321,7 +326,7 @@ export const cancelOrder = async (req, res) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
-    const userId = req.user._id; 
+    const userId = req.user._id;
 
     const order = await Order.findById(id);
     if (!order) return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng." });
