@@ -27,6 +27,9 @@ import BlogDetail from "./pages/BlogDetail";
 import DriverInterviewPage from "./components/carrier-dashboard/dashboard/DriverRecruitPage";
 import OrderHistoryPage from "./pages/OrderHistoryPage";
 import CustomerChatPage from "./components/CustomerChatPage";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentCancel from "./pages/PaymentCancel";
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -60,6 +63,10 @@ export default function App() {
           <Route path="tracking" element={<OrderTracking />} />
           <Route path="history" element={<OrderHistoryPage />} />
         </Route>
+        
+        {/* Payment result pages */}
+        <Route path="/payment-success" element={<PaymentSuccess />} />
+        <Route path="/payment-cancel" element={<PaymentCancel />} />
         
       </Routes>
     </BrowserRouter>
