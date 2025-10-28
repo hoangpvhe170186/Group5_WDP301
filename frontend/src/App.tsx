@@ -26,7 +26,7 @@ import ComparePage from "./components/carrier-dashboard/dashboard/compare";
 import BlogDetail from "./pages/BlogDetail";
 import DriverInterviewPage from "./components/carrier-dashboard/dashboard/DriverRecruitPage";
 import OrderHistoryPage from "./pages/OrderHistoryPage";
-
+import CustomerChatPage from "./components/CustomerChatPage";
 export default function App() {
   return (
     <BrowserRouter>
@@ -52,6 +52,7 @@ export default function App() {
           <Route path="verify-otp" element={<VerifyOtpPage />} />
           <Route path="forgot-password" element={<ForgotPasswordPage />} />
         </Route>
+        <Route path="/chat/order/:orderId" element={<CustomerChatPage />} />
         <Route path="/seller/home" element={<Seller />}></Route>
         <Route path="/driver-recruit" element={<DriverInterviewPage />} />
         <Route path="/seller/driver-applications" element={<SellerDriverApplications />} />

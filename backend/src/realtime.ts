@@ -18,6 +18,13 @@ type SupportPayload = {
   name?: string;
 };
 
+type TypingPayload = {
+  roomId: string;
+  userId: string;
+  isTyping: boolean;
+  userName?: string;
+};
+
 export function initRealtime(server: HTTPServer) {
   io = new Server(server, {
     cors: { origin: "http://localhost:5173", methods: ["GET", "POST"] },
@@ -38,67 +45,94 @@ export function initRealtime(server: HTTPServer) {
     socket.on("join_room", (roomId: string) => {
       if (!roomId) return;
       socket.join(roomId);
+      console.log(`Socket ${socket.id} joined room: ${roomId}`);
     });
-socket.on("join_driver_interview_room", () => {
+
+    socket.on("join_driver_interview_room", () => {
       socket.join("driver_interview_notifications");
     });
     
-  socket.on("join", (user) => {
-    if (user.role === "carrier") {
-      socket.join("carrier:all");
-      socket.join(`carrier:${user.id}`);
-      console.log(`🚚 Carrier ${user.id} joined carrier:all`);
-    }
-  });
+    socket.on("join", (user) => {
+      if (user.role === "carrier") {
+        socket.join("carrier:all");
+        socket.join(`carrier:${user.id}`);
+        console.log(`🚚 Carrier ${user.id} joined carrier:all`);
+      }
+    });
+
     // KH ping nhờ hỗ trợ => bắn noti + badge tới staff
-   socket.on("notify_support", (payload: SupportPayload) => {
-  const data = {
-    roomId: payload.roomId,
-    preview: payload.preview ?? "Khách yêu cầu hỗ trợ",
-    name: payload.name,
-    at: new Date().toISOString(),
-  };
-  socket.broadcast.to("support_staff").emit("support_notification", data);
-  socket.broadcast.to("support_staff").emit("support_badge", data);
-});
+    socket.on("notify_support", (payload: SupportPayload) => {
+      const data = {
+        roomId: payload.roomId,
+        preview: payload.preview ?? "Khách yêu cầu hỗ trợ",
+        name: payload.name,
+        at: new Date().toISOString(),
+      };
+      socket.broadcast.to("support_staff").emit("support_notification", data);
+      socket.broadcast.to("support_staff").emit("support_badge", data);
+    });
+
+    // Sự kiện typing indicator
+    socket.on("typing", (data: TypingPayload) => {
+      // Chỉ broadcast cho những người khác trong room
+      socket.to(data.roomId).emit("user_typing", {
+        roomId: data.roomId,
+        userId: data.userId,
+        userName: data.userName,
+        isTyping: data.isTyping
+      });
+    });
 
     // GỬI TIN (thống nhất 1 handler duy nhất)
-  socket.on("send_message", async (msg: SendMessagePayload) => {
-  const { roomId, sender, text, name, userId } = msg;
-  if (!roomId || !sender || !text?.trim()) return;
+    socket.on("send_message", async (msg: SendMessagePayload) => {
+      const { roomId, sender, text, name, userId } = msg;
+      if (!roomId || !sender || !text?.trim()) return;
 
-  // 1) Lưu DB
-  await ChatMessage.create({
-    roomId,
-    userId,
-    sender,
-    senderName: name,
-    text,
-    createdAt: new Date(),
-  });
+      // 1) Lưu DB
+      await ChatMessage.create({
+        roomId,
+        userId,
+        sender,
+        senderName: name,
+        text,
+        createdAt: new Date(),
+      });
 
-  const payload = {
-    roomId,
-    sender,
-    name,
-    text,
-    createdAt: new Date().toISOString(),
-  };
+      const payload = {
+        roomId,
+        sender,
+        name,
+        text,
+        createdAt: new Date().toISOString(),
+      };
 
-  // 2) Phát realtime nhưng **loại trừ chính người gửi**
-  socket.to(roomId).emit("receive_message", payload);                // loại trừ chính socket này
-  socket.broadcast.to("support_staff").emit("receive_message", payload); // staff khác (không phát lại cho sender)
+      // 2) Phát realtime nhưng **loại trừ chính người gửi**
+      socket.to(roomId).emit("receive_message", payload);                // loại trừ chính socket này
+      socket.broadcast.to("support_staff").emit("receive_message", payload); // staff khác (không phát lại cho sender)
 
-  // 3) Badge cho staff khi KH gửi (cũng **loại trừ sender**)
-  if (sender === "guest") {
-    socket.broadcast.to("support_staff").emit("support_badge", {
-      roomId,
-      preview: text.slice(0, 60),
-      name,
-      at: new Date().toISOString(),
+      // 3) Gửi sự kiện stop typing khi tin nhắn được gửi
+      socket.to(roomId).emit("user_typing", {
+        roomId,
+        userId: userId || name || "unknown",
+        userName: name,
+        isTyping: false
+      });
+
+      // 4) Badge cho staff khi KH gửi (cũng **loại trừ sender**)
+      if (sender === "guest") {
+        socket.broadcast.to("support_staff").emit("support_badge", {
+          roomId,
+          preview: text.slice(0, 60),
+          name,
+          at: new Date().toISOString(),
+        });
+      }
     });
-  }
-});
+
+    // Xử lý ngắt kết nối
+    socket.on("disconnect", (reason) => {
+      console.log("socket disconnected:", socket.id, reason);
+    });
 
   });
 

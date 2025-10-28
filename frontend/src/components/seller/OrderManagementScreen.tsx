@@ -1,9 +1,10 @@
 "use client";
 import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
-import { Eye, Truck, CheckCircle, Search } from "lucide-react";
+import {  Eye, Truck, CheckCircle, Search, MessageCircle } from "lucide-react";
 import OrderDetailModal from "./OrderDetailModal";
 import OrderActionModal from "./OrderActionModal";
+import SellerChat from "./SellerChat";
 
 const ITEMS_PER_PAGE = 8; // số đơn / trang
 
@@ -24,7 +25,26 @@ const OrderManagementScreen = () => {
 
   // Phân trang
   const [currentPage, setCurrentPage] = useState(1);
-
+const [isChatOpen, setIsChatOpen] = useState(false);
+const [currentChatRoom, setCurrentChatRoom] = useState("");
+const [currentOrderCode, setCurrentOrderCode] = useState("");
+ const [currentOrderId, setCurrentOrderId] = useState<string>("");
+const openOrderChat = (orderId: string, orderCode: string) => {
+  const chatRoomId = `order:${orderId}`; // Sử dụng orderId thực tế
+  setCurrentChatRoom(chatRoomId);
+  setCurrentOrderCode(orderCode);
+  setCurrentOrderId(orderId);
+  setIsChatOpen(true);
+  
+  // Tạo link chat cho khách hàng - sử dụng orderId thực
+  const customerChatLink = `${window.location.origin}/chat/order/${currentOrderId}`;
+  
+  // Copy link
+  navigator.clipboard.writeText(customerChatLink).then(() => {
+    setMessage(`✅ Đã copy link chat vào clipboard! Gửi link này cho khách hàng: ${customerChatLink}`);
+    setTimeout(() => setMessage(""), 5000);
+  });
+};
   // 🧠 Lấy danh sách đơn hàng
   const fetchOrders = async () => {
     try {
@@ -244,43 +264,55 @@ const res = await axios.post(
                   </td>
 
                   <td className="px-4 py-3 text-right text-sm font-medium flex justify-end gap-3">
-                    {/* Xem chi tiết */}
-                    <button
-                      onClick={() => {
-                        setSelectedOrderDetailId(order._id);
-                        setIsDetailOpen(true);
-                      }}
-                      className="text-orange-600 hover:text-orange-900"
-                      title="Xem chi tiết"
-                    >
-                      <Eye className="w-5 h-5 cursor-pointer" />
-                    </button>
+  {/* Xem chi tiết */}
+  <button
+    onClick={() => {
+      setSelectedOrderDetailId(order._id);
+      setIsDetailOpen(true);
+    }}
+    className="text-orange-600 hover:text-orange-900"
+    title="Xem chi tiết"
+  >
+    <Eye className="w-5 h-5 cursor-pointer" />
+  </button>
 
-                    {/* Xác nhận đơn */}
-                    {order.status === "Pending" && (
-                      <button
-                        onClick={() => handleConfirmOrder(order._id)}
-                        className="text-green-600 hover:text-green-900"
-                        title="Xác nhận đơn"
-                      >
-                        <CheckCircle className="w-5 h-5 cursor-pointer" />
-                      </button>
-                    )}
+  {/* Nút nhắn tin - THÊM MỚI */}
+  <button
+    onClick={() => {
+      // Mở chat với khách hàng của đơn hàng này
+      openOrderChat(order._id, order.orderCode);
+    }}
+    className="text-blue-600 hover:text-blue-900"
+    title="Nhắn tin với khách hàng"
+  >
+    <MessageCircle className="w-5 h-5 cursor-pointer" />
+  </button>
 
-                    {/* Cập nhật / Giao việc */}
-                    {(order.status === "ASSIGNED" || order.status === "DECLINED") && (
-                      <button
-                        onClick={() => {
-                          setSelectedOrderId(order._id);
-                          setIsUpdateModalOpen(true);
-                        }}
-                        className="text-blue-600 hover:text-blue-900"
-                        title="Cập nhật / Giao việc"
-                      >
-                        <Truck className="w-5 h-5 cursor-pointer" />
-                      </button>
-                    )}
-                  </td>
+  {/* Xác nhận đơn */}
+  {order.status === "Pending" && (
+    <button
+      onClick={() => handleConfirmOrder(order._id)}
+      className="text-green-600 hover:text-green-900"
+      title="Xác nhận đơn"
+    >
+      <CheckCircle className="w-5 h-5 cursor-pointer" />
+    </button>
+  )}
+
+  {/* Cập nhật / Giao việc */}
+  {(order.status === "ASSIGNED" || order.status === "DECLINED") && (
+    <button
+      onClick={() => {
+        setSelectedOrderId(order._id);
+        setIsUpdateModalOpen(true);
+      }}
+      className="text-blue-600 hover:text-blue-900"
+      title="Cập nhật / Giao việc"
+    >
+      <Truck className="w-5 h-5 cursor-pointer" />
+    </button>
+  )}
+</td>
                 </tr>
               ))
             )}
@@ -322,7 +354,55 @@ const res = await axios.post(
           </button>
         </div>
       )}
-
+{isChatOpen && currentChatRoom && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-lg w-full max-w-4xl h-[80vh] flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b bg-orange-50">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-800">
+            💬 Chat với khách hàng
+          </h3>
+          <p className="text-sm text-gray-600">
+            Đơn hàng: <strong>#{currentOrderCode}</strong> | 
+            Phòng: <code className="text-xs">{currentChatRoom}</code>
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              const customerChatLink = `${window.location.origin}/chat/order/${currentOrderCode}`;
+              navigator.clipboard.writeText(customerChatLink);
+              setMessage("✅ Đã copy link chat!");
+              setTimeout(() => setMessage(""), 3000);
+            }}
+            className="px-3 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
+            title="Copy link chat cho khách hàng"
+          >
+            Copy Link
+          </button>
+          <button
+            onClick={() => setIsChatOpen(false)}
+            className="text-gray-500 hover:text-gray-700 text-lg"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+      
+      {/* Nội dung chat */}
+      <div className="flex-1">
+        <SellerChat 
+          roomId={currentChatRoom} 
+          orderInfo={{
+            code: currentOrderCode,
+            status: "Đang xử lý"
+          }}
+        />
+      </div>
+    </div>
+  </div>
+)}
       {/* Modal chi tiết */}
       {isDetailOpen && selectedOrderDetailId && (
         <OrderDetailModal
