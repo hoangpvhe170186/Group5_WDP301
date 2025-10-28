@@ -26,6 +26,8 @@ import ComparePage from "./components/carrier-dashboard/dashboard/compare";
 import BlogDetail from "./pages/BlogDetail";
 import DriverInterviewPage from "./components/carrier-dashboard/dashboard/DriverRecruitPage";
 import OrderHistoryPage from "./pages/OrderHistoryPage";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentCancel from "./pages/PaymentCancel";
 
 export default function App() {
   return (
@@ -59,6 +61,10 @@ export default function App() {
           <Route path="tracking" element={<OrderTracking />} />
           <Route path="history" element={<OrderHistoryPage />} />
         </Route>
+        
+        {/* Payment result pages */}
+        <Route path="/payment-success" element={<PaymentSuccess />} />
+        <Route path="/payment-cancel" element={<PaymentCancel />} />
         
       </Routes>
     </BrowserRouter>
