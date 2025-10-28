@@ -182,8 +182,6 @@ export function OrdersList({ onViewJob }: OrdersListProps) {
               <SelectContent>
                 <SelectItem value="all">Tất cả</SelectItem>
                 <SelectItem value="pending">Chờ xử lý</SelectItem>
-                <SelectItem value="confirmed">Đã xác nhận</SelectItem>
-                <SelectItem value="assigned">Đang chờ tài xế</SelectItem>
                 <SelectItem value="accepted">Đã nhận đơn</SelectItem>
                 <SelectItem value="completed">Hoàn tất</SelectItem>
               </SelectContent>

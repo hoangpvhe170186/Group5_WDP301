@@ -11,13 +11,13 @@ import chatRoutes from "./routes/chat";
 import pricingRoute from "./routes/pricing";
 import vehiclesRoute from "./routes/vehicles.route";
 import authRoutes from "./routes/auth.route";
-import carrierRoutes from "./routes/carrier.routes";
 import orderRoutes from "./routes/order.route";
-import {requireAuth} from "./middleware/requireAuth"
 import orderTrackingRoute from "./routes/order-tracking.route"
 import extraFeeRoutes from "./routes/extraFeeRoutes";
+import adminRoute from "./routes/admin.route";
 import driverInterviewRoutes from "./routes/driverInterview.route";
 import notificationRoutes from "./routes/notification.route";
+import carrierRoutes from "./routes/carrier.routes";
 // 👉 mới thêm
 import feedbackRoute from "./routes/feedback.route";
 import incidentsRoute from "./routes/incidents.route";
@@ -58,6 +58,7 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/order-tracking", orderTrackingRoute);
 app.use("/api/extrafees", extraFeeRoutes);
 app.use("/api/upload", uploadRoute);
+app.use("/api/admin", adminRoute);
 app.use("/api/driver-interviews", driverInterviewRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/carrier", carrierRoutes);

@@ -23,6 +23,8 @@ export const getAuthToken = (): string => {
 
 export interface Order {
   id: string;
+  code: string;
+  seller: string | null;
   pickupAddress: string;
   deliveryAddress: string;
   totalPrice: number;
@@ -30,8 +32,22 @@ export interface Order {
   scheduledTime: string;
   vehicleId?: string;
   driverId?: string;
-  carrierId?: string;
+  customer?: string;
 }
+
+
+const normalizeOrder = (o: any): Order => ({
+  id: String(o._id),
+  code: o.code || "",
+  status: o.status || "",
+  seller: o.seller_id || null,
+  driverId: o.driver_id || null,
+  customer: o.customer_id || null,
+  totalPrice: o.total_price || 0,
+  pickupAddress: o.pickup_address || "",
+  deliveryAddress: o.delivery_address || "",
+  scheduledTime: o.scheduled_time
+});
 export default {
   acceptOrder: (orderId: string) => axios.post(`/orders/${orderId}/carrier-accept`),
   sellerAccept: (orderId: string) => axios.post(`/orders/${orderId}/seller-accept`),
@@ -51,10 +67,9 @@ export const orderApi = {
       const { data } = await api.get("/orders/myorder", {
         headers: { Authorization: `Bearer ${getAuthToken()}` },
       });
-      console.log("Dữ liệu thô từ API:", data);
       const rawOrders = data.data || []; // Lấy mảng từ data.data
-      console.log("Mảng rawOrders:", rawOrders);
       const orders: Order[] = rawOrders.map((o: any) => ({
+        code: o.orderCode || "",
         id: String(o._id),
         pickupAddress: o.pickup_address || "",
         deliveryAddress: o.delivery_address || "",
@@ -68,8 +83,6 @@ export const orderApi = {
         driverId: o.driver_id,
         carrierId: o.carrier_id,
       }));
-
-      console.log("Danh sách đơn hàng:", orders); 
       return { orders };
     } catch (error: any) {
       console.error(
@@ -94,6 +107,9 @@ export const orderApi = {
 
       return {
         id: String(data._id),
+        code: data.code || "",
+        customer: data.customer_id || null,
+        seller: data.seller_id || null,
         pickupAddress: data.pickup_address || "",
         deliveryAddress: data.delivery_address || "",
         totalPrice: Number(data.total_price || 0),
@@ -103,7 +119,7 @@ export const orderApi = {
           : "Chưa có thời gian",
         vehicleId: data.vehicle_id,
         driverId: data.driver_id,
-        carrierId: data.carrier_id,
+        
       };
     } catch (error: any) {
       console.error("❌ getDetail error:", error);
@@ -112,4 +128,21 @@ export const orderApi = {
       );
     }
   },
+
+
+  async listPaginationByAdming(page = 1, limit = 10) {
+    const { data } = await api.get("/users/orders/pagination", {
+      params: { page, limit },
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+
+    return {
+      orders: data.data.map(normalizeOrder),
+      total: data.total,
+      currentPage: data.currentPage,
+      totalPages: data.totalPages,
+    };
+  },
 };
+
+

@@ -28,7 +28,13 @@ const OrderManagementScreen = () => {
   // 🧠 Lấy danh sách đơn hàng
   const fetchOrders = async () => {
     try {
-      const res = await axios.get("http://localhost:4000/api/users/orders/");
+      const token  = localStorage.getItem("auth_token");
+      const res = await axios.get("http://localhost:4000/api/users/orders", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+      
       setOrders(res.data || []);
     } catch (err) {
       console.error("❌ Lỗi khi tải danh sách đơn hàng:", err);
@@ -44,9 +50,18 @@ const OrderManagementScreen = () => {
   // ✅ Hàm xác nhận đơn
   const handleConfirmOrder = async (orderId) => {
     try {
-      const res = await axios.post(
-        `http://localhost:4000/api/users/orders/${orderId}/confirm`
-      );
+      const token = localStorage.getItem("auth_token");
+if (!token) return alert("Bạn cần đăng nhập!");
+
+const res = await axios.post(
+  `http://localhost:4000/api/users/orders/${orderId}/confirm`,
+  {},
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  }
+);
       if (res.data.success) {
         setMessage("✅ Đơn hàng đã được xác nhận!");
         await fetchOrders();

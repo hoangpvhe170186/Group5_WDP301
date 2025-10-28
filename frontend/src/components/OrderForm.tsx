@@ -23,10 +23,7 @@ const MAPBOX_TOKEN =
 
 mapboxgl.accessToken = MAPBOX_TOKEN;
 
-export default function OrderForm({
-  onAddressChange,
-  onEstimate,
-}: Readonly<OrderFormProps>) {
+export default function OrderForm({ onAddressChange, onEstimate }: Readonly<OrderFormProps>) {
   const [packages, setPackages] = useState<any[]>([]);
   const [selectedPackage, setSelectedPackage] = useState("");
   const [customFloor, setCustomFloor] = useState<number | null>(null);
@@ -49,56 +46,38 @@ export default function OrderForm({
 
   useEffect(() => {
     const fetchPackages = async () => {
-      try {
-        const res = await axios.get("http://localhost:4000/api/pricing");
-        setPackages(res.data?.packages || []);
-      } catch (error) {
-        console.error(" Lỗi khi tải danh sách gói giá:", error);
-      }
+      const res = await axios.get("http://localhost:4000/api/pricing");
+      setPackages(res.data?.packages || []);
     };
     fetchPackages();
   }, []);
 
   useEffect(() => {
     if (!pickupGeoRef.current || !deliveryGeoRef.current) return;
-    const opts = {
-      accessToken: MAPBOX_TOKEN,
-      mapboxgl,
-      marker: false,
-      language: "vi",
-      countries: "VN",
-    };
-    const pickupGeocoder = new MapboxGeocoder({
-      ...opts,
-      placeholder: " Nhập địa chỉ lấy hàng...",
-    });
-    const deliveryGeocoder = new MapboxGeocoder({
-      ...opts,
-      placeholder: " Nhập địa chỉ giao hàng...",
-    });
+
+    const opts = { accessToken: MAPBOX_TOKEN, mapboxgl, marker: false, language: "vi", countries: "VN" };
+
+    const pickupGeocoder = new MapboxGeocoder({ ...opts, placeholder: "Nhập địa chỉ lấy hàng..." });
+    const deliveryGeocoder = new MapboxGeocoder({ ...opts, placeholder: "Nhập địa chỉ giao hàng..." });
+
     pickupGeocoder.addTo(pickupGeoRef.current);
     deliveryGeocoder.addTo(deliveryGeoRef.current);
 
-    // --- SỬA Ở ĐÂY ---
-    pickupGeocoder.on("result", (e: any) => {
+    pickupGeocoder.on("result", (e) => {
       const address = e.result?.place_name || "";
-      // Sử dụng functional update để lấy state mới nhất
-      setForm((prevForm) => {
-        onAddressChange?.(address, prevForm.delivery_address); // Gửi state mới nhất
-        return { ...prevForm, pickup_address: address }; // Cập nhật state
+      setForm((prev) => {
+        onAddressChange?.(address, prev.delivery_address);
+        return { ...prev, pickup_address: address };
       });
     });
 
-    // --- VÀ SỬA Ở ĐÂY ---
-    deliveryGeocoder.on("result", (e: any) => {
+    deliveryGeocoder.on("result", (e) => {
       const address = e.result?.place_name || "";
-      // Sử dụng functional update để lấy state mới nhất
-      setForm((prevForm) => {
-        onAddressChange?.(prevForm.pickup_address, address); // Gửi state mới nhất
-        return { ...prevForm, delivery_address: address }; // Cập nhật state
+      setForm((prev) => {
+        onAddressChange?.(prev.pickup_address, address);
+        return { ...prev, delivery_address: address };
       });
     });
-    // --- HẾT SỬA ---
 
     return () => {
       pickupGeocoder.onRemove();
@@ -108,77 +87,54 @@ export default function OrderForm({
 
   const handleEstimatePrice = async () => {
     if (!form.pickup_address || !form.delivery_address || !selectedPackage) return;
-    try {
-      const res = await axios.post("http://localhost:4000/api/pricing/estimate2", {
-        pickup_address: form.pickup_address,
-        delivery_address: form.delivery_address,
-        pricepackage_id: selectedPackage,
-        max_floor: customFloor || undefined,
-      });
-      if (!res.data?.success) return alert(res.data?.message || "Không thể tính giá");
-      const data = res.data.data;
-      setForm((prev) => ({ ...prev, total_price: String(data.totalFee) }));
-      setDistanceText(data.distance.text);
-      setDurationText(data.duration.text);
-      onEstimate?.(data.distance.text, data.duration.text, data.totalFee);
-    } catch (err) {
-      console.error(" Lỗi khi tính giá:", err);
-      alert("Không thể tính giá tự động");
-    }
+    const res = await axios.post("http://localhost:4000/api/pricing/estimate2", {
+      pickup_address: form.pickup_address,
+      delivery_address: form.delivery_address,
+      pricepackage_id: selectedPackage,
+      max_floor: customFloor || undefined,
+    });
+
+    if (!res.data?.success) return;
+    setForm((prev) => ({ ...prev, total_price: String(res.data.data.totalFee) }));
+    setDistanceText(res.data.data.distance.text);
+    setDurationText(res.data.data.duration.text);
+    onEstimate?.(res.data.data.distance.text, res.data.data.duration.text, res.data.data.totalFee);
   };
 
   useEffect(() => {
-    if (form.pickup_address && form.delivery_address && selectedPackage)
-      handleEstimatePrice();
+    if (form.pickup_address && form.delivery_address && selectedPackage) handleEstimatePrice();
   }, [form.pickup_address, form.delivery_address, selectedPackage, customFloor]);
 
-  const totalExtra = extraFees.reduce(
-    (sum, fee) => sum + Number(fee.price?.$numberDecimal || fee.price || 0),
-    0
-  );
+  const totalExtra = extraFees.reduce((sum, f) => sum + Number(f.price?.$numberDecimal || f.price), 0);
   const totalFinal = parseFloat(form.total_price || "0") + totalExtra;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const phoneRegex = /^(0|\+84)[0-9]{9,10}$/;
-    if (!phoneRegex.test(form.phone)) {
-      alert("Vui lòng nhập số điện thoại hợp lệ!");
-      return;
-    }
     setLoading(true);
-    try {
-      const token = localStorage.getItem("auth_token");
-      if (!token) return alert("Bạn cần đăng nhập trước khi đặt hàng!");
-      const res = await axios.post(
-        "http://localhost:4000/api/orders/temporary",
-        {
-          customer_id: user_id,
-          pickup_address: form.pickup_address,
-          pickup_detail: form.pickup_detail,
-          delivery_address: form.delivery_address,
-          total_price: totalFinal,
-          package_id: selectedPackage,
-          phone: form.phone,
-          max_floor: customFloor || undefined,
-          extra_fees: extraFees.map((f) => ({
-            id: f._id,
-            name: f.name,
-            price: Number(f.price?.$numberDecimal || f.price),
-          })),
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (res.data?.success) {
-        const orderId = res.data.order._id;
-        navigate(`/order-preview?orderId=${orderId}`);
-      }
-    } catch (err) {
-      console.error("❌ Lỗi khi tạo đơn:", err);
-      alert("Không thể tạo đơn hàng.");
-    } finally {
-      setLoading(false);
+    const token = localStorage.getItem("auth_token");
+    const res = await axios.post(
+      "http://localhost:4000/api/orders/temporary",
+      {
+        customer_id: user_id,
+        pickup_address: form.pickup_address,
+        pickup_detail: form.pickup_detail,
+        delivery_address: form.delivery_address,
+        total_price: totalFinal,
+        package_id: selectedPackage,
+        phone: form.phone,
+        max_floor: customFloor || undefined,
+        extra_fees: extraFees.map((f) => f._id),
+      },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    if (res.data?.success) {
+      const orderId = res.data.order._id;
+      navigate(`/order-preview?orderId=${orderId}&fees=${encodeURIComponent(JSON.stringify(extraFees))}`);
     }
+    setLoading(false);
   };
+
 
   return (
 

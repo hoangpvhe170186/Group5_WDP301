@@ -382,11 +382,17 @@ export function JobDetails({
 
             <Button
               variant="outline"
-              onClick={() => navigate(`/carrier/compare/${job.id}`)}
+              onClick={() => {
+                localStorage.setItem("lastViewedJobId", job.id);
+                navigate(`/carrier/compare/${job.id}`);
+              }}
             >
               <Camera className="h-4 w-4 mr-2" />
               Xem ảnh đối chiếu (trang riêng)
             </Button>
+
+
+
           </CardContent>
         </Card>
 
@@ -435,9 +441,7 @@ export function JobDetails({
                   <Button variant="outline" onClick={onUploadAfter}>
                     <Camera className="h-4 w-4 mr-2" /> Chụp sau khi giao
                   </Button>
-                  <Button variant="outline" onClick={onReportIncident}>
-                    <AlertTriangle className="h-4 w-4 mr-2" /> Báo cáo sự cố
-                  </Button>
+
                   <Button
                     variant="outline"
                     onClick={() => setOpenTrackModal(true)}
@@ -445,9 +449,6 @@ export function JobDetails({
                   >
                     <Clock className="h-4 w-4 mr-2" /> Cập nhật tiến độ
                   </Button>
-
-
-
                 </div>
               )}
 
