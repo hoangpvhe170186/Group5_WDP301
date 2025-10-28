@@ -17,6 +17,7 @@ import extraFeeRoutes from "./routes/extraFeeRoutes";
 import adminRoute from "./routes/admin.route";
 import driverInterviewRoutes from "./routes/driverInterview.route";
 import notificationRoutes from "./routes/notification.route";
+import carrierRoutes from "./routes/carrier.routes";
 // 👉 mới thêm
 import feedbackRoute from "./routes/feedback.route";
 import incidentsRoute from "./routes/incidents.route";
