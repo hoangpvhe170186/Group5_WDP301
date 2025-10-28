@@ -22,6 +22,9 @@ import {
   getCarrierProfile,
   acceptAssignedOrder,
   updateCarrierProfile,     // ✅ tracking riêng
+  getDebtByOrder,
+  createCommissionPayment,
+  getCommissionPayments,
 } from "../controllers/carrier.controller";
 import crypto from "crypto";
 import path from "path";
@@ -95,6 +98,11 @@ router.get("/orders", requireAuth, async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+/* ============================== PAYMENTS (CARRIER COMMISSION) ============================== */
+router.get("/orders/:orderId/debt", getDebtByOrder);
+router.post("/orders/:orderId/payment/create", createCommissionPayment);
+router.get("/payments", getCommissionPayments);
 
 /* ============================== EXPORT ============================== */
 export default router;
