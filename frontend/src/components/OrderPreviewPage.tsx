@@ -6,6 +6,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Trash2 } from "lucide-react";
 
 export default function OrderPreviewPage() {
   const [items, setItems] = useState([
@@ -19,53 +20,72 @@ export default function OrderPreviewPage() {
       driver_note: "",
     },
   ]);
+
   const [loading, setLoading] = useState(false);
-  const [scheduleType, setScheduleType] = useState<"now" | "later">("now"); // ✅ Thời gian: Bây giờ / Đặt lịch
-  const [scheduledDate, setScheduledDate] = useState<string>(""); // ✅ Ngày đặt
-  const [scheduledTime, setScheduledTime] = useState<string>(""); // ✅ Giờ đặt
+  const [scheduleType, setScheduleType] = useState("now");
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("");
 
   const navigate = useNavigate();
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const orderId = params.get("orderId");
 
-  const handleChange = (index: number, field: string, value: any) => {
+  const handleAddItem = () => {
+    setItems([
+      ...items,
+      {
+        description: "",
+        quantity: 1,
+        weight: 0,
+        fragile: false,
+        type: [],
+        shipping_instructions: [],
+        driver_note: "",
+      },
+    ]);
+  };
+
+  const handleDeleteItem = (index) => {
+    if (items.length === 1) {
+      return alert("Phải có ít nhất 1 hàng hóa");
+    }
+    setItems(items.filter((_, i) => i !== index));
+  };
+
+  const handleChange = (index, field, value) => {
     const updated = [...items];
     updated[index][field] = value;
     setItems(updated);
   };
 
-  const toggleType = (index: number, type: string) => {
+  const toggleType = (index, type) => {
     const updated = [...items];
     const types = updated[index].type;
     updated[index].type = types.includes(type)
-      ? types.filter((t: string) => t !== type)
+      ? types.filter((t) => t !== type)
       : [...types, type];
     setItems(updated);
   };
 
-  const toggleShippingInstruction = (index: number, instruction: string) => {
+  const toggleShippingInstruction = (index, instruction) => {
     const updated = [...items];
-    const current = updated[index].shipping_instructions || [];
+    const current = updated[index].shipping_instructions;
     updated[index].shipping_instructions = current.includes(instruction)
-      ? current.filter((i: string) => i !== instruction)
+      ? current.filter((i) => i !== instruction)
       : [...current, instruction];
     setItems(updated);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
       const token = localStorage.getItem("auth_token");
-      if (!token) return alert("Bạn cần đăng nhập!");
 
-      //  Chuẩn hóa thời gian giao hàng
-      let deliveryTime: string | null = null;
+      let deliveryTime = null;
       if (scheduleType === "later") {
-        if (!scheduledDate || !scheduledTime)
-          return alert("Vui lòng chọn ngày và giờ giao hàng!");
         deliveryTime = new Date(`${scheduledDate}T${scheduledTime}`).toISOString();
       }
 
@@ -83,11 +103,9 @@ export default function OrderPreviewPage() {
       );
 
       if (res.data?.success) {
-        alert("🎉 Xác nhận đơn hàng thành công!");
+        alert("Thành công ✅");
         navigate("/");
       }
-    } catch (err: any) {
-      alert(err.response?.data?.message || "Lỗi khi gửi chi tiết hàng hóa!");
     } finally {
       setLoading(false);
     }
@@ -121,7 +139,7 @@ export default function OrderPreviewPage() {
           onClick={() => navigate("/dat-hang")}
           className="bg-white text-orange-600 hover:bg-orange-100 font-semibold px-4 py-2 rounded-lg"
         >
-           Quay lại
+          Quay lại
         </Button>
       </CardHeader>
 
@@ -130,7 +148,7 @@ export default function OrderPreviewPage() {
           {/* Lịch giao hàng */}
           <div className="border border-gray-200 rounded-lg p-4 mb-6 bg-gray-50 shadow-sm">
             <Label className="font-semibold text-gray-700 mb-2 block">
-               Thời gian giao hàng
+              Thời gian giao hàng
             </Label>
 
             <div className="flex flex-col md:flex-row items-center gap-4">
@@ -143,7 +161,7 @@ export default function OrderPreviewPage() {
               >
                 <option value="now">Bây giờ (1-2 giờ tùy thuộc vào tài xế )</option>
                 <option value="later">Đặt lịch</option>
-              </select>        
+              </select>
             </div>
 
             {/* Khi chọn Đặt lịch thì hiện lịch + giờ */}
@@ -174,7 +192,7 @@ export default function OrderPreviewPage() {
 
           {/* DANH SÁCH HÀNG HÓA */}
           {items.map((item, index) => (
-            <div key={index} className="border rounded-lg p-5 space-y-4 bg-gray-50 mb-6 shadow-sm">
+            <div key={index} className="border rounded-lg p-5 space-y-4 bg-gray-50 mb-6 shadow-sm relative">
               <div>
                 <Label className="font-semibold">Mô tả hàng hóa</Label>
                 <input
@@ -185,6 +203,14 @@ export default function OrderPreviewPage() {
                   onChange={(e) => handleChange(index, "description", e.target.value)}
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => handleDeleteItem(index)}
+                  className="absolute top-3 right-3 text-red-500 hover:text-red-700"
+                  title="Xóa hàng hóa này"
+                >
+                  <Trash2 size={20} />
+                </button>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -218,11 +244,10 @@ export default function OrderPreviewPage() {
                   {itemTypes.map((type) => (
                     <label
                       key={type}
-                      className={`flex items-center gap-2 border rounded-md p-2 cursor-pointer text-sm transition-all ${
-                        item.type.includes(type)
-                          ? "border-orange-500 bg-orange-50"
-                          : "border-gray-300 hover:border-orange-300"
-                      }`}
+                      className={`flex items-center gap-2 border rounded-md p-2 cursor-pointer text-sm transition-all ${item.type.includes(type)
+                        ? "border-orange-500 bg-orange-50"
+                        : "border-gray-300 hover:border-orange-300"
+                        }`}
                     >
                       <input
                         type="checkbox"
@@ -242,11 +267,10 @@ export default function OrderPreviewPage() {
                   {shippingOptions.map((option) => (
                     <label
                       key={option}
-                      className={`flex items-center gap-2 border rounded-md p-2 cursor-pointer text-sm transition-all ${
-                        item.shipping_instructions.includes(option)
-                          ? "border-orange-500 bg-orange-50"
-                          : "border-gray-300 hover:border-orange-300"
-                      }`}
+                      className={`flex items-center gap-2 border rounded-md p-2 cursor-pointer text-sm transition-all ${item.shipping_instructions.includes(option)
+                        ? "border-orange-500 bg-orange-50"
+                        : "border-gray-300 hover:border-orange-300"
+                        }`}
                     >
                       <input
                         type="checkbox"
@@ -273,6 +297,13 @@ export default function OrderPreviewPage() {
                   {200 - item.driver_note.length} ký tự còn lại
                 </p>
               </div>
+              <Button
+                type="button"
+                onClick={handleAddItem}
+                className="mb-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+              >
+                ➕ Thêm hàng hóa
+              </Button>
             </div>
           ))}
 
@@ -285,7 +316,7 @@ export default function OrderPreviewPage() {
             >
               {loading ? "Đang gửi..." : "✅ Xác nhận đơn hàng"}
             </Button>
-          </div>
+          </div>  
         </form>
       </CardContent>
     </Card>
