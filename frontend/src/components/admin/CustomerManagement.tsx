@@ -272,20 +272,7 @@ export default function CustomerManagement() {
                       >
                         <Eye className="w-4 h-4" />
                       </button>
-                      <button
-                        onClick={() => handleEditUser(user.id)}
-                        className="text-orange-600 hover:text-orange-900 p-1"
-                        title="Chỉnh sửa"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteUser(user.id)}
-                        className="text-red-600 hover:text-red-900 p-1"
-                        title="Xóa"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      
                     </div>
                   </td>
                 </tr>

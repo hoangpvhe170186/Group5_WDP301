@@ -46,7 +46,6 @@ export default function ServiceSection() {
                 <p className="text-sm text-gray-600">{s.desc}</p>
                  <Link to="/dat-hang">
                 <button className="mt-3 inline-flex rounded-md border border-[#FF6A00] px-3 py-1.5 text-sm font-medium text-[#FF6A00] transition hover:bg-[#FF6A00] hover:text-white">
-                  Book Now
                   đặt hàng ngay
                 </button>
                  </Link>
