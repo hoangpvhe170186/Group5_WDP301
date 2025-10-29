@@ -5,7 +5,7 @@ import Order from "../models/Order";
 cron.schedule("*/10 * * * * *", async () => {
   try {
     const now = new Date();
-    const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000); // 30 phút trước
+    const thirtyMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000); // 30 phút trước
 
     // 🔍 Tìm các đơn CONFIRMED quá 10 phút mà chưa có carrier
     const pendingOrders = await Order.find({
