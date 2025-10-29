@@ -21,6 +21,7 @@ import carrierRoutes from "./routes/carrier.routes";
 // 👉 mới thêm
 import feedbackRoute from "./routes/feedback.route";
 import incidentsRoute from "./routes/incidents.route";
+import payosWebhookRoute from "./routes/payos-webhook.route";
 
 if (!fs.existsSync("uploads")) fs.mkdirSync("uploads");
 
@@ -65,5 +66,6 @@ app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 // 👉 mới mount
 app.use("/api/feedback", feedbackRoute);
 app.use("/api/incidents", incidentsRoute);
+app.use("/api/payos", payosWebhookRoute);
 
 export default app;

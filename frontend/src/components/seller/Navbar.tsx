@@ -2,8 +2,17 @@ import React from 'react';
 import { PackageIcon, AlertOctagonIcon, HistoryIcon, SettingsIcon } from './Icons';
 import SupportInbox from "./SupportInbox";
 import SellerNotifications from "./SellerNotifications";
+import { LogOut } from 'lucide-react';
+import { Button } from "@/components/ui/button";
 
 const Navbar = ({ currentPage, setPage }) => {
+    const handleLogout = () => {
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("token");
+    sessionStorage.removeItem("auth_token");
+
+    window.location.href = "/auth/login";
+  };
   const navItems = [
     { id: 'orders', label: 'Quản lý Đơn hàng', icon: <PackageIcon /> },
     { id: 'complaints', label: 'Quản lý Khiếu nại', icon: <AlertOctagonIcon /> },
@@ -38,6 +47,14 @@ const Navbar = ({ currentPage, setPage }) => {
           <img src="https://placehold.co/100x100/orange/white?text=S" alt="Seller Avatar" className="h-full w-full rounded-full object-cover" />
         </div>
         <SupportInbox />
+         <Button
+            variant="outline"
+            size="sm"
+            className="text-destructive border-destructive hover:bg-destructive hover:text-white transition"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-4 w-4 mr-1" /> Đăng xuất
+          </Button>
       </div>
     </nav>
   );

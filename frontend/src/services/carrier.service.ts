@@ -120,6 +120,27 @@ export const carrierApi = {
       );
   },
 
+  async getDebt(orderId: string): Promise<{ status: string; commissionAmount: number; orderCode: string }> {
+    const { data } = await api.get(`/carrier/orders/${orderId}/debt`, {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+    return data?.debt ?? { status: "PENDING", commissionAmount: 0, orderCode: "" };
+  },
+  async createCommissionPayment(orderId: string): Promise<{ paymentId: string; amount: number; description: string; qrCode?: string | null; payosLink?: string | null; }> {
+    const { data } = await api.post(`/carrier/orders/${orderId}/payment/create`, {}, {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+    return data;
+  },
+
+  async getCommissionPayments(orderId: string): Promise<Array<{ id: string; amount: number; status: string; description: string; createdAt: string; paidAt?: string }>> {
+    const { data } = await api.get(`/carrier/payments`, {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+      params: { orderId },
+    });
+    return data?.payments ?? [];
+  },
+
   async jobDetail(orderId: string): Promise<any> {
     const { data } = await api.get(`/carrier/orders/${orderId}`, {
       headers: { Authorization: `Bearer ${getAuthToken()}` },

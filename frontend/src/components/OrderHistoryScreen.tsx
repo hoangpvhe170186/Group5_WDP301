@@ -25,23 +25,38 @@ const [selectedOrderForReport, setSelectedOrderForReport] = useState(null);
   // 🧠 Lấy lịch sử đơn hàng của user hiện tại
   const fetchOrders = async () => {
     try {
+      const token  = localStorage.getItem("auth_token");
       const customer_id = await getCurrentUserId();
       setCurrentUserId(customer_id);
       if (!customer_id) return;
 
-      const res = await axios.get(
-        `http://localhost:4000/api/users/orders/customer/${customer_id}`
-      );
+      
+      const res = await axios.get(`http://localhost:4000/api/users/orders/customer/${customer_id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
       setOrders(res.data || []);
 
       // Lấy feedback cho mỗi đơn hàng
       const feedbackData = {};
-      for (const order of res.data) {
-        const fbRes = await axios.get(
-          `http://localhost:4000/api/users/feedback/order/${order._id}`
-        );
-        if (fbRes.data) feedbackData[order._id] = fbRes.data;
+if (!token) return;
+
+for (const order of res.data) {
+  try {
+    const fbRes = await axios.get(
+      `http://localhost:4000/api/users/feedback/order/${order._id}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       }
+    );
+    if (fbRes.data) feedbackData[order._id] = fbRes.data;
+  } catch (err) {
+    console.error(`❌ Lỗi khi tải feedback cho đơn ${order._id}:`, err);
+  }
+}
       setFeedbacks(feedbackData);
     } catch (err) {
       console.error("❌ Lỗi khi tải dữ liệu:", err);
@@ -91,7 +106,7 @@ const [selectedOrderForReport, setSelectedOrderForReport] = useState(null);
 
   return (
     <div className="space-y-6">
-      <div className="space-y-6 pt-24"> {/* pt-24 = 6rem = 96px */}
+      <div className="space-y-6 pt-16"> {/* pt-24 = 6rem = 96px */}
  
 </div>
       <h1 className="text-2xl font-bold text-gray-900">📦 Lịch sử đơn hàng</h1>

@@ -1,11 +1,12 @@
 "use client";
 import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
-import { Eye, Truck, CheckCircle, Search } from "lucide-react";
+import { Eye, Truck, CheckCircle, Search, MessageCircle } from "lucide-react";
 import OrderDetailModal from "./OrderDetailModal";
 import OrderActionModal from "./OrderActionModal";
+import SellerChat from "./SellerChat";
 
-const ITEMS_PER_PAGE = 8; // số đơn / trang
+const ITEMS_PER_PAGE = 8;
 
 const OrderManagementScreen = () => {
   const [orders, setOrders] = useState([]);
@@ -24,16 +25,46 @@ const OrderManagementScreen = () => {
 
   // Phân trang
   const [currentPage, setCurrentPage] = useState(1);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [currentChatRoom, setCurrentChatRoom] = useState("");
+  const [currentOrderCode, setCurrentOrderCode] = useState("");
+  const [currentCustomerName, setCurrentCustomerName] = useState("");
+
+  // ✅ Mở chat theo CUSTOMER ID thay vì ORDER ID
+  const openOrderChat = (order: any) => {
+    const customerId = order.customer_id?._id || order.customer_id;
+    
+    if (!customerId) {
+      setMessage("❌ Không tìm thấy thông tin khách hàng");
+      setTimeout(() => setMessage(""), 3000);
+      return;
+    }
+
+    const chatRoomId = `customer:${customerId}`; // 🔹 Gộp theo customer
+    setCurrentChatRoom(chatRoomId);
+    setCurrentOrderCode(order.orderCode);
+    setCurrentCustomerName(order.customer_id?.full_name || "Khách hàng");
+    setIsChatOpen(true);
+
+    // ✅ Tạo link chat cho khách hàng
+    const customerChatLink = `${window.location.origin}/chat/customer/${customerId}`;
+
+    navigator.clipboard.writeText(customerChatLink).then(() => {
+      setMessage(`✅ Đã copy link chat! Gửi link này cho khách hàng: ${customerChatLink}`);
+      setTimeout(() => setMessage(""), 5000);
+    });
+  };
 
   // 🧠 Lấy danh sách đơn hàng
   const fetchOrders = async () => {
     try {
-      const token = localStorage.getItem("token"); // hoặc sessionStorage, hoặc state/context
+      const token = localStorage.getItem("auth_token");
       const res = await axios.get("http://localhost:4000/api/users/orders", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
       setOrders(res.data || []);
     } catch (err) {
       console.error("❌ Lỗi khi tải danh sách đơn hàng:", err);
@@ -49,8 +80,17 @@ const OrderManagementScreen = () => {
   // ✅ Hàm xác nhận đơn
   const handleConfirmOrder = async (orderId) => {
     try {
+      const token = localStorage.getItem("auth_token");
+      if (!token) return alert("Bạn cần đăng nhập!");
+
       const res = await axios.post(
-        `http://localhost:4000/api/users/orders/${orderId}/confirm`
+        `http://localhost:4000/api/users/orders/${orderId}/confirm`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
       if (res.data.success) {
         setMessage("✅ Đơn hàng đã được xác nhận!");
@@ -72,8 +112,7 @@ const OrderManagementScreen = () => {
         o.orderCode?.toLowerCase().includes(search.toLowerCase()) ||
         o.pickup_address?.toLowerCase().includes(search.toLowerCase()) ||
         o.delivery_address?.toLowerCase().includes(search.toLowerCase());
-      const matchStatus =
-        statusFilter === "All" || o.status === statusFilter;
+      const matchStatus = statusFilter === "All" || o.status === statusFilter;
       return matchSearch && matchStatus;
     });
   }, [orders, search, statusFilter]);
@@ -95,14 +134,12 @@ const OrderManagementScreen = () => {
       ON_THE_WAY: "bg-indigo-100 text-indigo-800",
       ARRIVED: "bg-cyan-100 text-cyan-800",
       COMPLETED: "bg-emerald-100 text-emerald-800",
-      DECLINED
-
-: "bg-red-100 text-red-800",
+      DECLINED: "bg-red-100 text-red-800",
       Cancel: "bg-gray-300 text-gray-700",
       Incident: "bg-orange-100 text-orange-800",
       Pause: "bg-slate-200 text-slate-800",
     };
-    
+
     const colorClass = colors[text] || "bg-gray-100 text-gray-800";
     return (
       <span
@@ -246,6 +283,15 @@ const OrderManagementScreen = () => {
                       <Eye className="w-5 h-5 cursor-pointer" />
                     </button>
 
+                    {/* ✅ Nút nhắn tin - GỘP THEO CUSTOMER */}
+                    <button
+                      onClick={() => openOrderChat(order)}
+                      className="text-blue-600 hover:text-blue-900"
+                      title="Nhắn tin với khách hàng"
+                    >
+                      <MessageCircle className="w-5 h-5 cursor-pointer" />
+                    </button>
+
                     {/* Xác nhận đơn */}
                     {order.status === "Pending" && (
                       <button
@@ -310,6 +356,60 @@ const OrderManagementScreen = () => {
           >
             Sau
           </button>
+        </div>
+      )}
+
+      {/* ✅ Modal Chat - Hiển thị tên khách hàng */}
+      {isChatOpen && currentChatRoom && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-4xl h-[80vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b bg-orange-50">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800">
+                  💬 Chat với {currentCustomerName}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Đơn hàng hiện tại: <strong>#{currentOrderCode}</strong>
+                </p>
+                <p className="text-xs text-gray-500">
+                  Room: <code>{currentChatRoom}</code>
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const customerChatLink = `${window.location.origin}/chat/customer/${currentChatRoom.replace("customer:", "")}`;
+                    navigator.clipboard.writeText(customerChatLink);
+                    setMessage("✅ Đã copy link chat!");
+                    setTimeout(() => setMessage(""), 3000);
+                  }}
+                  className="px-3 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
+                  title="Copy link chat cho khách hàng"
+                >
+                  Copy Link
+                </button>
+                <button
+                  onClick={() => setIsChatOpen(false)}
+                  className="text-gray-500 hover:text-gray-700 text-lg"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Nội dung chat */}
+            <div className="flex-1">
+              <SellerChat
+                roomId={currentChatRoom}
+                orderInfo={{
+                  code: currentOrderCode,
+                  status: "Đang xử lý",
+                  customerName: currentCustomerName,
+                }}
+              />
+            </div>
+          </div>
         </div>
       )}
 
