@@ -118,6 +118,11 @@ export default function OrderForm({ onAddressChange, onEstimate }: Readonly<Orde
       alert(" Địa chỉ lấy hàng và giao hàng không được trùng nhau.");
       return;
     }
+    const phoneRegex = /^[0-9]{10}$/; // Chỉ 10 số
+    if (!phoneRegex.test(form.phone)) {
+      alert(" Số điện thoại không hợp lệ.");
+      return;
+    }
     setLoading(true);
     const token = localStorage.getItem("auth_token");
     const res = await axios.post(
