@@ -279,6 +279,12 @@ export const estimatePriceByAddress2 = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: "Thiếu pricepackage_id." });
     }
 
+    if (pickup_address.trim() === delivery_address.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Địa chỉ lấy hàng và giao hàng không được trùng nhau.",
+      });
+    }
     // 2) Tìm gói cước
     const pkg = await PricePackage.findById(pricepackage_id).lean();
     if (!pkg) {
@@ -314,11 +320,17 @@ export const estimatePriceByAddress2 = async (req: Request, res: Response) => {
 
     // 5) Chọn tier phù hợp
     const km = Number(dist.distanceKm);
-    const matched = tiers.find((t) => {
-      const min = Number(t.min_km ?? 0);
-      const max = t.max_km == null ? null : Number(t.max_km);
-      return max == null ? km >= min : km >= min && km <= max;
-    });
+    let matched = tiers[0]; // tier nhỏ nhất
+
+    for (const t of tiers) {
+      const min = Number(t.min_km);
+      const max = t.max_km == null ? Infinity : Number(t.max_km);
+
+      if (km >= min && km <= max) {
+        matched = t;
+        break;
+      }
+    }
     if (!matched) {
       return res
         .status(400)
@@ -347,4 +359,5 @@ export const estimatePriceByAddress2 = async (req: Request, res: Response) => {
     console.error("❌ estimatePriceByAddress2 error:", error?.stack || error);
     return res.status(500).json({ success: false, message: "Không thể tính giá tự động." });
   }
+
 };
