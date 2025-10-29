@@ -78,38 +78,58 @@ export default function OrderPreviewPage() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+  e.preventDefault();
+  setLoading(true);
 
-    try {
-      const token = localStorage.getItem("auth_token");
-
-      let deliveryTime = null;
-      if (scheduleType === "later") {
-        deliveryTime = new Date(`${scheduledDate}T${scheduledTime}`).toISOString();
-      }
-
-      const res = await axios.post(
-        "http://localhost:4000/api/orders/items",
-        {
-          order_id: orderId,
-          items,
-          delivery_schedule: {
-            type: scheduleType,
-            datetime: deliveryTime || new Date().toISOString(),
-          },
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (res.data?.success) {
-        alert("Thành công ✅");
-        navigate("/");
-      }
-    } finally {
-      setLoading(false);
+  try {
+    const token = localStorage.getItem("auth_token");
+    if (!token) {
+      alert("Bạn cần đăng nhập!");
+      return;
     }
-  };
+
+    let deliveryTime = null;
+    if (scheduleType === "later") {
+      if (!scheduledDate || !scheduledTime) {
+        alert("Vui lòng chọn ngày và giờ giao hàng!");
+        return;
+      }
+      deliveryTime = new Date(`${scheduledDate}T${scheduledTime}`).toISOString();
+    }
+
+    const res = await axios.post(
+      "http://localhost:4000/api/orders/items",
+      {
+        order_id: orderId,
+        items,
+        delivery_schedule: {
+          type: scheduleType,
+          datetime: deliveryTime || new Date().toISOString(),
+        },
+      },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    if (!res.data?.success) {
+      alert(res.data?.message || "Có lỗi xảy ra!");
+      return;
+    }
+
+    alert("🎉 Xác nhận đơn hàng thành công!");
+    navigate("/");
+  } catch (err) {
+    console.error("❌ Lỗi khi gửi hàng hóa:", err);
+
+    const message =
+      err.response?.data?.message ||
+      err.message ||
+      "Lỗi không xác định từ server!";
+
+    alert("⚠ " + message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const itemTypes = [
     "Thực phẩm & Đồ uống",

@@ -78,9 +78,10 @@ export const addOrderItems = async (req, res) => {
     }
 
     // ✅ Kiểm tra khối lượng
+    const maxCapacity = Number(order.package_id?.capacity || 0);
     const totalWeight = items.reduce((sum, item) => sum + Number(item.weight || 0), 0);
-    const maxCapacity = Number(order.package_id?.vehicle?.capacity || 0);
 
+    // ✅ Validate
     if (maxCapacity && totalWeight > maxCapacity) {
       return res.status(400).json({
         success: false,
