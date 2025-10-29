@@ -42,6 +42,8 @@ export const register = async (req: Request, res: Response) => {
     const existingUser = await User.findOne({ email });
     if (existingUser)
       return sendResponse(res, false, "Email đã tồn tại", null, 400);
+    if (phone && (await User.findOne({ phone })))
+      return sendResponse(res, false, "Sđt tồn tại", null, 400);
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = await User.create({

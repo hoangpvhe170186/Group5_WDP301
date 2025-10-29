@@ -192,15 +192,15 @@ export const getMyOrders = async (req: Request, res: Response) => {
     const limit = Math.min(parseInt(req.query.limit as string) || 10, 50);
     const skip = (page - 1) * limit;
 
-    //  Truy vấn có chọn lọc (chỉ lấy các trường cần thiết)
+    
     const orders = await Order.find({ customer_id: userId })
-      .populate("vehicle_id", "type") // chỉ lấy trường cần thiết
+      .populate("vehicle_id", "type") 
       .populate("carrier_id", "name phone")
       .sort({ createdAt: -1 })
       .limit(limit)
       .lean();
 
-    //  Đếm tổng số đơn hàng (phục vụ client phân trang)
+    
     const totalOrders = await Order.countDocuments({ customer_id: userId });
 
     return res.status(200).json({

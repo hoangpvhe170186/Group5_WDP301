@@ -84,7 +84,7 @@ export default function LoginPage() {
           navigate("/admin/dashboard");
           break;
         case "driver":
-          navigate("/driver/home");
+          navigate("/carrier/home");
           break;
         case "seller":
           navigate("/seller/home");
@@ -151,6 +151,9 @@ export default function LoginPage() {
           break;
         case "seller":
           navigate("/seller/home");
+          break;
+        case "carrier":
+          navigate("/carrier/home");
           break;
         case "customer":
           navigate("/");

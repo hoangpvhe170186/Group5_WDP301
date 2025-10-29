@@ -4,7 +4,11 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { RiEyeLine, RiEyeOffLine } from "react-icons/ri";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
-import { register, loginGoogle, type RegisterData } from "../../services/auth.service";
+import {
+  register,
+  loginGoogle,
+  type RegisterData,
+} from "../../services/auth.service";
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -24,8 +28,23 @@ export default function SignupPage() {
   // ==============================
   // 🔹 Xử lý nhập liệu
   // ==============================
-  const handleInputChange = (field: keyof typeof formData, value: string | boolean) => {
+  const handleInputChange = (
+    field: keyof typeof formData,
+    value: string | boolean
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    if (field === "phone") {
+      const phoneRegex = /^(0|\+84)[0-9]{9}$/;
+      if (
+        typeof value === "string" &&
+        value.length > 0 &&
+        !phoneRegex.test(value)
+      ) {
+        setError("Số điện thoại không hợp lệ");
+        return;
+      }
+    }
+
     setError(null);
   };
 
@@ -37,6 +56,14 @@ export default function SignupPage() {
 
     if (formData.password !== formData.confirmPassword) {
       setError("Mật khẩu không khớp");
+      return;
+    }
+
+    const phoneRegex = /^(0|\+84)[0-9]{9}$/;
+    if (!phoneRegex.test(formData.phone)) {
+      setError(
+        "Số điện thoại không hợp lệ. Vui lòng nhập dạng 0xxxxxxxxx hoặc +84xxxxxxxxx."
+      );
       return;
     }
 
@@ -105,7 +132,7 @@ export default function SignupPage() {
           navigate("/admin/dashboard");
           break;
         case "driver":
-          navigate("/driver/home");
+          navigate("/carrier/home");
           break;
         case "carrier":
           navigate("/carrier/home");
@@ -146,20 +173,30 @@ export default function SignupPage() {
           {/* Logo */}
           <div className="flex justify-center">
             <div className="flex items-center gap-2">
-              <svg viewBox="0 0 24 24" className="w-10 h-10 text-orange-500" fill="currentColor">
+              <svg
+                viewBox="0 0 24 24"
+                className="w-10 h-10 text-orange-500"
+                fill="currentColor"
+              >
                 <path d="M13 2L3 14h8l-2 8 10-12h-8l2-8z" />
               </svg>
-              <span className="text-3xl font-bold text-orange-500">Home Express</span>
+              <span className="text-3xl font-bold text-orange-500">
+                Home Express
+              </span>
             </div>
           </div>
 
           {/* Header */}
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900">Tạo tài khoản miễn phí</h1>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Tạo tài khoản miễn phí
+            </h1>
           </div>
 
           {error && (
-            <div className="text-center text-sm text-red-600 bg-red-50 p-3 rounded-md">{error}</div>
+            <div className="text-center text-sm text-red-600 bg-red-50 p-3 rounded-md">
+              {error}
+            </div>
           )}
 
           {/* Form */}
@@ -210,12 +247,16 @@ export default function SignupPage() {
                 type={showConfirmPassword ? "text" : "password"}
                 placeholder="Nhập lại mật khẩu"
                 value={formData.confirmPassword}
-                onChange={(value) => handleInputChange("confirmPassword", value)}
+                onChange={(value) =>
+                  handleInputChange("confirmPassword", value)
+                }
                 required
                 minLength={6}
                 showToggle
                 showPassword={showConfirmPassword}
-                toggleShowPassword={() => setShowConfirmPassword(!showConfirmPassword)}
+                toggleShowPassword={() =>
+                  setShowConfirmPassword(!showConfirmPassword)
+                }
               />
 
               <div className="flex items-start gap-3">
@@ -223,10 +264,15 @@ export default function SignupPage() {
                   type="checkbox"
                   id="terms"
                   checked={formData.agreeToTerms}
-                  onChange={(e) => handleInputChange("agreeToTerms", e.target.checked)}
+                  onChange={(e) =>
+                    handleInputChange("agreeToTerms", e.target.checked)
+                  }
                   className="mt-1 h-4 w-4 text-orange-500 border-gray-300 rounded focus:ring-orange-500"
                 />
-                <label htmlFor="terms" className="text-sm text-gray-600 leading-relaxed">
+                <label
+                  htmlFor="terms"
+                  className="text-sm text-gray-600 leading-relaxed"
+                >
                   Tôi đồng ý với{" "}
                   <a href="#" className="text-orange-500 hover:underline">
                     Điều khoản & Điều kiện
@@ -234,7 +280,8 @@ export default function SignupPage() {
                   và{" "}
                   <a href="#" className="text-orange-500 hover:underline">
                     Chính sách Quyền Riêng Tư
-                  </a>.
+                  </a>
+                  .
                 </label>
               </div>
             </div>
@@ -263,16 +310,24 @@ export default function SignupPage() {
           </div>
 
           {/* Google Login */}
-          <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID!}>
+          <GoogleOAuthProvider
+            clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID!}
+          >
             <div className="flex justify-center">
-              <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError} />
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+              />
             </div>
           </GoogleOAuthProvider>
 
           {/* Footer */}
           <div className="text-center text-sm text-gray-600">
             <span>Đã có tài khoản? </span>
-            <a href="/auth/login" className="text-orange-500 font-semibold hover:underline">
+            <a
+              href="/auth/login"
+              className="text-orange-500 font-semibold hover:underline"
+            >
               Đăng nhập ngay
             </a>
           </div>
@@ -331,7 +386,11 @@ const InputField: React.FC<{
           onClick={toggleShowPassword}
           className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
         >
-          {showPassword ? <RiEyeOffLine className="w-5 h-5" /> : <RiEyeLine className="w-5 h-5" />}
+          {showPassword ? (
+            <RiEyeOffLine className="w-5 h-5" />
+          ) : (
+            <RiEyeLine className="w-5 h-5" />
+          )}
         </button>
       )}
     </div>
