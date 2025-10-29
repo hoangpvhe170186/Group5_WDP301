@@ -87,6 +87,10 @@ export default function OrderForm({ onAddressChange, onEstimate }: Readonly<Orde
 
   const handleEstimatePrice = async () => {
     if (!form.pickup_address || !form.delivery_address || !selectedPackage) return;
+    if (form.pickup_address.trim() === form.delivery_address.trim()) {
+      alert(" Địa chỉ lấy hàng và giao hàng không được trùng nhau.");
+      return;
+    }
     const res = await axios.post("http://localhost:4000/api/pricing/estimate2", {
       pickup_address: form.pickup_address,
       delivery_address: form.delivery_address,
@@ -110,6 +114,10 @@ export default function OrderForm({ onAddressChange, onEstimate }: Readonly<Orde
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (form.pickup_address.trim() === form.delivery_address.trim()) {
+      alert(" Địa chỉ lấy hàng và giao hàng không được trùng nhau.");
+      return;
+    }
     setLoading(true);
     const token = localStorage.getItem("auth_token");
     const res = await axios.post(
