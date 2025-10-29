@@ -1,12 +1,9 @@
-"use client";
-
 import { useState, useEffect } from "react";
 import {
   Search,
   Filter,
   Eye,
   Edit,
-  Trash2,
   Plus,
   User,
   UserCheck,
@@ -54,32 +51,17 @@ export default function CustomerManagement() {
   // ⚙️ Hàm xử lý hành động
   const handleViewUser = async (userId: string) => {
     try {
-      const user = await adminApi.getUserDetail(userId);
-      // Có thể mở modal hoặc chuyển hướng để hiển thị chi tiết
-      navigate(`/admin/customers/${userId}`); // Giả sử có route chi tiết khách hàng
+      // Chuyển hướng đến trang mockup chi tiết khách hàng
+      navigate(`/admin/customers/view/${userId}`);
     } catch (err: any) {
       setError("Lỗi khi lấy chi tiết khách hàng");
       console.error(err);
     }
   };
 
-  const handleEditUser = (userId: string) => {
-    navigate(`/admin/customers/edit/${userId}`); // Chuyển hướng đến trang chỉnh sửa
-  };
-
-  const handleDeleteUser = async (userId: string) => {
-    if (window.confirm("Bạn có chắc muốn xóa khách hàng này?")) {
-      try {
-        await adminApi.deleteUser(userId);
-        setUsers(users.filter((user) => user.id !== userId));
-        if (filteredUsers.length === 1 && currentPage > 1) {
-          setCurrentPage(currentPage - 1); // Quay lại trang trước nếu trang hiện tại rỗng
-        }
-      } catch (err: any) {
-        setError("Lỗi khi xóa khách hàng");
-        console.error(err);
-      }
-    }
+  const handleEditUserStatus = (userId: string) => {
+    // Chuyển hướng đến trang mockup chỉnh sửa trạng thái
+    navigate(`/admin/customers/edit/status/${userId}`);
   };
 
   // 🔍 Lọc dữ liệu theo tìm kiếm & trạng thái
@@ -214,9 +196,7 @@ export default function CustomerManagement() {
                         {getRoleIcon()}
                       </div>
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {user.fullName}
-                        </div>
+                        <div className="text-sm font-medium text-gray-900">{user.fullName}</div>
                         <div className="text-sm text-gray-500">ID: {user.id}</div>
                       </div>
                     </div>
@@ -245,24 +225,14 @@ export default function CustomerManagement() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
-                        user.status
-                      )}`}
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(user.status)}`}
                     >
-                      {user.status === "Active" ? (
-                        <UserCheck className="w-4 h-4 mr-1" />
-                      ) : (
-                        <UserX className="w-4 h-4 mr-1" />
-                      )}
+                      {user.status === "Active" ? <UserCheck className="w-4 h-4 mr-1" /> : <UserX className="w-4 h-4 mr-1" />}
                       {user.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {user.createdAt}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.updatedAt}
-                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.createdAt}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.updatedAt}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
                       <button
@@ -273,18 +243,11 @@ export default function CustomerManagement() {
                         <Eye className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleEditUser(user.id)}
+                        onClick={() => handleEditUserStatus(user.id)}
                         className="text-orange-600 hover:text-orange-900 p-1"
-                        title="Chỉnh sửa"
+                        title="Sửa trạng thái"
                       >
                         <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteUser(user.id)}
-                        className="text-red-600 hover:text-red-900 p-1"
-                        title="Xóa"
-                      >
-                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </td>

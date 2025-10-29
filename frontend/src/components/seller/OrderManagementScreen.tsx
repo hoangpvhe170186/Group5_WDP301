@@ -28,7 +28,7 @@ const OrderManagementScreen = () => {
   // 🧠 Lấy danh sách đơn hàng
   const fetchOrders = async () => {
     try {
-      const token = localStorage.getItem("token"); // hoặc sessionStorage, hoặc state/context
+      const token = localStorage.getItem("auth-token"); // hoặc sessionStorage, hoặc state/context
       const res = await axios.get("http://localhost:4000/api/users/orders", {
       headers: {
         Authorization: `Bearer ${token}`,
