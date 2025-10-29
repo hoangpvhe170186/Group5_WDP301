@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+
 const services = [
   {
     title: "Vận chuyển khu dân cư",
@@ -44,12 +44,9 @@ export default function ServiceSection() {
               <div className="space-y-1 p-4">
                 <h3 className="text-lg font-semibold text-gray-900">{s.title}</h3>
                 <p className="text-sm text-gray-600">{s.desc}</p>
-                 <Link to="/dat-hang">
                 <button className="mt-3 inline-flex rounded-md border border-[#FF6A00] px-3 py-1.5 text-sm font-medium text-[#FF6A00] transition hover:bg-[#FF6A00] hover:text-white">
                   Book Now
-                  đặt hàng ngay
                 </button>
-                 </Link>
               </div>
             </div>
           ))}

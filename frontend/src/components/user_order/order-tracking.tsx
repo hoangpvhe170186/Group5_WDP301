@@ -136,7 +136,6 @@ currentLocation:
 
   const mappedCurrent = currentOrder ? mapOrderData(currentOrder) : null;
 
-  
   return (
     <div className="min-h-screen bg-background">
       <OrderHeader />

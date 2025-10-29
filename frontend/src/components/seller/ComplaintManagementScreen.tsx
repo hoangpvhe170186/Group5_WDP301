@@ -21,23 +21,15 @@ const ComplaintManagementScreen = () => {
   // 🧠 Lấy danh sách khiếu nại
   useEffect(() => {
     const fetchIncidents = async () => {
-  try {
-    const token = localStorage.getItem("auth_token");
-    if (!token) return;
-
-    const res = await axios.get("http://localhost:4000/api/users/incidents", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    setIncidents(res.data);
-  } catch (err) {
-    console.error("❌ Lỗi khi tải khiếu nại:", err);
-  } finally {
-    setLoading(false);
-  }
-};
+      try {
+        const res = await axios.get("http://localhost:4000/api/users/incidents");
+        setIncidents(res.data);
+      } catch (err) {
+        console.error("❌ Lỗi khi tải khiếu nại:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchIncidents();
   }, []);
 
@@ -46,23 +38,11 @@ const ComplaintManagementScreen = () => {
     if (!resolutionText.trim()) return alert("❌ Vui lòng nhập nội dung xử lý!");
 
     try {
-      const token = localStorage.getItem("auth_token");
-if (!token) return;
-
-await axios.patch(
-  `http://localhost:4000/api/users/incidents/${selectedIncident._id}/resolve`,
-  {
-    resolution: resolutionText,
-    staffId: currentUserId,
-    status: statusChoice,
-  },
-  {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  }
-);
-
+      await axios.patch(`http://localhost:4000/api/users/incidents/${selectedIncident._id}/resolve`, {
+        resolution: resolutionText,
+        staffId: currentUserId,
+        status: statusChoice,
+      });
 
       setIncidents((prev) =>
         prev.map((r) =>

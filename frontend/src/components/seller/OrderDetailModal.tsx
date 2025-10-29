@@ -13,24 +13,16 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ orderId, onClose })
 
   useEffect(() => {
     const fetchOrder = async () => {
-  try {
-    const token = localStorage.getItem("auth_token");
-    if (!token) return alert("Bạn cần đăng nhập!");
-
-    const res = await axios.get(`http://localhost:4000/api/users/orders/${orderId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    // Giả định API trả về: { data: { ..., items: [...] } }
-    setOrder(res.data?.data || res.data);
-  } catch (err) {
-    console.error("❌ Lỗi khi tải chi tiết đơn hàng:", err);
-  } finally {
-    setLoading(false);
-  }
-};
+      try {
+        const res = await axios.get(`http://localhost:4000/api/users/orders/${orderId}`);
+        // Giả định API trả về: { data: { ..., items: [...] } }
+        setOrder(res.data?.data || res.data);
+      } catch (err) {
+        console.error("❌ Lỗi khi tải chi tiết đơn hàng:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchOrder();
   }, [orderId]);
 

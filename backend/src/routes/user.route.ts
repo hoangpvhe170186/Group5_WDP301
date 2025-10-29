@@ -13,6 +13,7 @@ import {
   getCarriers,
   getSellers,
   getDriverSchedule,
+  confirmOrder,
   getOrdersByCustomer,
   getFeedbackByOrderId,
   RatingOrders,
