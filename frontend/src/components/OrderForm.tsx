@@ -84,7 +84,25 @@ export default function OrderForm({ onAddressChange, onEstimate }: Readonly<Orde
       deliveryGeocoder.onRemove();
     };
   }, []);
+  const validPrefixes = [
+    "03", "05", "07", "08", "09",
+    "012", "016", "018", "019" // hỗ trợ sim cũ
+  ];
 
+  //  Format số điện thoại VN: 090 123 4567
+  const formatPhone = (phone: string) => {
+    const cleaned = phone.replace(/\D/g, "").slice(0, 10);
+
+    if (cleaned.length <= 3) return cleaned;
+    if (cleaned.length <= 6) return `${cleaned.slice(0, 3)} ${cleaned.slice(3)}`;
+    return `${cleaned.slice(0, 3)} ${cleaned.slice(3, 6)} ${cleaned.slice(6)}`;
+  };
+
+  //  Cập nhật phone khi nhập
+  const handlePhoneChange = (value: string) => {
+    const cleaned = value.replace(/\D/g, "");
+    setForm(prev => ({ ...prev, phone: cleaned }));
+  };
   const handleEstimatePrice = async () => {
     if (!form.pickup_address || !form.delivery_address || !selectedPackage) return;
     if (form.pickup_address.trim() === form.delivery_address.trim()) {
@@ -118,9 +136,18 @@ export default function OrderForm({ onAddressChange, onEstimate }: Readonly<Orde
       alert(" Địa chỉ lấy hàng và giao hàng không được trùng nhau.");
       return;
     }
-    const phoneRegex = /^[0-9]{10}$/; // Chỉ 10 số
-    if (!phoneRegex.test(form.phone)) {
-      alert(" Số điện thoại không hợp lệ.");
+    const phone = form.phone;
+
+    if (phone.length !== 10) {
+      alert("📞 Số điện thoại phải gồm đúng 10 số!");
+      return;
+    }
+
+    const prefix2 = phone.slice(0, 2);
+    const prefix3 = phone.slice(0, 3);
+
+    if (!validPrefixes.includes(prefix2) && !validPrefixes.includes(prefix3)) {
+      alert("🚫 Đầu số điện thoại không hợp lệ!");
       return;
     }
     setLoading(true);
@@ -180,17 +207,15 @@ export default function OrderForm({ onAddressChange, onEstimate }: Readonly<Orde
           <Label> Địa chỉ giao hàng</Label>
           <div ref={deliveryGeoRef} className="mt-2 w-full mapbox-container relative z-10"></div>
         </div>
-        <div>
-          <Label> Số điện thoại</Label>
-          <input
-            type="tel"
-            className="border border-gray-300 rounded-lg p-2 w-full"
-            placeholder="Nhập số điện thoại..."
-            value={form.phone}
-            onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
-            required
-          />
-        </div>
+        <input
+          type="tel"
+          maxLength={12}
+          className="border border-gray-300 rounded-lg p-2 w-full"
+          placeholder="Nhập số điện thoại..."
+          value={formatPhone(form.phone)}
+          onChange={(e) => handlePhoneChange(e.target.value)}
+          required
+        />
         <div>
           <Label> Chọn gói giá</Label>
           <div className="grid grid-cols-3 gap-3 mt-2">
