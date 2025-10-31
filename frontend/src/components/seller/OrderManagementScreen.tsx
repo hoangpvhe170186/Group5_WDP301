@@ -5,6 +5,8 @@ import { Eye, Truck, CheckCircle, Search, MessageCircle, Package, CheckSquare, X
 import OrderDetailModal from "./OrderDetailModal";
 import OrderActionModal from "./OrderActionModal";
 import SellerChat from "./SellerChat";
+import io from "socket.io-client";
+import { socket } from "@/lib/socket";
 
 const ITEMS_PER_PAGE = 8;
 
@@ -35,7 +37,7 @@ const OrderManagementScreen = () => {
   // ✅ Mở chat theo CUSTOMER ID thay vì ORDER ID
   const openOrderChat = (order: any) => {
     const customerId = order.customer_id?._id || order.customer_id;
-    
+
     if (!customerId) {
       setMessage("❌ Không tìm thấy thông tin khách hàng");
       setTimeout(() => setMessage(""), 3000);
@@ -56,16 +58,22 @@ const OrderManagementScreen = () => {
   };
 
   // 🧠 Lấy danh sách đơn hàng
+
   const fetchOrders = async () => {
     try {
       const token = localStorage.getItem("auth_token");
       const res = await axios.get("http://localhost:4000/api/users/orders", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       setOrders(res.data || []);
+
+      // ✅ Join rooms sau khi fetch
+      (res.data || []).forEach((order) => {
+        const room = `order:${order._id}`;
+        socket.emit("join_room", room);
+        console.log(`📡 Seller joined room: ${room}`);
+      });
     } catch (err) {
       console.error("❌ Lỗi khi tải danh sách đơn hàng:", err);
     } finally {
@@ -73,9 +81,60 @@ const OrderManagementScreen = () => {
     }
   };
 
+
+
   useEffect(() => {
     fetchOrders();
   }, []);
+
+  // 🧩 Lắng nghe socket cập nhật trạng thái đơn hàng realtime
+  useEffect(() => {
+    const sellerId = localStorage.getItem("seller_id");
+
+    const handleConnect = () => {
+      console.log("🟢 Seller socket connected:", socket.id);
+      if (sellerId) {
+        socket.emit("join_seller", sellerId);
+        console.log(`✅ Joined seller room: seller:${sellerId}`);
+      }
+    };
+
+    const handleOrderUpdated = (data: any) => {
+      console.log("🔁 Received order update:", data);
+
+      setOrders((prev) =>
+        prev.map((o) =>
+          o._id === data.orderId ? { ...o, status: data.status } : o
+        )
+      );
+
+      // 🟦 Toast thông báo realtime
+      const toast = document.createElement("div");
+      toast.textContent = `🚚 Đơn ${data.orderId} → ${data.status}`;
+      Object.assign(toast.style, {
+        position: "fixed",
+        bottom: "20px",
+        right: "20px",
+        background: "#2563eb",
+        color: "#fff",
+        padding: "8px 12px",
+        borderRadius: "6px",
+        fontSize: "14px",
+        zIndex: 9999,
+      });
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    };
+
+    socket.on("connect", handleConnect);
+    socket.on("order:updated", handleOrderUpdated);
+
+    return () => {
+      socket.off("connect", handleConnect);
+      socket.off("order:updated", handleOrderUpdated);
+    };
+  }, []);
+
 
   // ✅ Hàm xác nhận đơn
   const handleConfirmOrder = async (orderId) => {
@@ -125,30 +184,35 @@ const OrderManagementScreen = () => {
   );
 
   // 🏷️ Status Badge
-  const StatusBadge = ({ text }) => {
-    const colors = {
-      PENDING: "bg-yellow-100 text-yellow-800",
-      ASSIGNED: "bg-purple-100 text-purple-800",
-      ACCEPTED: "bg-green-100 text-green-800",
-      CONFIRMED: "bg-blue-100 text-blue-800",
-      ON_THE_WAY: "bg-indigo-100 text-indigo-800",
-      ARRIVED: "bg-cyan-100 text-cyan-800",
-      COMPLETED: "bg-emerald-100 text-emerald-800",
-      DECLINED: "bg-red-100 text-red-800",
-      Cancel: "bg-gray-300 text-gray-700",
-      Incident: "bg-orange-100 text-orange-800",
-      Pause: "bg-slate-200 text-slate-800",
+  // 🏷️ Status Badge
+  const StatusBadge = ({ text }: { text: string }) => {
+    const statusMap: Record<string, { label: string; color: string }> = {
+      PENDING: { label: "Chờ xử lý", color: "bg-yellow-100 text-yellow-800" },
+      ASSIGNED: { label: "Đã giao việc", color: "bg-purple-100 text-purple-800" },
+      ACCEPTED: { label: "Đã chấp nhận", color: "bg-green-100 text-green-800" },
+      CONFIRMED: { label: "Đã xác nhận", color: "bg-blue-100 text-blue-800" },
+      ON_THE_WAY: { label: "Đang di chuyển", color: "bg-indigo-100 text-indigo-800" },
+      ARRIVED: { label: "Đã tới nơi", color: "bg-cyan-100 text-cyan-800" },
+      DELIVERED: { label: "Đã giao", color: "bg-emerald-100 text-emerald-800" },
+      COMPLETED: { label: "Hoàn tất", color: "bg-green-200 text-green-800" },
+      INCIDENT: { label: "Đang gặp sự cố", color: "bg-orange-100 text-orange-800" },
+      PAUSED: { label: "Tạm dừng", color: "bg-slate-100 text-slate-800" },
+      NOTE: { label: "Ghi chú", color: "bg-gray-200 text-gray-800" },
+      DECLINED: { label: "Từ chối", color: "bg-red-100 text-red-800" },
+      CANCELLED: { label: "Đã huỷ", color: "bg-gray-200 text-gray-700" },
     };
 
-    const colorClass = colors[text] || "bg-gray-100 text-gray-800";
+    const s = statusMap[text?.toUpperCase()] || { label: text, color: "bg-gray-100 text-gray-700" };
+
     return (
       <span
-        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${colorClass}`}
+        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${s.color}`}
       >
-        {text}
+        {s.label}
       </span>
     );
   };
+
 
   if (loading) return <p className="text-gray-500">Đang tải dữ liệu...</p>;
 
@@ -183,16 +247,21 @@ const OrderManagementScreen = () => {
           className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700"
         >
           <option value="All">Tất cả trạng thái</option>
-          <option value="Pending">Pending</option>
-          <option value="Assigned">Assigned</option>
-          <option value="Accepted">Accepted</option>
-          <option value="Confirmed">Confirmed</option>
-          <option value="On_the_way">On_the_way</option>
-          <option value="Arrived">Arrived</option>
-          <option value="Completed">Completed</option>
-          <option value="Decline">Decline</option>
-          <option value="Cancel">Cancel</option>
+          <option value="PENDING">Chờ xử lý</option>
+          <option value="ASSIGNED">Đã giao việc</option>
+          <option value="ACCEPTED">Đã chấp nhận</option>
+          <option value="CONFIRMED">Đã xác nhận</option>
+          <option value="ON_THE_WAY">Đang di chuyển</option>
+          <option value="ARRIVED">Đã tới nơi</option>
+          <option value="DELIVERED">Đã giao</option>
+          <option value="COMPLETED">Hoàn tất</option>
+          <option value="INCIDENT">Đang gặp sự cố</option>
+          <option value="PAUSED">Tạm dừng</option>
+          <option value="NOTE">Ghi chú</option>
+          <option value="DECLINED">Từ chối</option>
+          <option value="CANCELLED">Đã huỷ</option>
         </select>
+
       </div>
 
       {/* 🧾 Bảng đơn hàng */}
@@ -258,9 +327,8 @@ const OrderManagementScreen = () => {
                     <div className="flex flex-col">
                       <span>{order.total_price.toLocaleString()}₫</span>
                       <span
-                        className={`text-xs font-medium ${
-                          order.isPaid ? "text-green-600" : "text-red-500"
-                        }`}
+                        className={`text-xs font-medium ${order.isPaid ? "text-green-600" : "text-red-500"
+                          }`}
                       >
                         {order.isPaid ? "Đã TT" : "Chưa TT"}
                       </span>
@@ -353,11 +421,10 @@ const OrderManagementScreen = () => {
             <button
               key={i}
               onClick={() => setCurrentPage(i + 1)}
-              className={`px-3 py-1 border rounded-lg text-sm ${
-                currentPage === i + 1
-                  ? "bg-blue-600 text-white"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
+              className={`px-3 py-1 border rounded-lg text-sm ${currentPage === i + 1
+                ? "bg-blue-600 text-white"
+                : "text-gray-600 hover:bg-gray-100"
+                }`}
             >
               {i + 1}
             </button>

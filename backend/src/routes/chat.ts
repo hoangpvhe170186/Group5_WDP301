@@ -50,57 +50,64 @@ router.post("/append", async (req, res) => {
   }
 });
 
-// ✅ Lấy danh sách rooms gần đây (có thêm thông tin customer)
+// ✅ Lấy danh sách rooms gần đây (có thêm thông tin customer hoặc guest)
 router.get("/rooms", async (req, res) => {
   try {
     const { limit = 30 } = req.query;
 
     // Lấy tin nhắn gần nhất của mỗi room
     const recentMessages = await ChatMessage.aggregate([
-      {
-        $sort: { createdAt: -1 },
-      },
+      { $sort: { createdAt: -1 } },
       {
         $group: {
           _id: "$roomId",
           lastMessage: { $first: "$$ROOT" },
         },
       },
-      {
-        $limit: Number(limit),
-      },
-      {
-        $sort: { "lastMessage.createdAt": -1 },
-      },
+      { $limit: Number(limit) },
+      { $sort: { "lastMessage.createdAt": -1 } },
     ]);
 
-    // ✅ Thêm thông tin customer nếu room là customer:xxx
+    // ⚙️ Bỏ qua room lỗi/null
+    const validRooms = recentMessages.filter(
+      (item) => typeof item._id === "string" && item._id.trim() !== ""
+    );
+
+    // ✅ Gắn thêm thông tin khách hàng
     const roomsWithCustomerInfo = await Promise.all(
-      recentMessages.map(async (item) => {
+      validRooms.map(async (item) => {
         const roomId = item._id;
         const msg = item.lastMessage;
+        let customerName = msg?.senderName || "Khách hàng";
 
-        let customerName = msg.senderName;
-
-        // Nếu là room customer:xxx, lấy tên từ DB
+        // ⚙️ Nếu room là customer:xxx
         if (roomId.startsWith("customer:")) {
           const customerId = roomId.replace("customer:", "");
-          try {
-            const user = await User.findById(customerId).select("full_name").lean();
-            if (user) {
-              customerName = user.full_name;
+          if (customerId.startsWith("guest_")) {
+            // ⚙️ Khách vãng lai, không có ObjectId
+            customerName = `Khách vãng lai ${customerId.split("_")[1] || ""}`;
+          } else {
+            try {
+              const user = await User.findById(customerId)
+                .select("full_name")
+                .lean();
+              if (user && user.full_name) {
+                customerName = user.full_name;
+              }
+            } catch (err) {
+              console.warn(
+                `⚠️ Bỏ qua tên khách vì ${customerId} không phải ObjectId`
+              );
             }
-          } catch (err) {
-            console.error("❌ Error fetching customer name:", err);
           }
         }
 
         return {
           roomId,
-          preview: msg.text,
-          name: msg.senderName,
+          preview: msg?.text ?? "",
+          name: msg?.senderName ?? "",
           customerName,
-          at: msg.createdAt,
+          at: msg?.createdAt ?? new Date(),
         };
       })
     );
@@ -111,5 +118,6 @@ router.get("/rooms", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch rooms" });
   }
 });
+
 
 export default router;
