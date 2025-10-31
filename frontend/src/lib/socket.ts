@@ -2,6 +2,7 @@ import { io } from "socket.io-client";
 
 export const socket = io("http://localhost:4000", {
   transports: ["websocket"],
-  autoConnect: true,
   reconnection: true,
+  reconnectionAttempts: Infinity,
+  reconnectionDelay: 1000,
 });

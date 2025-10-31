@@ -125,6 +125,7 @@ await axios.patch(
             <thead className="bg-gray-100 text-gray-700">
               <tr>
                 <th className="p-3">Mã đơn</th>
+                <th className="p-3">Hình ảnh</th>
                 <th className="p-3">Loại sự cố</th>
                 <th className="p-3">Mô tả</th>
                 <th className="p-3">Khách hàng</th>
@@ -136,6 +137,18 @@ await axios.patch(
               {paginatedIncidents.map((i) => (
                 <tr key={i._id} className="border-t hover:bg-gray-50">
                   <td className="p-3">{i.order_id?.orderCode}</td>
+                  <td className="p-3">
+  {i.evidence_file ? (
+    <img
+      src={i.evidence_file}
+      alt="Evidence"
+      className="w-16 h-16 object-cover rounded cursor-pointer"
+      onClick={() => window.open(i.evidence_file, "_blank")}
+    />
+  ) : (
+    <span className="text-gray-400 text-sm italic">Không có</span>
+  )}
+</td>
                   <td className="p-3">{i.type}</td>
                   <td className="p-3 line-clamp-2 max-w-xs">{i.description}</td>
                   <td className="p-3">{i.reported_by?.full_name || "Ẩn danh"}</td>

@@ -26,8 +26,10 @@ import OrderHistoryPage from "./pages/OrderHistoryPage";
 import CustomerChatPage from "./components/CustomerChatPage";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancel from "./pages/PaymentCancel";
+import PricingCard from "./components/PricingCard";
 // ✅ Import trang Messages mới
 import UserMessagesPage from "./pages/UserMessagesPage";
+import EstimatePricePage from "./pages/EstimatePricePage";
 
 export default function App() {
   return (
@@ -35,9 +37,11 @@ export default function App() {
       <Routes>
         <Route path="/tra-cuu-don-hang" element={<OrderSearchPage />} />
         <Route path="/" element={<HomePage />} />
+        <Route path="/pricing-info" element={<PricingCard packageName="Xe tải nhỏ" title="Bảng giá tham khảo" />} />
         <Route path="/blog/:slug" element={<BlogDetail />} />
         <Route path="/order-preview" element={<OrderPreviewPage />} />
         <Route path="/dat-hang" element={<OrderCreatePage />} />
+         <Route path="/estimate-price" element={<EstimatePricePage />} />
         <Route path="/vehicles/:vehicleId/price" element={<VehiclePricingPage />} />
         <Route path="/profile" element={<UserProfilePage />} />
         <Route path="/profile/:userId" element={<UserProfile />} />
