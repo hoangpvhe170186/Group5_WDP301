@@ -1,4 +1,3 @@
-"use client";
 
 import { useState, useEffect } from "react";
 import {
@@ -29,7 +28,7 @@ interface Driver {
   phone: string;
   licenseNumber: string;
   vehicleType: string;
-  status: "active" | "inactive" | "suspended";
+  status: "active" | "inactive" | "banned";
   rating: number;
   totalTrips: number;
   completedTrips: number;
@@ -423,14 +422,7 @@ export default function DriverManagement() {
                       <div className="text-sm text-gray-900">{driver.vehicleType || "Không xác định"}</div>
                       <div className="text-sm text-gray-500">{driver.licenseNumber || "Không xác định"}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <Star className={`w-4 h-4 mr-1 ${getRatingColor(driver.rating)}`} />
-                        <span className={`text-sm font-medium ${getRatingColor(driver.rating)}`}>
-                          {driver.rating.toFixed(1)}
-                        </span>
-                      </div>
-                    </td>
+
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
                         {driver.completedTrips}/{driver.totalTrips}

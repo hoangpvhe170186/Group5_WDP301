@@ -12,7 +12,7 @@ interface StatusUpdateModalProps {
   };
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void; // Gọi lại để reload danh sách
+  onSuccess: (newStatus: "Active" | "Inactive" | "Banned", banReason?: string) => void; // Thêm tham số newStatus và banReason
 }
 
 export default function StatusUpdateModal({
@@ -36,12 +36,15 @@ export default function StatusUpdateModal({
       setLoading(true);
       setError("");
 
+      const banReason = status === "Banned" ? reason : undefined;
+      
       await adminApi.updateUser(user.id, {
         status,
-
+        banReason,
       });
 
-      onSuccess();
+      // Truyền trạng thái mới và lý do khóa (nếu có) về component cha
+      onSuccess(status, banReason);
       onClose();
     } catch (err: any) {
       setError(err.message || "Cập nhật thất bại");

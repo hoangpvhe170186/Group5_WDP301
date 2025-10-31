@@ -60,10 +60,13 @@ export default function CustomerManagement() {
     setModalOpen(true);
   };
 
-  // Reload data after update
-  const reloadUsers = () => {
-    setCurrentPage(1); // Reset về trang 1 để tránh lỗi dữ liệu
-    // useEffect sẽ tự chạy lại
+  // CẬP NHẬT TRỰC TIẾP TRONG STATE (không reload)
+  const handleStatusUpdate = (userId: string, newStatus: "Active" | "Inactive" | "Banned", banReason?: string) => {
+    setUsers((prevUsers) =>
+      prevUsers.map((user) =>
+        user.id === userId ? { ...user, status: newStatus, banReason } : user
+      )
+    );
   };
 
   // Filter
@@ -203,6 +206,12 @@ export default function CustomerManagement() {
                       {user.status === "Active" ? <UserCheck className="w-4 h-4 mr-1" /> : <UserX className="w-4 h-4 mr-1" />}
                       {user.status}
                     </span>
+                    {/* Hiển thị lý do khóa nếu trạng thái là Banned */}
+                    {user.status === "Banned" && user.banReason && (
+                      <div className="text-xs text-red-600 mt-1">
+                        Lý do: {user.banReason}
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button
@@ -260,7 +269,11 @@ export default function CustomerManagement() {
             setModalOpen(false);
             setSelectedUser(null);
           }}
-          onSuccess={reloadUsers}
+          onSuccess={(newStatus, banReason) => {
+            handleStatusUpdate(selectedUser.id, newStatus, banReason);
+            setModalOpen(false);
+            setSelectedUser(null);
+          }}
         />
       )}
     </div>

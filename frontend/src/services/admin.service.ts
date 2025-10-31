@@ -24,6 +24,7 @@ export interface User {
   avatar?: string;
   role: "Customer" | "Driver" | "Seller" | "Admin";
   status: "Active" | "Inactive" | "Banned";
+  banReason?: string; // Add this line
   createdAt: string;
   updatedAt: string;
 }
@@ -68,6 +69,7 @@ const normalizeUser = (u: any): User => ({
   avatar: u.avatar || "",
   role: u.role || "Customer",
   status: u.status || "Active",
+  banReason: u.banReason || "",
   createdAt: u.createdAt
     ? new Date(u.createdAt).toLocaleString("vi-VN")
     : "",

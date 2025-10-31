@@ -228,12 +228,12 @@ export const getPaginationCustomers = async (req: Request, res: Response) => {
     const skip = (page - 1) * limit;
 
     const [customers, total] = await Promise.all([
-      User.find({ role: "Customer", status: "Active" })
-        .select("_id full_name email phone")
+      User.find({ role: "Customer" })
+        .select("_id full_name email phone status")
         .skip(skip)
         .limit(limit),
-      User.countDocuments({ role: "Customer", status: "Active" }),
-    ]);
+      User.countDocuments({ role: "Customer" }),
+    ]); 
 
     res.status(200).json({
       success: true,
@@ -252,3 +252,37 @@ export const getPaginationCustomers = async (req: Request, res: Response) => {
 };
 
 
+export const updateStatusCustomer = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;  // Giả sử id được truyền qua params
+    const { status, banReason } = req.body;
+    
+    const customer = await User.findById(id);
+    if (!customer) {
+      return res.status(404).json({ message: "Không tìm thấy khách hàng nào" });
+    }
+    
+    customer.status = status;
+    
+    // Chỉ cập nhật banReason nếu status là Banned
+    if (status === "Banned") {
+      customer.banReason = banReason;
+    } else {
+      customer.banReason = undefined;
+    }
+    
+    await customer.save();
+    
+    res.status(200).json({ 
+      success: true,
+      message: "Cập nhật trạng thái khách hàng thành công",
+      data: customer
+    });
+  } catch (error) {
+    console.error("Error updating customer status:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server khi cập nhật trạng thái khách hàng",
+    });
+  }
+};
