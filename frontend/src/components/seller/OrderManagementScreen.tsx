@@ -5,21 +5,34 @@ import { Eye, Truck, CheckCircle, Search, MessageCircle } from "lucide-react";
 import OrderDetailModal from "./OrderDetailModal";
 import OrderActionModal from "./OrderActionModal";
 import SellerChat from "./SellerChat";
-import io from "socket.io-client";
 import { socket } from "@/lib/socket";
+
+type OrderLite = {
+  _id: string;
+  orderCode: string;
+  pickup_address: string;
+  delivery_address: string;
+  total_price: number;
+  isPaid: boolean;
+  status: string;
+  seller_id?: string | { _id: string } | null;
+  package_id?: { name?: string } | null;
+  scheduled_time?: string | number | Date | null;
+  customer_id?: string | { _id: string; full_name?: string } | null;
+};
 
 const ITEMS_PER_PAGE = 8;
 
 const OrderManagementScreen = () => {
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState<OrderLite[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
   // Modal
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [selectedOrderDetailId, setSelectedOrderDetailId] = useState(null);
+  const [selectedOrderDetailId, setSelectedOrderDetailId] = useState<string | null>(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
-  const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
   // Bộ lọc
   const [search, setSearch] = useState("");
@@ -135,9 +148,50 @@ const OrderManagementScreen = () => {
     };
   }, []);
 
+  // 🔔 Realtime: khi seller khác nhận đơn thì ẩn ngay khỏi danh sách
+  useEffect(() => {
+    // join broadcast room for sellers
+    socket.emit("join", { role: "seller" });
+
+    const onSellerClaimed = (payload: { orderId: string; sellerId: string }) => {
+      setOrders((prev) => prev.filter((o) => o._id !== payload.orderId));
+    };
+
+    socket.on("order:seller_claimed", onSellerClaimed);
+    return () => {
+      socket.off("order:seller_claimed", onSellerClaimed);
+    };
+  }, []);
+
+  // ✅ Seller nhận đơn Pending (chưa có seller)
+  const handleSellerAccept = async (orderId: string) => {
+    try {
+      const token = localStorage.getItem("auth_token");
+      if (!token) return alert("Bạn cần đăng nhập!");
+
+      const res = await axios.post(
+        `http://localhost:4000/api/users/orders/${orderId}/claim-seller`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (res.data?.success) {
+        setMessage("✅ Nhận đơn thành công!");
+        await fetchOrders();
+        setTimeout(() => setMessage(""), 3000);
+      } else {
+        setMessage("⚠️ Không thể nhận đơn này");
+        setTimeout(() => setMessage(""), 3000);
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || "🚨 Lỗi khi nhận đơn";
+      setMessage(msg);
+      setTimeout(() => setMessage(""), 4000);
+    }
+  };
 
   // ✅ Hàm xác nhận đơn
-  const handleConfirmOrder = async (orderId) => {
+  const handleConfirmOrder = async (orderId: string) => {
     try {
       const token = localStorage.getItem("auth_token");
       if (!token) return alert("Bạn cần đăng nhập!");
@@ -166,7 +220,7 @@ const OrderManagementScreen = () => {
 
   // 🎯 Lọc đơn hàng theo từ khóa + trạng thái
   const filteredOrders = useMemo(() => {
-    return orders.filter((o) => {
+    return orders.filter((o: OrderLite) => {
       const matchSearch =
         o.orderCode?.toLowerCase().includes(search.toLowerCase()) ||
         o.pickup_address?.toLowerCase().includes(search.toLowerCase()) ||
@@ -213,6 +267,10 @@ const OrderManagementScreen = () => {
     );
   };
 
+  const pendingNoSeller = useMemo(
+    () => orders.filter((o: OrderLite) => o.status === "Pending" && !o.seller_id),
+    [orders]
+  );
 
   if (loading) return <p className="text-gray-500">Đang tải dữ liệu...</p>;
 
@@ -223,6 +281,41 @@ const OrderManagementScreen = () => {
       {message && (
         <div className="p-3 text-center text-sm bg-green-50 text-green-700 rounded-md">
           {message}
+        </div>
+      )}
+
+      {/* 🔶 Danh sách đơn Pending chưa có seller (dạng thẻ nhỏ gọn) */}
+      {pendingNoSeller.length > 0 && (
+        <div className="bg-white p-4 rounded-xl border shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-gray-800">
+              Đơn chờ nhận (Pending, chưa có seller)
+            </h2>
+            <span className="text-xs text-gray-500">{pendingNoSeller.length} đơn</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {pendingNoSeller.map((o) => (
+              <div key={o._id} className="border rounded-lg p-3 hover:shadow-sm transition flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-500">#{o.orderCode}</span>
+                  <StatusBadge text={o.status} />
+                </div>
+                <div className="text-sm text-gray-700">
+                  <div className="truncate" title={o.pickup_address}>📦 {o.pickup_address}</div>
+                  <div className="truncate" title={o.delivery_address}>📍 {o.delivery_address}</div>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-semibold text-gray-900">{(o.total_price || 0).toLocaleString()}₫</span>
+                  <button
+                    onClick={() => handleSellerAccept(o._id)}
+                    className="px-3 py-1.5 text-xs rounded-md bg-green-600 text-white hover:bg-green-700"
+                  >
+                    Chấp nhận
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
