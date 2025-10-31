@@ -1,8 +1,7 @@
+// src/components/admin/CustomerManagement.tsx
 import { useState, useEffect } from "react";
 import {
   Search,
-  Filter,
-  Eye,
   Edit,
   Plus,
   User,
@@ -11,11 +10,14 @@ import {
   Mail,
   Phone,
 } from "lucide-react";
-import { adminApi, type User as UserType } from "@/services/admin.service"; // Import adminApi
+import { adminApi, type User as UserType } from "@/services/admin.service";
 import { useNavigate } from "react-router-dom";
 
+// Import Modal
+import StatusUpdateModal from "./StatusUpdateModal";
+
 export default function CustomerManagement() {
-  // 🧠 State
+  // State
   const [users, setUsers] = useState<UserType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,10 +26,14 @@ export default function CustomerManagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
-  const limit = 10; // Số lượng khách hàng mỗi trang
+  const limit = 10;
   const navigate = useNavigate();
 
-  // 🚀 Fetch dữ liệu khách hàng từ API
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
+
+  // Fetch users
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -38,7 +44,7 @@ export default function CustomerManagement() {
         setTotalPages(response.totalPages);
         setTotalUsers(response.total);
       } catch (err: any) {
-        console.error("❌ Lỗi khi tải danh sách khách hàng:", err);
+        console.error("Lỗi khi tải danh sách khách hàng:", err);
         setError(err.message || "Lỗi khi tải danh sách khách hàng");
       } finally {
         setLoading(false);
@@ -48,23 +54,19 @@ export default function CustomerManagement() {
     fetchUsers();
   }, [currentPage]);
 
-  // ⚙️ Hàm xử lý hành động
-  const handleViewUser = async (userId: string) => {
-    try {
-      // Chuyển hướng đến trang mockup chi tiết khách hàng
-      navigate(`/admin/customers/view/${userId}`);
-    } catch (err: any) {
-      setError("Lỗi khi lấy chi tiết khách hàng");
-      console.error(err);
-    }
+  // Open modal
+  const handleEditUserStatus = (user: UserType) => {
+    setSelectedUser(user);
+    setModalOpen(true);
   };
 
-  const handleEditUserStatus = (userId: string) => {
-    // Chuyển hướng đến trang mockup chỉnh sửa trạng thái
-    navigate(`/admin/customers/edit/status/${userId}`);
+  // Reload data after update
+  const reloadUsers = () => {
+    setCurrentPage(1); // Reset về trang 1 để tránh lỗi dữ liệu
+    // useEffect sẽ tự chạy lại
   };
 
-  // 🔍 Lọc dữ liệu theo tìm kiếm & trạng thái
+  // Filter
   const filteredUsers = users.filter((user) => {
     const matchesSearch =
       user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -75,25 +77,20 @@ export default function CustomerManagement() {
     return matchesSearch && matchesStatus;
   });
 
-  // ⚙️ Hàm render icon và màu cho vai trò
-  const getRoleIcon = () => <User className="w-4 h-4" />; // Chỉ cần icon cho Customer
-
-  const getRoleColor = () => "bg-green-100 text-green-800"; // Màu cố định cho Customer
+  // Helpers
+  const getRoleIcon = () => <User className="w-4 h-4" />;
+  const getRoleColor = () => "bg-green-100 text-green-800";
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Active":
-        return "bg-green-100 text-green-800";
-      case "Inactive":
-        return "bg-gray-100 text-gray-800";
-      case "Banned":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+      case "Active": return "bg-green-100 text-green-800";
+      case "Inactive": return "bg-gray-100 text-gray-800";
+      case "Banned": return "bg-red-100 text-red-800";
+      default: return "bg-gray-100 text-gray-800";
     }
   };
 
-  // 🧭 Loading & Error
+  // Loading & Error
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64 text-gray-500">
@@ -105,7 +102,7 @@ export default function CustomerManagement() {
   if (error) {
     return (
       <div className="text-center text-red-600 font-semibold mt-10">
-        ❌ Lỗi: {error}
+        Lỗi: {error}
       </div>
     );
   }
@@ -150,41 +147,21 @@ export default function CustomerManagement() {
               <option value="Inactive">Không hoạt động</option>
               <option value="Banned">Bị khóa</option>
             </select>
-            <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2">
-              <Filter className="w-4 h-4" />
-              Bộ lọc
-            </button>
           </div>
         </div>
       </div>
 
-      {/* Users table */}
+      {/* Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Thông tin
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Liên hệ
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Vai trò
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Trạng thái
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Ngày tạo
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Cập nhật cuối
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Thao tác
-                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Thông tin</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Liên hệ</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vai trò</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Thao tác</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -216,40 +193,25 @@ export default function CustomerManagement() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleColor()}`}
-                    >
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleColor()}`}>
                       {getRoleIcon()}
                       <span className="ml-1">Customer</span>
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(user.status)}`}
-                    >
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(user.status)}`}>
                       {user.status === "Active" ? <UserCheck className="w-4 h-4 mr-1" /> : <UserX className="w-4 h-4 mr-1" />}
                       {user.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.createdAt}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.updatedAt}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleViewUser(user.id)}
-                        className="text-blue-600 hover:text-blue-900 p-1"
-                        title="Xem chi tiết"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleEditUserStatus(user.id)}
-                        className="text-orange-600 hover:text-orange-900 p-1"
-                        title="Sửa trạng thái"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => handleEditUserStatus(user)}
+                      className="text-orange-600 hover:text-orange-900 p-1"
+                      title="Sửa trạng thái"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -283,6 +245,24 @@ export default function CustomerManagement() {
           </div>
         </div>
       </div>
+
+      {/* Modal */}
+      {modalOpen && selectedUser && (
+        <StatusUpdateModal
+          user={{
+            id: selectedUser.id,
+            fullName: selectedUser.fullName,
+            email: selectedUser.email,
+            status: selectedUser.status,
+          }}
+          isOpen={modalOpen}
+          onClose={() => {
+            setModalOpen(false);
+            setSelectedUser(null);
+          }}
+          onSuccess={reloadUsers}
+        />
+      )}
     </div>
   );
 }
