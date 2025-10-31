@@ -20,10 +20,12 @@ import {
   getIcidentByOrderId,
   getAllIncidents,
   resolveIncident,
-  getCompletedAndCancelledOrders
+  getCompletedAndCancelledOrders,
+  claimSellerOrder
 } from "../controllers/user.controller";
 
 import { requireAuth } from "../middleware/requireAuth";
+import { withIO } from "../middleware/withIO";
 
 const router = express.Router();
 
@@ -53,6 +55,7 @@ router.get("/drivers/schedule", getDriverSchedule);
 // SELLER
 // ---------------------------
 router.get("/sellers", getSellers);
+router.post("/orders/:id/claim-seller", requireAuth, withIO, claimSellerOrder);
 
 // ---------------------------
 //  USER

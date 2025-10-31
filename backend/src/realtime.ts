@@ -59,6 +59,11 @@ export function initRealtime(server: HTTPServer) {
         socket.join(`carrier:${user.id}`);
         console.log(`🚚 Carrier ${user.id} joined carrier:all`);
       }
+      if (user.role === "seller") {
+        socket.join("seller:all");
+        if (user.id) socket.join(`seller:${user.id}`);
+        console.log(`🛍️ Seller ${user.id || "unknown"} joined seller:all`);
+      }
     });
 
     // KH ping nhờ hỗ trợ
