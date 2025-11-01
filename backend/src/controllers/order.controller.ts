@@ -394,17 +394,16 @@ export const updateOrderPackage = async (req, res) => {
       return res.status(400).json({ success: false, message: "Thiếu gói mới." });
     }
 
-    // 1. Lấy đơn cũ
-    const order = await Order.findById(id);
+    // 1️⃣ Lấy đơn hàng hiện tại
+    const order = await Order.findById(id).populate("extra_fees");
     if (!order) {
       return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng." });
     }
 
-    // 2. Lấy địa chỉ cũ để giữ nguyên km
     const pickup_address = order.pickup_address;
     const delivery_address = order.delivery_address;
 
-    // 3. Gọi lại API tính giá của bên pricing
+    // 2️⃣ Gọi API tính giá vận chuyển mới theo gói mới
     const axios = require("axios");
     const pricingRes = await axios.post("http://localhost:4000/api/pricing/estimate2", {
       pickup_address,
@@ -418,20 +417,31 @@ export const updateOrderPackage = async (req, res) => {
 
     const { totalFee, distance, duration } = pricingRes.data.data;
 
-    // 4. Cập nhật đơn
+    // 3️⃣ Tính thêm tổng phí phụ (extra_fees)
+    const extraFeeTotal = Array.isArray(order.extra_fees)
+      ? order.extra_fees.reduce(
+          (sum, fee) => sum + Number(fee.price || 0),
+          0
+        )
+      : 0;
+
+    const finalTotal = totalFee + extraFeeTotal;
+
+    // 4️⃣ Cập nhật đơn hàng
     order.package_id = new_package_id;
-    order.total_price = totalFee;
-    // nếu muốn lưu lại distance/duration để hiển thị sau:
+    order.total_price = finalTotal;
     order.distance = distance?.text || order.distance;
     order.duration = duration?.text || order.duration;
-
     await order.save();
 
+    // 5️⃣ Trả kết quả về frontend
     return res.json({
       success: true,
-      message: "Đã cập nhật gói và tính lại giá.",
+      message: "✅ Đã cập nhật gói và tính lại giá (bao gồm phụ phí).",
       data: {
-        total_price: totalFee,
+        total_price: finalTotal,
+        base_fee: totalFee,
+        extra_fee: extraFeeTotal,
         distance: distance?.text,
         duration: duration?.text,
       },
