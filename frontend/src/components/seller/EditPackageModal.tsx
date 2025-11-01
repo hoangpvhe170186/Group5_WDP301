@@ -22,7 +22,7 @@ const EditPackageModal = ({ orderId, onClose, onUpdated }) => {
     fetchPackages();
   }, []);
 
-  // ✅ Khi người dùng chọn gói mới, tự động xem thử giá mới
+  // ✅ Xem thử giá mới (có tính cả phụ phí)
   const handlePreviewPrice = async () => {
     if (!selectedPackage) {
       alert("Vui lòng chọn gói cần đổi!");
@@ -31,24 +31,12 @@ const EditPackageModal = ({ orderId, onClose, onUpdated }) => {
 
     setLoading(true);
     try {
-      // 🔹 Lấy token và gửi kèm khi gọi API
       const token = localStorage.getItem("auth_token");
-      const orderRes = await axios.get(`http://localhost:4000/api/orders/${orderId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const order = orderRes.data?.order || orderRes.data; // ✅ fix
-      if (!order.pickup_address || !order.delivery_address) {
-        alert("Không tìm thấy địa chỉ của đơn hàng.");
-        return;
-      }
-
-      // 🔹 Gọi API tính giá mới
-      const res = await axios.post("http://localhost:4000/api/pricing/estimate2", {
-        pricepackage_id: selectedPackage,
-        pickup_address: order.pickup_address,
-        delivery_address: order.delivery_address,
-      });
+      const res = await axios.patch(
+        `http://localhost:4000/api/orders/${orderId}/update-package`,
+        { new_package_id: selectedPackage },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
       console.log("📦 API Response:", res.data);
 
@@ -64,34 +52,37 @@ const EditPackageModal = ({ orderId, onClose, onUpdated }) => {
       setLoading(false);
     }
   };
-  // ✅ Xác nhận đổi gói
-  const handleConfirmUpdate = async () => {
-  if (!selectedPackage) {
-    alert("Vui lòng chọn gói muốn đổi!");
-    return;
-  }
-  setLoading(true);
-  try {
-    const token = localStorage.getItem("auth_token");
-    const res = await axios.patch(
-      `http://localhost:4000/api/orders/${orderId}/update-package`, 
-      { new_package_id: selectedPackage },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
 
-    if (res.data?.success) {
-      alert("✅ Đã đổi gói thành công!");
-      onUpdated();
-    } else {
-      alert(res.data?.message || "Không thể cập nhật gói.");
+  // ✅ Xác nhận đổi gói (cập nhật thật)
+  const handleConfirmUpdate = async () => {
+    if (!selectedPackage) {
+      alert("Vui lòng chọn gói muốn đổi!");
+      return;
     }
-  } catch (err) {
-    console.error("❌ Lỗi khi đổi gói:", err.response?.data || err.message);
-    alert("⚠ " + (err.response?.data?.message || err.message));
-  } finally {
-    setLoading(false);
-  }
-};
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("auth_token");
+      const res = await axios.patch(
+        `http://localhost:4000/api/orders/${orderId}/update-package`,
+        { new_package_id: selectedPackage },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (res.data?.success) {
+        alert("✅ Đã đổi gói thành công!");
+        onUpdated?.();
+        onClose?.();
+      } else {
+        alert(res.data?.message || "Không thể cập nhật gói.");
+      }
+    } catch (err) {
+      console.error("❌ Lỗi khi đổi gói:", err.response?.data || err.message);
+      alert("⚠ " + (err.response?.data?.message || err.message));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!orderId) return null;
 
@@ -144,18 +135,34 @@ const EditPackageModal = ({ orderId, onClose, onUpdated }) => {
           {priceInfo && (
             <div className="border-t pt-4 space-y-2">
               <p className="text-gray-700">
-                <strong>Giá mới dự kiến:</strong>{" "}
-                <span className="text-green-600 font-semibold">
-                  {priceInfo.totalFee?.toLocaleString()}₫
+                <strong>Giá cơ bản:</strong>{" "}
+                <span className="text-blue-600 font-semibold">
+                  {priceInfo.base_fee?.toLocaleString()}₫
                 </span>
               </p>
+
+              <p className="text-gray-700">
+                <strong>Phụ phí:</strong>{" "}
+                <span className="text-orange-600 font-semibold">
+                  {priceInfo.extra_fee?.toLocaleString() || 0}₫
+                </span>
+              </p>
+
+              <p className="text-gray-700">
+                <strong>Tổng cộng:</strong>{" "}
+                <span className="text-green-600 font-semibold">
+                  {priceInfo.total_price?.toLocaleString()}₫
+                </span>
+              </p>
+
               <p className="text-gray-700">
                 <strong>Khoảng cách:</strong>{" "}
-                <span className="text-blue-600">{priceInfo.distance?.text}</span>
+                <span className="text-blue-600">{priceInfo.distance}</span>
               </p>
+
               <p className="text-gray-700">
                 <strong>Thời gian ước tính:</strong>{" "}
-                <span className="text-blue-600">{priceInfo.duration?.text}</span>
+                <span className="text-blue-600">{priceInfo.duration}</span>
               </p>
             </div>
           )}
