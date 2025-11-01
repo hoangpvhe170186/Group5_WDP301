@@ -385,4 +385,60 @@ export const getOrderItemsByOrderId = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: "Không thể lấy danh sách hàng hóa" });
   }
 };
+export const updateOrderPackage = async (req, res) => {
+  try {
+    const { id } = req.params; // orderId
+    const { new_package_id } = req.body;
+
+    if (!new_package_id) {
+      return res.status(400).json({ success: false, message: "Thiếu gói mới." });
+    }
+
+    // 1. Lấy đơn cũ
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng." });
+    }
+
+    // 2. Lấy địa chỉ cũ để giữ nguyên km
+    const pickup_address = order.pickup_address;
+    const delivery_address = order.delivery_address;
+
+    // 3. Gọi lại API tính giá của bên pricing
+    const axios = require("axios");
+    const pricingRes = await axios.post("http://localhost:4000/api/pricing/estimate2", {
+      pickup_address,
+      delivery_address,
+      pricepackage_id: new_package_id,
+    });
+
+    if (!pricingRes.data?.success) {
+      return res.status(400).json({ success: false, message: "Không tính được giá với gói mới." });
+    }
+
+    const { totalFee, distance, duration } = pricingRes.data.data;
+
+    // 4. Cập nhật đơn
+    order.package_id = new_package_id;
+    order.total_price = totalFee;
+    // nếu muốn lưu lại distance/duration để hiển thị sau:
+    order.distance = distance?.text || order.distance;
+    order.duration = duration?.text || order.duration;
+
+    await order.save();
+
+    return res.json({
+      success: true,
+      message: "Đã cập nhật gói và tính lại giá.",
+      data: {
+        total_price: totalFee,
+        distance: distance?.text,
+        duration: duration?.text,
+      },
+    });
+  } catch (err) {
+    console.error("updateOrderPackage error:", err);
+    return res.status(500).json({ success: false, message: "Lỗi server khi cập nhật gói." });
+  }
+};
 
