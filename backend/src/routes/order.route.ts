@@ -10,10 +10,12 @@ import {
   addOrderItems,
   cancelOrder,
   deleteOrder, 
+  updateOrderPackage,
   getOrderItemsByOrderId
 } from "../controllers/order.controller";
 
 const router = Router();
+router.patch("/:id/update-package", updateOrderPackage); 
 router.get("/:orderId/items", requireAuth, getOrderItemsByOrderId);
 router.post("/temporary", createTemporaryOrder); // tạo đơn tạm
 router.post("/items", addOrderItems);            // thêm hàng hóa & xác nhận đơn
