@@ -107,6 +107,15 @@ export default function EstimatePricePage() {
                                 type="time"
                                 className="border border-gray-300 rounded-lg p-2 w-full mt-1"
                                 value={scheduledTime}
+                                min={
+                                    scheduledDate === new Date().toISOString().split("T")[0]
+                                        ? new Date().toLocaleTimeString("vi-VN", {
+                                            hour12: false,
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                        })
+                                        : undefined
+                                }
                                 onChange={(e) => setScheduledTime(e.target.value)}
                             />
                         </div>
@@ -203,7 +212,15 @@ export default function EstimatePricePage() {
                 onClick={() => {
                     let deliveryTime = null;
                     if (scheduleType === "later" && scheduledDate && scheduledTime) {
-                        deliveryTime = new Date(`${scheduledDate}T${scheduledTime}`).toISOString();
+                        const chosen = new Date(`${scheduledDate}T${scheduledTime}`);
+                        const now = new Date();
+
+                        if (chosen.getTime() < now.getTime()) {
+                            alert(" Không thể chọn thời gian trong quá khứ. Vui lòng chọn giờ khác!");
+                            return; // Dừng lại, không cho chuyển tiếp
+                        }
+
+                        deliveryTime = chosen.toISOString();
                     }
                     navigate("/dat-hang", {
                         state: {
