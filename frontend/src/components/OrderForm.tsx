@@ -286,12 +286,12 @@ export default function OrderForm({ onAddressChange, onEstimate }: Readonly<Orde
   // 🧩 Hàm reset form
   const handleReset = () => {
     if (confirm("Bạn có chắc muốn xóa toàn bộ dữ liệu đã nhập không?")) {
-      // 🧹 Xóa localStorage
+      // 🧹 Xóa dữ liệu trong localStorage
       localStorage.removeItem("orderFormData");
       localStorage.removeItem("selectedPackage");
       localStorage.removeItem("extraFees");
 
-      // 🧹 Reset state form
+      // 🧹 Reset toàn bộ form và state
       setForm({
         pickup_address: "",
         pickup_detail: "",
@@ -302,15 +302,14 @@ export default function OrderForm({ onAddressChange, onEstimate }: Readonly<Orde
       setSelectedPackage("");
       setExtraFees([]);
 
-      // 🧹 Xóa text hiển thị trong Mapbox Geocoder
-      if (pickupGeocoderRef.current) {
-        pickupGeocoderRef.current.setInput("");
-      }
-      if (deliveryGeocoderRef.current) {
-        deliveryGeocoderRef.current.setInput("");
-      }
+      // 🧹 Xóa input mapbox
+      if (pickupGeocoderRef.current) pickupGeocoderRef.current.setInput("");
+      if (deliveryGeocoderRef.current) deliveryGeocoderRef.current.setInput("");
 
-      alert("Đã xóa toàn bộ dữ liệu tạm.");
+      // 🚀 Điều hướng lại trang hiện tại và xóa state của React Router
+      navigate("/dat-hang", { replace: true, state: {} });
+
+      alert("✅ Đã xóa toàn bộ dữ liệu tạm và thông tin gói dịch vụ.");
     }
   };
 
@@ -395,9 +394,17 @@ export default function OrderForm({ onAddressChange, onEstimate }: Readonly<Orde
 
         <hr className="my-3" />
 
-        <h3 className="font-bold text-gray-800 text-lg"> Lịch giao hàng</h3>
+        <h3 className="font-bold text-gray-800 text-lg">Lịch giao hàng</h3>
         {scheduleType === "now" ? (
-          <p></p>
+          <p>
+            Giao ngay - dự kiến{" "}
+            <strong>
+              {new Date(Date.now() + 2 * 60 * 60 * 1000).toLocaleString("vi-VN", {
+                dateStyle: "short",
+                timeStyle: "short",
+              })}
+            </strong>
+          </p>
         ) : deliveryTime ? (
           <p>
             Giao vào lúc{" "}
@@ -411,6 +418,7 @@ export default function OrderForm({ onAddressChange, onEstimate }: Readonly<Orde
         ) : (
           <p className="text-gray-500">Chưa chọn lịch giao hàng.</p>
         )}
+
       </div>
       <form onSubmit={handleSubmit} className="space-y-5 flex flex-col flex-1">
         <div>
