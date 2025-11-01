@@ -14,8 +14,6 @@ const orderSchema = new mongoose.Schema(
     pickup_address: { type: String, required: true },
     delivery_address: { type: String, required: true },
     scheduled_time: { type: Date },
-
-    // ✅ Updated: full delivery workflow (bỏ DELIVERING, DELIVERED)
     status: {
       type: String,
       enum: [

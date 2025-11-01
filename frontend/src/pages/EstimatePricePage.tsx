@@ -20,7 +20,9 @@ export default function EstimatePricePage() {
     const [distanceText, setDistanceText] = useState("");
     const [durationText, setDurationText] = useState("");
     const [totalPrice, setTotalPrice] = useState<number>(0);
-
+    const [scheduleType, setScheduleType] = useState("now");
+    const [scheduledDate, setScheduledDate] = useState("");
+    const [scheduledTime, setScheduledTime] = useState("");
     const totalExtra = extraFees.reduce((sum, f) => sum + Number(f.price?.$numberDecimal || f.price), 0);
     const totalFinal = totalPrice + totalExtra;
 
@@ -70,6 +72,47 @@ export default function EstimatePricePage() {
             <h2 className="text-2xl font-bold text-orange-500 text-center mb-6">💰 Tính giá tham khảo</h2>
 
             {/* --- Gói giá --- */}
+            <div className="border border-gray-200 rounded-lg p-4 mb-4 bg-gray-50 shadow-sm mt-6">
+                <Label className="font-semibold text-gray-700 mb-2 block">
+                    Thời gian giao hàng
+                </Label>
+
+                <div className="flex flex-col md:flex-row items-center gap-4">
+                    <select
+                        value={scheduleType}
+                        onChange={(e) => setScheduleType(e.target.value)}
+                        className="border border-gray-300 rounded-lg p-2 w-full md:w-1/2"
+                    >
+                        <option value="now">Giao ngay (1-2 giờ tùy tài xế)</option>
+                        <option value="later">Đặt lịch giao</option>
+                    </select>
+                </div>
+
+                {/* Nếu chọn đặt lịch thì hiện ô chọn ngày + giờ */}
+                {scheduleType === "later" && (
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <Label className="font-semibold text-gray-700">Ngày giao</Label>
+                            <input
+                                type="date"
+                                min={new Date().toISOString().split("T")[0]}
+                                className="border border-gray-300 rounded-lg p-2 w-full mt-1"
+                                value={scheduledDate}
+                                onChange={(e) => setScheduledDate(e.target.value)}
+                            />
+                        </div>
+                        <div>
+                            <Label className="font-semibold text-gray-700">Giờ giao</Label>
+                            <input
+                                type="time"
+                                className="border border-gray-300 rounded-lg p-2 w-full mt-1"
+                                value={scheduledTime}
+                                onChange={(e) => setScheduledTime(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                )}
+            </div>
             <div>
                 <Label>Chọn gói giá</Label>
                 <div className="grid grid-cols-3 gap-3 mt-2">
@@ -158,6 +201,10 @@ export default function EstimatePricePage() {
             <Button
                 className="w-full mt-6 bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 rounded-lg shadow-lg"
                 onClick={() => {
+                    let deliveryTime = null;
+                    if (scheduleType === "later" && scheduledDate && scheduledTime) {
+                        deliveryTime = new Date(`${scheduledDate}T${scheduledTime}`).toISOString();
+                    }
                     navigate("/dat-hang", {
                         state: {
                             pickup_address,
@@ -167,11 +214,14 @@ export default function EstimatePricePage() {
                             selectedPackage,
                             extraFees,
                             totalFinal,
+                            scheduleType,
+                            deliveryTime, // 👈 Gửi thêm thông tin lịch sang trang đặt hàng
                         },
                     });
                 }}
                 disabled={!selectedPackage || totalFinal === 0}
             >
+
                 xác nhận giá tham khảo
             </Button>
         </div>

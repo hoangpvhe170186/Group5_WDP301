@@ -39,34 +39,47 @@ export default function OrderForm({ onAddressChange, onEstimate }: Readonly<Orde
   const [durationText, setDurationText] = useState("");
   const user_id = localStorage.getItem("user_id");
   const navigate = useNavigate();
+  const hasSavedOrder = !!localStorage.getItem("orderFormData");
   const pickupGeoRef = useRef<HTMLDivElement | null>(null);
   const deliveryGeoRef = useRef<HTMLDivElement | null>(null);
   const pickupGeocoderRef = useRef<any>(null);
   const deliveryGeocoderRef = useRef<any>(null);
   const location = useLocation();
+  const storedOrderData = localStorage.getItem("orderFormData");
+  const parsedStoredData = storedOrderData ? JSON.parse(storedOrderData) : {};
+
+  const {
+    scheduleType = parsedStoredData.scheduleType || "now",
+    deliveryTime = parsedStoredData.deliveryTime || null,
+    selectedPackage: passedPackage = parsedStoredData.selectedPackage || "",
+    extraFees: passedExtraFees = parsedStoredData.extraFees || [],
+    totalFinal: passedTotalFinal = parsedStoredData.totalFinal || "",
+  } = location.state || parsedStoredData || {};
 
   // 🧩 Khôi phục dữ liệu tạm khi load trang
   useEffect(() => {
     const savedForm = localStorage.getItem("orderFormData");
-    if (savedForm) setForm(JSON.parse(savedForm));
-    const parsedForm = savedForm ? JSON.parse(savedForm) : null;
+    if (!savedForm) return;
 
-    if (parsedForm) {
-      // 🧭 Gán lại giá trị hiển thị vào ô tìm kiếm Mapbox
-      setTimeout(() => {
-        if (pickupGeocoderRef.current && parsedForm.pickup_address) {
+    const parsedForm = JSON.parse(savedForm);
+    setForm(parsedForm);
+
+    if (parsedForm.selectedPackage) setSelectedPackage(parsedForm.selectedPackage);
+    if (parsedForm.extraFees) setExtraFees(parsedForm.extraFees);
+
+    // 🕒 Đảm bảo Mapbox đã khởi tạo xong trước khi setInput
+    const waitForGeocoder = setInterval(() => {
+      if (pickupGeocoderRef.current && deliveryGeocoderRef.current) {
+        if (parsedForm.pickup_address)
           pickupGeocoderRef.current.setInput(parsedForm.pickup_address);
-        }
-        if (deliveryGeocoderRef.current && parsedForm.delivery_address) {
+        if (parsedForm.delivery_address)
           deliveryGeocoderRef.current.setInput(parsedForm.delivery_address);
-        }
-      }, 500);
-    }
-    const savedPackage = localStorage.getItem("selectedPackage");
-    if (savedPackage) setSelectedPackage(savedPackage);
+        clearInterval(waitForGeocoder); // dừng vòng lặp
+      }
+    }, 300);
 
-    const savedExtraFees = localStorage.getItem("extraFees");
-    if (savedExtraFees) setExtraFees(JSON.parse(savedExtraFees));
+    // cleanup để tránh memory leak
+    return () => clearInterval(waitForGeocoder);
   }, []);
 
   // 🧩 Lưu dữ liệu tạm vào localStorage mỗi khi thay đổi
@@ -78,22 +91,27 @@ export default function OrderForm({ onAddressChange, onEstimate }: Readonly<Orde
       "Lai Châu", "Cao Bằng"
     ];
 
-    const isPickupNorth = northernProvinces.some(p =>
-      form.pickup_address.includes(p)
-    );
-    const isDeliveryNorth = northernProvinces.some(p =>
-      form.delivery_address.includes(p)
-    );
+    const isPickupNorth = northernProvinces.some(p => form.pickup_address.includes(p));
+    const isDeliveryNorth = northernProvinces.some(p => form.delivery_address.includes(p));
 
     // ✅ Chỉ lưu nếu cả hai địa chỉ đều nằm trong miền Bắc
     if (isPickupNorth && isDeliveryNorth) {
-      localStorage.setItem("orderFormData", JSON.stringify(form));
-      localStorage.setItem("selectedPackage", selectedPackage);
-      localStorage.setItem("extraFees", JSON.stringify(extraFees));
+      const fullOrderData = {
+        ...form,
+        selectedPackage: selectedPackage || "",
+        extraFees: extraFees || [],
+        totalFinal: parseFloat(form.total_price || "0") +
+          extraFees.reduce((sum, f) => sum + Number(f.price?.$numberDecimal || f.price), 0),
+        scheduleType,
+        deliveryTime,
+      };
+
+      localStorage.setItem("orderFormData", JSON.stringify(fullOrderData));
+      console.log("✅ Đã lưu toàn bộ thông tin gói vào orderFormData:", fullOrderData);
     } else {
       console.warn("🚫 Không lưu vì địa chỉ nằm ngoài phạm vi miền Bắc Việt Nam!");
     }
-  }, [form, selectedPackage, extraFees]);
+  }, [form, selectedPackage, extraFees, scheduleType, deliveryTime]);
 
   // 🧩 Load lại khi quay về từ trang khác (vẫn giữ dữ liệu cũ)
   useEffect(() => {
@@ -138,7 +156,7 @@ export default function OrderForm({ onAddressChange, onEstimate }: Readonly<Orde
 
       setForm((prev) => {
         if (prev.delivery_address && prev.delivery_address.trim() === address.trim()) {
-          alert("⚠️ Địa chỉ lấy hàng và giao hàng không được trùng nhau!");
+          alert(" Địa chỉ lấy hàng và giao hàng không được trùng nhau!");
           return prev; // không cập nhật
         }
         onAddressChange?.(address, prev.delivery_address);
@@ -151,7 +169,7 @@ export default function OrderForm({ onAddressChange, onEstimate }: Readonly<Orde
 
       setForm((prev) => {
         if (prev.pickup_address && prev.pickup_address.trim() === address.trim()) {
-          alert("⚠️ Địa chỉ giao hàng không được trùng với địa chỉ lấy hàng!");
+          alert("Địa chỉ giao hàng không được trùng với địa chỉ lấy hàng!");
           return prev; // không cập nhật
         }
         onAddressChange?.(prev.pickup_address, address);
@@ -232,17 +250,18 @@ export default function OrderForm({ onAddressChange, onEstimate }: Readonly<Orde
 
     try {
       const res = await axios.post(
-        "http://localhost:4000/api/orders", // ✅ Tạo order thật
+        "http://localhost:4000/api/orders",
         {
           customer_id: user_id,
           pickup_address: form.pickup_address,
           pickup_detail: form.pickup_detail,
           delivery_address: form.delivery_address,
-          total_price: totalFinal,
-          package_id: selectedPackage,
+          total_price: passedTotalFinal || totalFinal,
+          package_id: selectedPackage || passedPackage,
           phone: form.phone,
-          max_floor: customFloor || undefined,
-          extra_fees: extraFees.map((f) => f._id),
+          scheduleType,
+          scheduled_time: deliveryTime || null, // ✅ Gửi lịch giao hàng
+          extra_fees: extraFees.length > 0 ? extraFees.map((f) => f._id) : (passedExtraFees.map((f) => f._id) || []),
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -258,7 +277,7 @@ export default function OrderForm({ onAddressChange, onEstimate }: Readonly<Orde
       }
     } catch (err) {
       console.error(err);
-      alert("❌ Đặt hàng thất bại. Vui lòng thử lại!");
+      alert(" Đặt hàng thất bại. Vui lòng thử lại!");
     } finally {
       setLoading(false);
     }
@@ -316,8 +335,83 @@ export default function OrderForm({ onAddressChange, onEstimate }: Readonly<Orde
         </button>
       </div>
 
-      <h2 className="text-2xl font-bold text-orange-500 mb-6 text-center">🧾 Đặt giao hàng</h2>
+      <h2 className="text-2xl font-bold text-orange-500 mb-6 text-center"> Đặt giao hàng</h2>
+      {/* Thông tin gói & lịch giao hàng */}
+      <div className="mb-6 border border-gray-200 rounded-lg bg-gray-50 p-4 shadow-sm space-y-3">
+        <h3 className="font-bold text-gray-800 text-lg"> Thông tin gói dịch vụ</h3>
+        <Button
+          variant="outline"
+          disabled={!hasSavedOrder}
+          className={`mt-4 w-full border-orange-400 ${hasSavedOrder
+            ? "text-orange-600 hover:bg-orange-50"
+            : "text-gray-400 border-gray-300 cursor-not-allowed"
+            }`}
+          onClick={() => {
+            if (!hasSavedOrder) {
+              alert("⚠️ Bạn chưa có dữ liệu để chỉnh sửa. Vui lòng xem giá trước khi chỉnh sửa!");
+              return;
+            }
 
+            navigate("/estimate-price", {
+              state: {
+                pickup_address: form.pickup_address,
+                delivery_address: form.delivery_address,
+                pickup_detail: form.pickup_detail,
+                phone: form.phone,
+              },
+            });
+          }}
+        >
+          Chỉnh sửa gói dịch vụ / phụ phí
+        </Button>
+        {passedPackage ? (
+          <>
+            {(() => {
+              const foundPackage = packages.find(pkg => pkg._id === (selectedPackage || passedPackage));
+              return (
+                <p>
+                  <strong>Gói dịch vụ:</strong>{" "}
+                  {foundPackage ? foundPackage.name : "Không xác định"}
+                </p>
+              );
+            })()}
+            <p><strong>Tổng tiền:</strong> {Number(passedTotalFinal).toLocaleString("vi-VN")}₫</p>
+            {passedExtraFees.length > 0 && (
+              <div className="mt-2">
+                <p className="font-semibold text-gray-700">Phụ phí đi kèm:</p>
+                <ul className="list-disc pl-5 text-sm text-gray-600">
+                  {passedExtraFees.map((fee, idx) => (
+                    <li key={idx}>
+                      {fee.name}: +{Number(fee.price?.$numberDecimal || fee.price).toLocaleString("vi-VN")}₫
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="text-gray-500"></p>
+        )}
+
+        <hr className="my-3" />
+
+        <h3 className="font-bold text-gray-800 text-lg"> Lịch giao hàng</h3>
+        {scheduleType === "now" ? (
+          <p></p>
+        ) : deliveryTime ? (
+          <p>
+            Giao vào lúc{" "}
+            <strong>
+              {new Date(deliveryTime).toLocaleString("vi-VN", {
+                dateStyle: "short",
+                timeStyle: "short",
+              })}
+            </strong>
+          </p>
+        ) : (
+          <p className="text-gray-500">Chưa chọn lịch giao hàng.</p>
+        )}
+      </div>
       <form onSubmit={handleSubmit} className="space-y-5 flex flex-col flex-1">
         <div>
           <Label>Địa chỉ lấy hàng</Label>
@@ -352,7 +446,6 @@ export default function OrderForm({ onAddressChange, onEstimate }: Readonly<Orde
           onClick={() => {
             // ⚙️ Kiểm tra địa chỉ
             if (!form.pickup_address || !form.delivery_address) {
-              alert("Vui lòng nhập đầy đủ địa chỉ lấy hàng và giao hàng trước khi xem giá.");
               const defaultVehicleId = "68e23b3c43b598cadadcc79a";
               navigate(`/vehicles/${defaultVehicleId}/price`);
               return;
@@ -406,7 +499,7 @@ export default function OrderForm({ onAddressChange, onEstimate }: Readonly<Orde
             });
           }}
         >
-          Xem giá tham khảo
+          Xem giá
         </Button>
 
         <Button
@@ -415,7 +508,7 @@ export default function OrderForm({ onAddressChange, onEstimate }: Readonly<Orde
             } text-white font-semibold py-2 rounded-lg shadow-lg`}
           disabled={!form.total_price || loading}
         >
-          {loading ? "Đang xử lý..." : "Xác nhận đơn hàng sẽ gửi tới seller"}
+          {loading ? "Đang xử lý..." : "Xác nhận đơn hàng "}
         </Button>
       </form>
     </div>
