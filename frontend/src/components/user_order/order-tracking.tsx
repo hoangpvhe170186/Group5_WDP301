@@ -171,7 +171,6 @@ export default function OrderTracking() {
 
   const mappedCurrent = currentOrder ? mapOrderData(currentOrder) : null;
 
-<<<<<<< HEAD
   // ============================================================
   // 🔹 7️⃣ Chuẩn hoá timeline tracking cho hiển thị
   // ============================================================
@@ -185,8 +184,6 @@ export default function OrderTracking() {
   // ============================================================
   // 🔹 8️⃣ Render giao diện
   // ============================================================
-=======
->>>>>>> long
   return (
     <div className="min-h-screen bg-background">
       <OrderHeader />

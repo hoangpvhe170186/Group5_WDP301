@@ -155,8 +155,6 @@ export const createOrder = async (req: Request, res: Response) => {
       isPaid: false,
     });
 
-<<<<<<< HEAD
-=======
     //  Tạo các OrderItem liên kết với order vừa tạo
     if (items && Array.isArray(items)) {
       await OrderItem.insertMany(
@@ -170,7 +168,6 @@ export const createOrder = async (req: Request, res: Response) => {
       );
     }
 
->>>>>>> long
     return res.status(201).json({
       success: true,
       message: "✅ Tạo đơn hàng thành công!",

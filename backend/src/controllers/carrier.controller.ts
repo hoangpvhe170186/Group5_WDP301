@@ -432,7 +432,6 @@ export const confirmDelivery = async (req: any, res: Response, next: NextFunctio
   }
 };
 
-<<<<<<< HEAD
 /* ==========================================================================
  * Payments (Carrier commission)
  * =========================================================================*/
@@ -553,8 +552,6 @@ export const getCommissionPayments = async (req: any, res: Response) => {
   });
 };
 
-=======
->>>>>>> long
 /* ============================================================================
  * NEW ✅ Tracking riêng theo kiểu Shopee: /order-tracking/:id
  * ==========================================================================*/

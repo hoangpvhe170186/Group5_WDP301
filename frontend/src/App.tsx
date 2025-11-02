@@ -26,7 +26,6 @@ import ComparePage from "./components/carrier-dashboard/dashboard/compare";
 import BlogDetail from "./pages/BlogDetail";
 import DriverInterviewPage from "./components/carrier-dashboard/dashboard/DriverRecruitPage";
 import OrderHistoryPage from "./pages/OrderHistoryPage";
-<<<<<<< HEAD
 import CustomerChatPage from "./components/CustomerChatPage";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancel from "./pages/PaymentCancel";
@@ -34,8 +33,6 @@ import PricingCard from "./components/PricingCard";
 // ✅ Import trang Messages mới
 import UserMessagesPage from "./pages/UserMessagesPage";
 import EstimatePricePage from "./pages/EstimatePricePage";
-=======
->>>>>>> long
 
 export default function App() {
   return (

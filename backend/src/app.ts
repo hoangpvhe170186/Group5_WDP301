@@ -22,12 +22,8 @@ import sellerSalaryRoutes from "./routes/sellerSalary.routes";
 // 👉 mới thêm
 import feedbackRoute from "./routes/feedback.route";
 import incidentsRoute from "./routes/incidents.route";
-<<<<<<< HEAD
 import payosWebhookRoute from "./routes/payos-webhook.route";
 import pricePackageRoutes from "./routes/pricePackage.routes";
-=======
-
->>>>>>> long
 if (!fs.existsSync("uploads")) fs.mkdirSync("uploads");
 
 const app = express();
