@@ -11,7 +11,8 @@ import {
   cancelOrder,
   deleteOrder, 
   updateOrderPackage,
-  getOrderItemsByOrderId
+  getOrderItemsByOrderId,
+  addOrderImages
 } from "../controllers/order.controller";
 
 const router = Router();
@@ -27,5 +28,5 @@ router.get("/:id", getOrderById);
 router.put("/:id", updateOrderStatus);
 router.patch("/:id/cancel", requireAuth, cancelOrder); // hủy đơn hàng
 router.delete("/:id", deleteOrder); //  đúng cú pháp
-
+router.post("/:id/images", requireAuth, addOrderImages);
 export default router;

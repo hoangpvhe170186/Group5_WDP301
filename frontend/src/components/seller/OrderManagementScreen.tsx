@@ -1,12 +1,14 @@
 "use client";
 import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
-import { Eye, Truck, CheckCircle, Search, MessageCircle, Package, CheckSquare, X } from "lucide-react";
+import { Eye, Truck, CheckCircle, Search, MessageCircle, Package, CheckSquare, X, Camera } from "lucide-react";
 import OrderDetailModal from "./OrderDetailModal";
 import OrderActionModal from "./OrderActionModal";
 import SellerChat from "./SellerChat";
-import OrderItemModal from "./OrderItemModal"; // Import component mới
+import OrderItemModal from "./OrderItemModal";
 import EditPackageModal from "./EditPackageModal";
+import OrderImageUploadModal from "./OrderImageUploadModal"; // Import component mới
+
 const ITEMS_PER_PAGE = 8;
 
 const OrderManagementScreen = () => {
@@ -21,9 +23,11 @@ const OrderManagementScreen = () => {
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
   const [selectedOrderForItems, setSelectedOrderForItems] = useState(null);
-  // model chỉnh sửa gói
   const [isEditPackageOpen, setIsEditPackageOpen] = useState(false);
   const [orderForEditPackage, setOrderForEditPackage] = useState(null);
+  const [isImageUploadOpen, setIsImageUploadOpen] = useState(false); // Modal upload ảnh
+  const [selectedOrderForImages, setSelectedOrderForImages] = useState(null);
+
   // Bộ lọc
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -294,6 +298,20 @@ const OrderManagementScreen = () => {
                       <MessageCircle className="w-5 h-5 cursor-pointer" />
                     </button>
 
+                    {/* 📸 Upload ảnh - Chỉ hiện khi status là Pending */}
+                    {order.status === "Pending" && (
+                      <button
+                        onClick={() => {
+                          setSelectedOrderForImages(order);
+                          setIsImageUploadOpen(true);
+                        }}
+                        className="text-purple-600 hover:text-purple-900"
+                        title="Upload ảnh đơn hàng"
+                      >
+                        <Camera className="w-5 h-5 cursor-pointer" />
+                      </button>
+                    )}
+
                     {/* Thêm chi tiết sản phẩm - Chỉ hiện khi status là Pending */}
                     {order.status === "Pending" && (
                       <button
@@ -306,8 +324,8 @@ const OrderManagementScreen = () => {
                       >
                         <Package className="w-5 h-5 cursor-pointer" />
                       </button>
-
                     )}
+
                     {/* 🔧 Nút Đổi gói */}
                     {order.status === "Pending" && (
                       <button
@@ -386,6 +404,23 @@ const OrderManagementScreen = () => {
             Sau
           </button>
         </div>
+      )}
+
+      {/* ✅ Modal Upload Ảnh */}
+      {isImageUploadOpen && selectedOrderForImages && (
+        <OrderImageUploadModal
+          isOpen={isImageUploadOpen}
+          onClose={() => {
+            setIsImageUploadOpen(false);
+            setSelectedOrderForImages(null);
+          }}
+          order={selectedOrderForImages}
+          onSuccess={() => {
+            fetchOrders();
+            setIsImageUploadOpen(false);
+            setSelectedOrderForImages(null);
+          }}
+        />
       )}
 
       {/* ✅ Modal Thêm chi tiết sản phẩm */}
@@ -472,6 +507,7 @@ const OrderManagementScreen = () => {
           orderId={selectedOrderId}
         />
       )}
+
       {/* ✅ Modal đổi gói dịch vụ */}
       {isEditPackageOpen && orderForEditPackage && (
         <EditPackageModal

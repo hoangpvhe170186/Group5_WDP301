@@ -44,7 +44,13 @@ const orderSchema = new mongoose.Schema(
 
     declineReason: { type: String, default: null },
     signatureUrl: { type: String, default: null },
-
+ images: [
+      {
+        public_id: { type: String, required: true },
+        url: { type: String, required: true },
+        uploadedAt: { type: Date, default: Date.now }
+      }
+    ],
     auditLogs: [
       {
         at: { type: Date, default: Date.now },

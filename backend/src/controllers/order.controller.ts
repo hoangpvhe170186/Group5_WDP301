@@ -451,4 +451,44 @@ export const updateOrderPackage = async (req, res) => {
     return res.status(500).json({ success: false, message: "Lỗi server khi cập nhật gói." });
   }
 };
+export const addOrderImages = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { images } = req.body;
 
+    if (!images || !Array.isArray(images)) {
+      return res.status(400).json({
+        success: false,
+        message: "Thiếu thông tin ảnh.",
+      });
+    }
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy đơn hàng.",
+      });
+    }
+
+    // Thêm ảnh vào order (tạo field mới nếu chưa có)
+    if (!order.images) {
+      order.images = [];
+    }
+
+    order.images = [...order.images, ...images];
+    await order.save();
+
+    return res.json({
+      success: true,
+      message: "Đã thêm ảnh vào đơn hàng!",
+      order,
+    });
+  } catch (err) {
+    console.error("❌ Lỗi khi thêm ảnh:", err);
+    res.status(500).json({
+      success: false,
+      message: "Không thể thêm ảnh vào đơn hàng.",
+    });
+  }
+};
