@@ -1,7 +1,7 @@
 // src/pages/carrier/dashboard/job-history.tsx
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,12 +21,35 @@ export function JobHistory({ onViewJob }: JobHistoryProps) {
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState("all");
   const [payLoading, setPayLoading] = useState(false);
+  // Lưu debt status cho mỗi order: { orderId: "PAID" | "PENDING" }
+  const [debtStatuses, setDebtStatuses] = useState<Record<string, string>>({});
+  const debtStatusesRef = useRef<Record<string, string>>({});
 
   const refresh = async () => {
     try {
       setLoading(true);
       const hist = await carrierApi.listHistory(); // gồm COMPLETED/CANCELLED/DECLINED
       setList(hist);
+      
+      // Fetch debt status cho các orders COMPLETED
+      const completedOrders = hist.filter((o) => o.status === "COMPLETED");
+      const statusPromises = completedOrders.map(async (order) => {
+        try {
+          const debt = await carrierApi.getDebt(order.id);
+          return { orderId: order.id, status: debt.status };
+        } catch (error) {
+          console.error(`Failed to fetch debt for order ${order.id}:`, error);
+          return { orderId: order.id, status: "PENDING" }; // Default nếu lỗi
+        }
+      });
+      
+      const statuses = await Promise.all(statusPromises);
+      const statusMap: Record<string, string> = {};
+      statuses.forEach(({ orderId, status }) => {
+        statusMap[orderId] = status;
+      });
+      setDebtStatuses(statusMap);
+      debtStatusesRef.current = statusMap;
     } finally {
       setLoading(false);
     }
@@ -36,12 +59,50 @@ export function JobHistory({ onViewJob }: JobHistoryProps) {
     refresh();
   }, []);
 
+  // Tự động refresh debt status khi quay lại trang (sau khi thanh toán xong ở PayOS)
+  const listRef = useRef(list);
+  useEffect(() => {
+    listRef.current = list;
+  }, [list]);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      // Refresh debt status cho các orders COMPLETED (chỉ những orders chưa PAID)
+      const completedOrders = listRef.current.filter(
+        (o) => o.status === "COMPLETED" && debtStatusesRef.current[o.id] !== "PAID"
+      );
+      if (completedOrders.length > 0) {
+        completedOrders.forEach(async (order) => {
+          try {
+            const debt = await carrierApi.getDebt(order.id);
+            setDebtStatuses((prev) => {
+              const updated = { ...prev, [order.id]: debt.status };
+              debtStatusesRef.current = updated;
+              return updated;
+            });
+          } catch (error) {
+            // Silently fail, không cần log
+          }
+        });
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, []); // Empty dependency array - chỉ tạo listener một lần
+
   const openPayment = useCallback(async (orderId: string) => {
     try {
       setPayLoading(true);
       // Lấy debt để xác nhận trạng thái và số tiền
       const debt = await carrierApi.getDebt(orderId);
       if (debt.status === "PAID") {
+        // Cập nhật state để ẩn nút
+        setDebtStatuses((prev) => {
+          const updated = { ...prev, [orderId]: "PAID" };
+          debtStatusesRef.current = updated;
+          return updated;
+        });
         alert(`Đã thanh toán hoa hồng cho ${debt.orderCode}`);
         return;
       }
@@ -49,6 +110,9 @@ export function JobHistory({ onViewJob }: JobHistoryProps) {
       const created = await carrierApi.createCommissionPayment(orderId);
       if (created.payosLink) {
         window.open(created.payosLink, '_blank');
+        // Sau khi mở PayOS, sẽ có webhook cập nhật, nhưng để đảm bảo UI được cập nhật,
+        // có thể refresh lại sau một khoảng thời gian hoặc sau khi đóng cửa sổ PayOS
+        // Ở đây ta sẽ để webhook tự cập nhật, user cần refresh trang để thấy thay đổi
       } else {
         alert("Không thể tạo link thanh toán");
       }
@@ -167,7 +231,7 @@ export function JobHistory({ onViewJob }: JobHistoryProps) {
                   <Button variant="outline" size="icon" onClick={() => onViewJob(i.id)}>
                     <Eye className="h-4 w-4" />
                   </Button>
-                  {i.status === "COMPLETED" && (
+                  {i.status === "COMPLETED" && debtStatuses[i.id] !== "PAID" && (
                     <Button 
                       variant="default" 
                       onClick={() => openPayment(i.id)} 
@@ -177,6 +241,12 @@ export function JobHistory({ onViewJob }: JobHistoryProps) {
                       <QrCode className="h-4 w-4" /> 
                       {payLoading ? "Đang tạo..." : "Thanh toán"}
                     </Button>
+                  )}
+                  {i.status === "COMPLETED" && debtStatuses[i.id] === "PAID" && (
+                    <Badge className="bg-green-100 text-green-800">
+                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                      Đã thanh toán
+                    </Badge>
                   )}
                 </div>
               </div>
