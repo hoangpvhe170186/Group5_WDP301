@@ -10,7 +10,8 @@ const commissionPaymentSchema = new mongoose.Schema(
     paymentMethod: { type: String, default: "Bank Transfer" },
     
     // PayOS fields
-    payosCode: { type: String }, // Mã giao dịch từ PayOS
+    payosCode: { type: String }, // Mã giao dịch từ PayOS (paymentLinkId)
+    payosOrderCode: { type: Number }, // Mã orderCode số nguyên gửi cho PayOS (numericCode)
     payosLink: { type: String }, // Link people PayOS
     qrCode: { type: String }, // URL QR code từ PayOS
     
@@ -40,6 +41,7 @@ const commissionPaymentSchema = new mongoose.Schema(
 // Index để tìm nhanh payment của carrier
 commissionPaymentSchema.index({ carrierId: 1, orderId: 1 });
 commissionPaymentSchema.index({ payosCode: 1 });
+commissionPaymentSchema.index({ payosOrderCode: 1 });
 
 export default mongoose.model("CommissionPayment", commissionPaymentSchema);
 
