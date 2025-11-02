@@ -52,7 +52,7 @@ export const createTemporaryOrder = async (req, res) => {
     res.status(500).json({ success: false, message: "Không thể tạo đơn hàng." });
   }
 };
-// ✅ Thêm chi tiết hàng hóa (OrderItem)
+//  Thêm chi tiết hàng hóa (OrderItem)
 export const addOrderItems = async (req, res) => {
   try {
     const { order_id, items, delivery_schedule, extra_fees } = req.body;
@@ -135,45 +135,64 @@ export const createOrder = async (req: Request, res: Response) => {
       customer_id,
       pickup_address,
       delivery_address,
+      pickup_detail,
       total_price,
-      pricepackage_id,
+      package_id,
       phone,
-      items // 👈 nếu frontend gửi danh sách sản phẩm
+      extra_fees = [],
+      scheduleType = "now",
+      scheduled_time,
     } = req.body;
 
-    // 1️ Tạo đơn hàng
+    // 🔍 Kiểm tra dữ liệu đầu vào
+    if (!customer_id || !pickup_address || !delivery_address || !phone || !package_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Thiếu thông tin bắt buộc để tạo đơn hàng.",
+      });
+    }
+
+    // ✅ Xác định thời gian giao hàng
+    let finalScheduledTime: Date;
+    if (scheduleType === "later" && scheduled_time) {
+      finalScheduledTime = new Date(scheduled_time);
+    } else {
+      // Nếu không chọn lịch -> giao sau 2 tiếng
+      finalScheduledTime = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    }
+
+    // ✅ Xử lý phụ phí (lọc bỏ id không hợp lệ)
+    const validExtraFees = Array.isArray(extra_fees)
+      ? extra_fees.filter((id) => mongoose.Types.ObjectId.isValid(id))
+      : [];
+
+    // ✅ Tạo đơn hàng
     const order = await Order.create({
       customer_id,
       pickup_address,
+      pickup_detail,
       delivery_address,
       total_price,
-      pricepackage_id,
+      package_id,
       phone,
+      scheduled_time: finalScheduledTime,
+      extra_fees: validExtraFees,
+      status: "Pending",
+      isPaid: false,
     });
-
-    //  Tạo các OrderItem liên kết với order vừa tạo
-    if (items && Array.isArray(items)) {
-      await OrderItem.insertMany(
-        items.map((item) => ({
-          description: item.description,
-          quantity: item.quantity,
-          weight: item.weight,
-          fragile: item.fragile || false,
-          type: item.type || [],
-          shipping_instructions: item.shipping_instructions || [],
-          driver_note: item.driver_note || "",
-        }))
-      );
-    }
 
     return res.status(201).json({
       success: true,
-      message: "Tạo đơn hàng thành công",
+      message: "✅ Tạo đơn hàng thành công!",
       order,
     });
   } catch (error) {
     console.error("❌ Lỗi khi tạo đơn:", error);
-    return res.status(500).json({ success: false, message: "Không thể tạo đơn hàng" });
+    return res.status(500).json({
+      success: false,
+      message: "Không thể tạo đơn hàng",
+      error: (error as Error).message,
+    });
   }
 };
 
@@ -192,15 +211,16 @@ export const getMyOrders = async (req: Request, res: Response) => {
     const limit = Math.min(parseInt(req.query.limit as string) || 10, 50);
     const skip = (page - 1) * limit;
 
-    
+
     const orders = await Order.find({ customer_id: userId })
-      .populate("vehicle_id", "type") 
+      .populate("vehicle_id", "type")
+      .populate("package_id", "name capacity")
       .populate("carrier_id", "name phone")
       .sort({ createdAt: -1 })
       .limit(limit)
       .lean();
 
-    
+
     const totalOrders = await Order.countDocuments({ customer_id: userId });
 
     return res.status(200).json({
@@ -346,7 +366,8 @@ export const cancelOrder = async (req, res) => {
       note: reason || "Người dùng hủy đơn hàng",
     });
 
-    await Order.deleteOne({ _id: order._id });
+    order.status = "Canceled";
+    await order.save();
 
     return res.json({ success: true, message: "Đã hủy và xóa đơn hàng thành công." });
   } catch (err) {
@@ -364,4 +385,110 @@ export const getOrderItemsByOrderId = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: "Không thể lấy danh sách hàng hóa" });
   }
 };
+export const updateOrderPackage = async (req, res) => {
+  try {
+    const { id } = req.params; // orderId
+    const { new_package_id } = req.body;
 
+    if (!new_package_id) {
+      return res.status(400).json({ success: false, message: "Thiếu gói mới." });
+    }
+
+    // 1️⃣ Lấy đơn hàng hiện tại
+    const order = await Order.findById(id).populate("extra_fees");
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng." });
+    }
+
+    const pickup_address = order.pickup_address;
+    const delivery_address = order.delivery_address;
+
+    // 2️⃣ Gọi API tính giá vận chuyển mới theo gói mới
+    const axios = require("axios");
+    const pricingRes = await axios.post("http://localhost:4000/api/pricing/estimate2", {
+      pickup_address,
+      delivery_address,
+      pricepackage_id: new_package_id,
+    });
+
+    if (!pricingRes.data?.success) {
+      return res.status(400).json({ success: false, message: "Không tính được giá với gói mới." });
+    }
+
+    const { totalFee, distance, duration } = pricingRes.data.data;
+
+    // 3️⃣ Tính thêm tổng phí phụ (extra_fees)
+    const extraFeeTotal = Array.isArray(order.extra_fees)
+      ? order.extra_fees.reduce(
+          (sum, fee) => sum + Number(fee.price || 0),
+          0
+        )
+      : 0;
+
+    const finalTotal = totalFee + extraFeeTotal;
+
+    // 4️⃣ Cập nhật đơn hàng
+    order.package_id = new_package_id;
+    order.total_price = finalTotal;
+    order.distance = distance?.text || order.distance;
+    order.duration = duration?.text || order.duration;
+    await order.save();
+
+    // 5️⃣ Trả kết quả về frontend
+    return res.json({
+      success: true,
+      message: "✅ Đã cập nhật gói và tính lại giá (bao gồm phụ phí).",
+      data: {
+        total_price: finalTotal,
+        base_fee: totalFee,
+        extra_fee: extraFeeTotal,
+        distance: distance?.text,
+        duration: duration?.text,
+      },
+    });
+  } catch (err) {
+    console.error("updateOrderPackage error:", err);
+    return res.status(500).json({ success: false, message: "Lỗi server khi cập nhật gói." });
+  }
+};
+export const addOrderImages = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { images } = req.body;
+
+    if (!images || !Array.isArray(images)) {
+      return res.status(400).json({
+        success: false,
+        message: "Thiếu thông tin ảnh.",
+      });
+    }
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy đơn hàng.",
+      });
+    }
+
+    // Thêm ảnh vào order (tạo field mới nếu chưa có)
+    if (!order.images) {
+      order.images = [];
+    }
+
+    order.images = [...order.images, ...images];
+    await order.save();
+
+    return res.json({
+      success: true,
+      message: "Đã thêm ảnh vào đơn hàng!",
+      order,
+    });
+  } catch (err) {
+    console.error("❌ Lỗi khi thêm ảnh:", err);
+    res.status(500).json({
+      success: false,
+      message: "Không thể thêm ảnh vào đơn hàng.",
+    });
+  }
+};

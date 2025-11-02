@@ -1,7 +1,7 @@
 // src/pages/carrier/dashboard/job-history.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,15 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CheckCircle2, XCircle, Clock, Search, Eye, RefreshCw, Ban, QrCode } from "lucide-react";
 import { carrierApi } from "@/services/carrier.service";
 import type { JobItem } from "@/types/carrier";
-import { useCallback } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
 
 interface JobHistoryProps {
   onViewJob: (jobId: string) => void;
@@ -29,21 +20,36 @@ export function JobHistory({ onViewJob }: JobHistoryProps) {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState("all");
-  const [payingOrderId, setPayingOrderId] = useState<string | null>(null);
   const [payLoading, setPayLoading] = useState(false);
-  const [payInfo, setPayInfo] = useState<{
-    amount: number;
-    description: string;
-    qrCode?: string | null;
-    payosLink?: string | null;
-    paymentId?: string;
-  } | null>(null);
+  // Lưu debt status cho mỗi order: { orderId: "PAID" | "PENDING" }
+  const [debtStatuses, setDebtStatuses] = useState<Record<string, string>>({});
+  const debtStatusesRef = useRef<Record<string, string>>({});
 
   const refresh = async () => {
     try {
       setLoading(true);
       const hist = await carrierApi.listHistory(); // gồm COMPLETED/CANCELLED/DECLINED
       setList(hist);
+      
+      // Fetch debt status cho các orders COMPLETED
+      const completedOrders = hist.filter((o) => o.status === "COMPLETED");
+      const statusPromises = completedOrders.map(async (order) => {
+        try {
+          const debt = await carrierApi.getDebt(order.id);
+          return { orderId: order.id, status: debt.status };
+        } catch (error) {
+          console.error(`Failed to fetch debt for order ${order.id}:`, error);
+          return { orderId: order.id, status: "PENDING" }; // Default nếu lỗi
+        }
+      });
+      
+      const statuses = await Promise.all(statusPromises);
+      const statusMap: Record<string, string> = {};
+      statuses.forEach(({ orderId, status }) => {
+        statusMap[orderId] = status;
+      });
+      setDebtStatuses(statusMap);
+      debtStatusesRef.current = statusMap;
     } finally {
       setLoading(false);
     }
@@ -53,30 +59,68 @@ export function JobHistory({ onViewJob }: JobHistoryProps) {
     refresh();
   }, []);
 
+  // Tự động refresh debt status khi quay lại trang (sau khi thanh toán xong ở PayOS)
+  const listRef = useRef(list);
+  useEffect(() => {
+    listRef.current = list;
+  }, [list]);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      // Refresh debt status cho các orders COMPLETED (chỉ những orders chưa PAID)
+      const completedOrders = listRef.current.filter(
+        (o) => o.status === "COMPLETED" && debtStatusesRef.current[o.id] !== "PAID"
+      );
+      if (completedOrders.length > 0) {
+        completedOrders.forEach(async (order) => {
+          try {
+            const debt = await carrierApi.getDebt(order.id);
+            setDebtStatuses((prev) => {
+              const updated = { ...prev, [order.id]: debt.status };
+              debtStatusesRef.current = updated;
+              return updated;
+            });
+          } catch (error) {
+            // Silently fail, không cần log
+          }
+        });
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, []); // Empty dependency array - chỉ tạo listener một lần
+
   const openPayment = useCallback(async (orderId: string) => {
     try {
-      setPayingOrderId(orderId);
       setPayLoading(true);
       // Lấy debt để xác nhận trạng thái và số tiền
       const debt = await carrierApi.getDebt(orderId);
       if (debt.status === "PAID") {
-        setPayInfo({ amount: debt.commissionAmount, description: `Đã thanh toán hoa hồng cho ${debt.orderCode}` });
-        setPayLoading(false);
+        // Cập nhật state để ẩn nút
+        setDebtStatuses((prev) => {
+          const updated = { ...prev, [orderId]: "PAID" };
+          debtStatusesRef.current = updated;
+          return updated;
+        });
+        alert(`Đã thanh toán hoa hồng cho ${debt.orderCode}`);
         return;
       }
-      // Tạo payment (backend sẽ trả QR/link nếu đã tích hợp PayOS)
+      // Tạo payment và chuyển thẳng đến PayOS
       const created = await carrierApi.createCommissionPayment(orderId);
-      setPayInfo(created);
+      if (created.payosLink) {
+        window.open(created.payosLink, '_blank');
+        // Sau khi mở PayOS, sẽ có webhook cập nhật, nhưng để đảm bảo UI được cập nhật,
+        // có thể refresh lại sau một khoảng thời gian hoặc sau khi đóng cửa sổ PayOS
+        // Ở đây ta sẽ để webhook tự cập nhật, user cần refresh trang để thấy thay đổi
+      } else {
+        alert("Không thể tạo link thanh toán");
+      }
     } catch (e) {
-      setPayInfo({ amount: 0, description: "Không thể khởi tạo thanh toán. Thử lại sau." });
+      alert("Không thể khởi tạo thanh toán. Thử lại sau.");
     } finally {
       setPayLoading(false);
     }
-  }, []);
-
-  const closePayment = useCallback(() => {
-    setPayingOrderId(null);
-    setPayInfo(null);
   }, []);
 
   const filtered = useMemo(() => {
@@ -187,10 +231,22 @@ export function JobHistory({ onViewJob }: JobHistoryProps) {
                   <Button variant="outline" size="icon" onClick={() => onViewJob(i.id)}>
                     <Eye className="h-4 w-4" />
                   </Button>
-                  {i.status === "COMPLETED" && (
-                    <Button variant="default" onClick={() => openPayment(i.id)} className="gap-2">
-                      <QrCode className="h-4 w-4" /> Thanh toán
+                  {i.status === "COMPLETED" && debtStatuses[i.id] !== "PAID" && (
+                    <Button 
+                      variant="default" 
+                      onClick={() => openPayment(i.id)} 
+                      className="gap-2"
+                      disabled={payLoading}
+                    >
+                      <QrCode className="h-4 w-4" /> 
+                      {payLoading ? "Đang tạo..." : "Thanh toán"}
                     </Button>
+                  )}
+                  {i.status === "COMPLETED" && debtStatuses[i.id] === "PAID" && (
+                    <Badge className="bg-green-100 text-green-800">
+                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                      Đã thanh toán
+                    </Badge>
                   )}
                 </div>
               </div>
@@ -198,47 +254,6 @@ export function JobHistory({ onViewJob }: JobHistoryProps) {
           </Card>
         ))}
       </div>
-
-      {/* Payment Dialog */}
-      <Dialog open={!!payingOrderId} onOpenChange={(open) => { if (!open) closePayment(); }}>
-        <DialogContent className="sm:max-w-[480px]">
-          <DialogHeader>
-            <DialogTitle>Thanh toán hoa hồng</DialogTitle>
-            <DialogDescription>
-              Quét QR để thanh toán 20% giá trị đơn. Sau khi thành công, trạng thái ghi nợ sẽ chuyển sang Paid.
-            </DialogDescription>
-          </DialogHeader>
-
-          {payLoading && (
-            <div className="py-8 text-center text-sm text-muted-foreground">Đang khởi tạo thanh toán...</div>
-          )}
-
-          {!payLoading && payInfo && (
-            <div className="space-y-4">
-              <div className="text-sm">
-                <div><span className="text-muted-foreground">Số tiền:</span> <span className="font-medium">{payInfo.amount?.toLocaleString("vi-VN")} đ</span></div>
-                <div className="text-muted-foreground">{payInfo.description}</div>
-              </div>
-              {payInfo.qrCode ? (
-                <img src={payInfo.qrCode} alt="PayOS QR" className="w-full rounded border" />
-              ) : (
-                <div className="border rounded p-6 text-center text-sm text-muted-foreground">
-                  Chưa có QR từ PayOS. Vui lòng liên hệ quản trị để cấu hình.
-                </div>
-              )}
-              {payInfo.payosLink && (
-                <a href={payInfo.payosLink} target="_blank" rel="noreferrer" className="text-blue-600 text-sm underline">
-                  Mở trang thanh toán
-                </a>
-              )}
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={closePayment}>Đóng</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

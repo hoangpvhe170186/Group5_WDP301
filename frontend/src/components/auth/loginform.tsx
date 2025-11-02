@@ -74,6 +74,10 @@ export default function LoginPage() {
       localStorage.setItem("fullName", user.fullName || user.name || "");
       localStorage.setItem("username", user.username || user.email || "");
 
+      if (user.role?.toLowerCase() === "seller") {
+        localStorage.setItem("seller_id", user._id);
+      }
+
       if (requiresVerification || user.status !== "Active") {
         navigate("/auth/verify-otp");
         return;
@@ -140,6 +144,10 @@ export default function LoginPage() {
       localStorage.setItem("user_id", user._id);
       localStorage.setItem("fullName", user.fullName || user.name || "");
       localStorage.setItem("username", user.username || user.email || "");
+
+      if (user.role?.toLowerCase() === "seller") {
+        localStorage.setItem("seller_id", user._id);
+      }
 
       // ✅ Điều hướng theo role
       switch (user.role.toLowerCase()) {
@@ -245,11 +253,10 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className={`w-full h-12 rounded-md text-white font-semibold text-base transition ${
-                isLoading
-                  ? "bg-orange-300 cursor-not-allowed"
-                  : "bg-orange-500 hover:bg-orange-600"
-              }`}
+              className={`w-full h-12 rounded-md text-white font-semibold text-base transition ${isLoading
+                ? "bg-orange-300 cursor-not-allowed"
+                : "bg-orange-500 hover:bg-orange-600"
+                }`}
             >
               {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
             </button>

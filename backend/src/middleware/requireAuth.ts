@@ -9,17 +9,35 @@ export const requireAuth = async (req: any, res: Response, next: NextFunction) =
   if (!token) return res.status(401).json({ message: "Unauthorized" });
 
   try {
+    // ✅ Giải mã token
     const payload = jwt.verify(token, process.env.JWT_SECRET as string) as any;
-    const user = await User.findById(payload.userId);
-    if (!user) return res.status(401).json({ message: "User not found" });
 
-    const uid = user._id.toString();
-    // 👉 cung cấp cả _id lẫn id để các file khác dùng kiểu nào cũng được
-    req.user = { _id: uid, id: uid, role: user.role };
+    // 👉 Một số token có thể là payload._id, payload.id hoặc payload.userId
+    const uid = payload._id || payload.id || payload.userId;
+    if (!uid) {
+      console.warn("⚠️ Token payload không có userId / _id / id:", payload);
+      return res.status(401).json({ message: "Invalid token payload" });
+    }
+
+    // ✅ Lấy user từ DB
+    const user = await User.findById(uid);
+    if (!user) {
+      console.warn("⚠️ Không tìm thấy user:", uid);
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    // ✅ Gán vào req.user để các route khác (Carrier / Seller / Customer) đều dùng được
+    req.user = {
+      _id: user._id.toString(),
+      id: user._id.toString(),
+      role: user.role,
+      email: user.email,
+      name: user.name,
+    };
+
     next();
-  } catch {
+  } catch (err: any) {
+    console.error("❌ JWT verify error:", err.message);
     return res.status(401).json({ message: "Invalid token" });
   }
 };
-
-

@@ -36,6 +36,13 @@ export function initRealtime(server: HTTPServer) {
   io.on("connection", (socket) => {
     console.log("✅ Socket connected:", socket.id);
 
+    socket.on("join_seller", (sellerId: string) => {
+      if (!sellerId) return;
+      const room = `seller:${sellerId}`;
+      socket.join(room);
+      console.log(`👔 Seller joined ${room}`);
+    });
+
     // Seller/CS join vào kênh support
     socket.on("join_support", () => {
       socket.join("support_staff");
@@ -52,12 +59,17 @@ export function initRealtime(server: HTTPServer) {
     socket.on("join_driver_interview_room", () => {
       socket.join("driver_interview_notifications");
     });
-    
+
     socket.on("join", (user) => {
       if (user.role === "carrier") {
         socket.join("carrier:all");
         socket.join(`carrier:${user.id}`);
         console.log(`🚚 Carrier ${user.id} joined carrier:all`);
+      }
+      if (user.role === "seller") {
+        socket.join("seller:all");
+        if (user.id) socket.join(`seller:${user.id}`);
+        console.log(`🛍️ Seller ${user.id || "unknown"} joined seller:all`);
       }
     });
 
@@ -86,7 +98,7 @@ export function initRealtime(server: HTTPServer) {
     // ✅ GỬI TIN NHẮN - QUAN TRỌNG
     socket.on("send_message", async (msg: SendMessagePayload) => {
       const { roomId, sender, text, name, userId, tempId } = msg;
-      
+
       console.log("📨 Received send_message:", {
         roomId,
         sender,
@@ -144,6 +156,20 @@ export function initRealtime(server: HTTPServer) {
       } catch (err) {
         console.error("❌ Error saving/broadcasting message:", err);
       }
+    });
+
+    // ========================== 🚚 ORDER TRACKING ==========================
+    socket.on("join_order", (orderId: string) => {
+      if (!orderId) return;
+      socket.join(`order:${orderId}`);
+      console.log(`📦 Joined order room: order:${orderId}`);
+    });
+
+    // (Optional) Khi cần seller chủ động nhận thông báo đơn mới
+    socket.on("subscribe_orders", (sellerId: string) => {
+      if (!sellerId) return;
+      socket.join(`seller:${sellerId}`);
+      console.log(`🧾 Seller subscribed to orders: seller:${sellerId}`);
     });
 
     // Xử lý ngắt kết nối

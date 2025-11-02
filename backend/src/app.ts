@@ -22,7 +22,7 @@ import carrierRoutes from "./routes/carrier.routes";
 import feedbackRoute from "./routes/feedback.route";
 import incidentsRoute from "./routes/incidents.route";
 import payosWebhookRoute from "./routes/payos-webhook.route";
-
+import pricePackageRoutes from "./routes/pricePackage.routes";
 if (!fs.existsSync("uploads")) fs.mkdirSync("uploads");
 
 const app = express();
@@ -49,6 +49,7 @@ app.use("/uploads",
 app.get("/", (_req, res) => res.send("🚀 Backend running..."));
 
 // ===== Mount routes =====
+app.use("/api/price-packages", pricePackageRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/chat", chatRoutes);
