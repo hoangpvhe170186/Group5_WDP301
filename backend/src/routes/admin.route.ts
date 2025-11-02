@@ -7,9 +7,6 @@ import {
   getPaginationDrivers,
   getPaginationSellers,
   getRevenueStats,
-  getOrderStatusStats,
-  getDashboardEnhanced,
-  getDriverPerformance
 } from "../controllers/admin.controller";
 import { requireAuth } from "../middleware/requireAuth";
 
@@ -30,11 +27,5 @@ router.get("/drivers/pagination", getPaginationDrivers);
 
 
 router.get("/sellers/pagination", getPaginationSellers);
-
-router.get("/orders/status", getOrderStatusStats);
-
-router.get("/dashboard/enhanced", getDashboardEnhanced);
-
-router.get("/drivers/performance", getDriverPerformance);
 
 export default router;

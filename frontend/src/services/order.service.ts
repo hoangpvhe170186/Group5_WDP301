@@ -67,14 +67,14 @@ export const orderApi = {
       const { data } = await api.get("/orders/myorder", {
         headers: { Authorization: `Bearer ${getAuthToken()}` },
       });
-      const rawOrders = data.orders || data.data || [];
+      const rawOrders = data.data || []; // Lấy mảng từ data.data
       const orders: Order[] = rawOrders.map((o: any) => ({
-        code: o.orderCode || o.code || o.order_code || "",
+        code: o.orderCode || "",
         id: String(o._id),
         pickupAddress: o.pickup_address || "",
         deliveryAddress: o.delivery_address || "",
         totalPrice: Number(o.total_price || 0),
-        phone: o.phone,
+        phone : o.phone,
         status: o.status || "Pending",
         scheduledTime: o.scheduled_time
           ? new Date(o.scheduled_time).toLocaleString("vi-VN")
@@ -83,7 +83,6 @@ export const orderApi = {
         driverId: o.driver_id,
         carrierId: o.carrier_id,
       }));
-
       return { orders };
     } catch (error: any) {
       console.error(
@@ -120,7 +119,7 @@ export const orderApi = {
           : "Chưa có thời gian",
         vehicleId: data.vehicle_id,
         driverId: data.driver_id,
-
+        
       };
     } catch (error: any) {
       console.error("❌ getDetail error:", error);

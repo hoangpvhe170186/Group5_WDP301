@@ -11,7 +11,7 @@ export enum Role {
 export enum Status {
   Active = "Active",
   Inactive = "Inactive",
-  Banned = "Banned",
+  Suspended = "Suspended",
 }
 
 interface IUser extends Document {
@@ -24,7 +24,6 @@ interface IUser extends Document {
   role: Role;
   avatar?: string;
   status: Status;
-  banReason?: string;
   created_by?: number;
   created_at: Date;
   updated_at: Date;
@@ -55,7 +54,6 @@ const UserSchema: Schema = new Schema(
       default: Status.Active,
       required: true,
     },
-    banReason: { type: String, required: false },
     created_by: { type: Number, required: false },
     created_at: { type: Date, default: Date.now },
     updated_at: { type: Date, default: Date.now },

@@ -24,7 +24,6 @@ export interface User {
   avatar?: string;
   role: "Customer" | "Driver" | "Seller" | "Admin";
   status: "Active" | "Inactive" | "Banned";
-  banReason?: string; // Add this line
   createdAt: string;
   updatedAt: string;
 }
@@ -59,41 +58,6 @@ export interface DashboardStats {
 }
 
 /**
- * 📊 Kiểu dữ liệu thống kê trạng thái đơn hàng
- */
-export interface OrderStatusStats {
-  completed: number;
-  inProgress: number;
-  pending: number;
-  cancelled: number;
-  total: number;
-}
-
-/**
- * 📊 Kiểu dữ liệu dashboard nâng cao
- */
-export interface EnhancedDashboardStats extends DashboardStats {
-  totalComplaints: number;
-  averageOrderValue: number;
-  topSellingProducts: { name: string; quantity: number; revenue: number }[];
-  customerGrowth: { date: string; count: number }[];
-}
-
-/**
- * 📊 Kiểu dữ liệu hiệu suất tài xế
- */
-export interface DriverPerformance {
-  id: string;
-  name: string;
-  avatar?: string;
-  trips: number;
-  rating: number;
-  earnings: number;
-  completionRate: number;
-  onTimeDelivery: number;
-}
-
-/**
  * Chuẩn hóa dữ liệu người dùng từ backend
  */
 const normalizeUser = (u: any): User => ({
@@ -104,7 +68,6 @@ const normalizeUser = (u: any): User => ({
   avatar: u.avatar || "",
   role: u.role || "Customer",
   status: u.status || "Active",
-  banReason: u.banReason || "",
   createdAt: u.createdAt
     ? new Date(u.createdAt).toLocaleString("vi-VN")
     : "",
@@ -132,20 +95,6 @@ const normalizeOrder = (o: any): Order => ({
 });
 
 /**
- * Chuẩn hóa dữ liệu hiệu suất tài xế
- */
-const normalizeDriverPerformance = (d: any): DriverPerformance => ({
-  id: String(d._id || d.id),
-  name: d.name || d.full_name || "",
-  avatar: d.avatar || "",
-  trips: d.trips || 0,
-  rating: d.rating || 0,
-  earnings: d.earnings || 0,
-  completionRate: d.completionRate || 0,
-  onTimeDelivery: d.onTimeDelivery || 0,
-});
-
-/**
  * 🌐 Service dành cho Admin (Dashboard, User, Order)
  */
 export const adminApi = {
@@ -164,17 +113,6 @@ export const adminApi = {
   },
 
   /**
-   * 📈 Lấy thống kê dashboard nâng cao
-   * API: GET /api/admin/dashboard/enhanced
-   */
-  async getDashboardEnhanced(): Promise<EnhancedDashboardStats> {
-    const { data } = await api.get("/admin/dashboard/enhanced", {
-      headers: { Authorization: `Bearer ${getAuthToken()}` },
-    });
-    return data.data;
-  },
-
-  /**
    * 💰 Lấy thống kê doanh thu theo thời gian
    * API: GET /api/admin/revenue?startDate=...&endDate=...
    */
@@ -184,29 +122,6 @@ export const adminApi = {
       headers: { Authorization: `Bearer ${getAuthToken()}` },
     });
     return data.data;
-  },
-
-  /**
-   * 📦 Lấy thống kê trạng thái đơn hàng
-   * API: GET /api/admin/orders/status
-   */
-  async getOrderStatusStats(): Promise<OrderStatusStats> {
-    const { data } = await api.get("/admin/orders/status", {
-      headers: { Authorization: `Bearer ${getAuthToken()}` },
-    });
-    return data.data;
-  },
-
-  /**
-   * 🚚 Lấy thống kê hiệu suất tài xế
-   * API: GET /api/admin/drivers/performance
-   */
-  async getDriverPerformance(limit: number = 5): Promise<DriverPerformance[]> {
-    const { data } = await api.get("/admin/drivers/performance", {
-      params: { limit },
-      headers: { Authorization: `Bearer ${getAuthToken()}` },
-    });
-    return data.data.map(normalizeDriverPerformance);
   },
 
   // ===========================================================
@@ -271,6 +186,7 @@ export const adminApi = {
    */
   async getOrders(page = 1, limit = 10) {
     const { data } = await api.get("/admin/orders/pagination", {
+      
       params: { page, limit },
       headers: { Authorization: `Bearer ${getAuthToken()}` },
     });

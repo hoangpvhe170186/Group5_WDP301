@@ -8,14 +8,22 @@ type SendMessagePayload = {
   roomId: string;
   sender: "guest" | "seller" | "bot";
   text: string;
-  name?: string;   // tên hiển thị người gửi (khách/seller/bot)
-  userId?: string; // nếu bạn muốn gắn thêm userId nội bộ
+  name?: string;
+  userId?: string;
+  tempId?: string; // ✅ Thêm tempId
 };
 
 type SupportPayload = {
   roomId: string;
   preview?: string;
   name?: string;
+};
+
+type TypingPayload = {
+  roomId: string;
+  userId: string;
+  isTyping: boolean;
+  userName?: string;
 };
 
 export function initRealtime(server: HTTPServer) {
@@ -26,7 +34,7 @@ export function initRealtime(server: HTTPServer) {
   });
 
   io.on("connection", (socket) => {
-    console.log("socket connected:", socket.id);
+    console.log("✅ Socket connected:", socket.id);
 
     socket.on("join_seller", (sellerId: string) => {
       if (!sellerId) return;
@@ -38,18 +46,19 @@ export function initRealtime(server: HTTPServer) {
     // Seller/CS join vào kênh support
     socket.on("join_support", () => {
       socket.join("support_staff");
-      console.log("Seller joined support_staff room");
+      console.log("👔 Seller joined support_staff room");
     });
 
-    // Client (mỗi khách/seller mở hội thoại) join 1 room cụ thể
+    // Client join room cụ thể
     socket.on("join_room", (roomId: string) => {
       if (!roomId) return;
       socket.join(roomId);
+      console.log(`✅ Socket ${socket.id} joined room: ${roomId}`);
     });
-socket.on("join_driver_interview_room", () => {
+
+    socket.on("join_driver_interview_room", () => {
       socket.join("driver_interview_notifications");
     });
-<<<<<<< HEAD
 
     socket.on("join", (user) => {
       if (user.role === "carrier") {
@@ -62,67 +71,8 @@ socket.on("join_driver_interview_room", () => {
         if (user.id) socket.join(`seller:${user.id}`);
         console.log(`🛍️ Seller ${user.id || "unknown"} joined seller:all`);
       }
-=======
-    
-  socket.on("join", (user) => {
-    if (user.role === "carrier") {
-      socket.join("carrier:all");
-      socket.join(`carrier:${user.id}`);
-      console.log(`🚚 Carrier ${user.id} joined carrier:all`);
-    }
-  });
-    // KH ping nhờ hỗ trợ => bắn noti + badge tới staff
-   socket.on("notify_support", (payload: SupportPayload) => {
-  const data = {
-    roomId: payload.roomId,
-    preview: payload.preview ?? "Khách yêu cầu hỗ trợ",
-    name: payload.name,
-    at: new Date().toISOString(),
-  };
-  socket.broadcast.to("support_staff").emit("support_notification", data);
-  socket.broadcast.to("support_staff").emit("support_badge", data);
-});
-
-    // GỬI TIN (thống nhất 1 handler duy nhất)
-  socket.on("send_message", async (msg: SendMessagePayload) => {
-  const { roomId, sender, text, name, userId } = msg;
-  if (!roomId || !sender || !text?.trim()) return;
-
-  // 1) Lưu DB
-  await ChatMessage.create({
-    roomId,
-    userId,
-    sender,
-    senderName: name,
-    text,
-    createdAt: new Date(),
-  });
-
-  const payload = {
-    roomId,
-    sender,
-    name,
-    text,
-    createdAt: new Date().toISOString(),
-  };
-
-  // 2) Phát realtime nhưng **loại trừ chính người gửi**
-  socket.to(roomId).emit("receive_message", payload);                // loại trừ chính socket này
-  socket.broadcast.to("support_staff").emit("receive_message", payload); // staff khác (không phát lại cho sender)
-
-  // 3) Badge cho staff khi KH gửi (cũng **loại trừ sender**)
-  if (sender === "guest") {
-    socket.broadcast.to("support_staff").emit("support_badge", {
-      roomId,
-      preview: text.slice(0, 60),
-      name,
-      at: new Date().toISOString(),
->>>>>>> long
     });
-  }
-});
 
-<<<<<<< HEAD
     // KH ping nhờ hỗ trợ
     socket.on("notify_support", (payload: SupportPayload) => {
       const data = {
@@ -226,8 +176,6 @@ socket.on("join_driver_interview_room", () => {
     socket.on("disconnect", (reason) => {
       console.log("❌ Socket disconnected:", socket.id, reason);
     });
-=======
->>>>>>> long
   });
 
   return io;

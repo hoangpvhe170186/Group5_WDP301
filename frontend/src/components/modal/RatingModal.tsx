@@ -10,24 +10,36 @@ const RatingModal = ({ orderId, customerId, onClose }) => {
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
-    if (!rating) return alert("Vui lòng chọn số sao!");
-    setLoading(true);
-    try {
-      await axios.post("http://localhost:4000/api/users/feedbacks", {
+  if (!rating) return alert("Vui lòng chọn số sao!");
+  setLoading(true);
+  try {
+    const token = localStorage.getItem("auth_token");
+    if (!token) throw new Error("Chưa đăng nhập");
+
+    await axios.post(
+      "http://localhost:4000/api/users/feedbacks",
+      {
         order_id: orderId,
         customer_id: customerId,
         rating,
         comment,
-      });
-      alert("Cảm ơn bạn đã đánh giá đơn hàng!");
-      onClose();
-    } catch (err) {
-      console.error("❌ Lỗi khi gửi feedback:", err);
-      alert("Không thể gửi đánh giá.");
-    } finally {
-      setLoading(false);
-    }
-  };
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    alert("Cảm ơn bạn đã đánh giá đơn hàng!");
+    onClose();
+  } catch (err) {
+    console.error("❌ Lỗi khi gửi feedback:", err);
+    alert("Không thể gửi đánh giá.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">

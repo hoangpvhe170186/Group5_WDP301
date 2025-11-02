@@ -4,6 +4,9 @@ import OrderItem from "../models/OrderItem";
 import OrderTracking from "../models/OrderTracking";
 import UploadEvidence from "../models/UploadEvidence";
 import Incident from "../models/Incident";
+import CarrierDebt from "../models/CarrierDebt";
+import CommissionPayment from "../models/CommissionPayment";
+import { createPaymentLink } from "../services/payos";
 import {
   loadOrderOrThrow,
   assertCarrierAccess,
@@ -29,8 +32,23 @@ const toPlainItem = (it: any) => ({
   fragile: !!it.fragile,
 });
 
+// Helper to convert Decimal128/various numeric shapes to number
+function decimalToNumber(input: any): number {
+  if (input == null) return 0;
+  if (typeof input === "number") return input;
+  if (typeof input === "string") return Number(input) || 0;
+  if (typeof input === "object") {
+    const anyInput = input as any;
+    if (anyInput.$numberDecimal) return Number(anyInput.$numberDecimal) || 0;
+    if (anyInput._bsontype === "Decimal128" && typeof anyInput.toString === "function") {
+      return Number(anyInput.toString()) || 0;
+    }
+  }
+  return Number(input) || 0;
+}
+
 // controllers/carrier.controller.ts
-export const updateCarrierProfile = async (req, res) => {
+export const updateCarrierProfile = async (req: Request, res: Response) => {
   try {
     const { fullName, phone, licenseNumber, vehiclePlate, avatarUrl } = req.body;
     const user = await User.findById(req.user._id);
@@ -73,7 +91,7 @@ export const getMe = async (req: any, res: Response, next: NextFunction) => {
 
 import User from "../models/User";
 
-export const getCarrierProfile = async (req, res) => {
+export const getCarrierProfile = async (req: Request, res: Response) => {
   try {
     const user = await User.findById(req.user._id).lean();
     if (!user) return res.status(404).json({ message: "Không tìm thấy carrier" });
@@ -86,8 +104,8 @@ export const getCarrierProfile = async (req, res) => {
       avatarUrl: user.avatar,
       verified: user.status === "Active"
     });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+  } catch (err: any) {
+    res.status(500).json({ message: err?.message || "Server error" });
   }
 };
 
@@ -426,13 +444,32 @@ export const confirmDelivery = async (req: any, res: Response, next: NextFunctio
       note: "Xác nhận hoàn tất giao hàng",
     });
 
+    // 🟩 Auto create CarrierDebt (20% commission) if not existing
+    try {
+      const carrierId = new mongoose.Types.ObjectId(getUserId(req));
+      const exists = await CarrierDebt.findOne({ orderId: order._id, carrierId });
+      if (!exists) {
+        const total = Number(order.total_price || 0);
+        const commission = Math.round(total * 0.2);
+        await CarrierDebt.create({
+          orderId: order._id,
+          carrierId,
+          orderCode: order.orderCode,
+          totalOrderPrice: total,
+          commissionAmount: commission,
+          debtStatus: "PENDING",
+        } as any);
+      }
+    } catch (e) {
+      console.error("Auto create CarrierDebt failed:", e);
+    }
+
     res.json(order);
   } catch (err) {
     next(err);
   }
 };
 
-<<<<<<< HEAD
 /* ==========================================================================
  * Payments (Carrier commission)
  * =========================================================================*/
@@ -553,8 +590,6 @@ export const getCommissionPayments = async (req: any, res: Response) => {
   });
 };
 
-=======
->>>>>>> long
 /* ============================================================================
  * NEW ✅ Tracking riêng theo kiểu Shopee: /order-tracking/:id
  * ==========================================================================*/
@@ -671,7 +706,7 @@ export const getEvidence = async (req: any, res: Response, next: NextFunction) =
     const query: any = { orderId: new mongoose.Types.ObjectId(order._id) };
     if (phase) query.phase = phase;
 
-    const docs = await UploadEvidence.find(query).sort({ createdAt: -1 }).lean();
+    const docs: any[] = await UploadEvidence.find(query).sort({ createdAt: -1 }).lean();
 
     // ✅ MAP về đúng format FE mong đợi
     const items = (docs || []).flatMap((d) =>

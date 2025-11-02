@@ -17,25 +17,38 @@ const OrderHistoryManagementScreen = () => {
 
   // 🧠 Lấy tất cả đơn hàng COMPLETED hoặc CANCELLED
   const fetchOrders = async () => {
-    try {
-      const res = await axios.get("http://localhost:4000/api/users/orders/history");
-      setOrders(res.data || []);
+  try {
+    const token = localStorage.getItem("auth_token");
+    if (!token) return alert("Bạn cần đăng nhập!");
 
-      // Lấy feedback từng đơn
-      const fbData = {};
-      for (const order of res.data) {
-        const fbRes = await axios.get(
-          `http://localhost:4000/api/users/feedback/order/${order._id}`
-        );
-        if (fbRes.data) fbData[order._id] = fbRes.data;
-      }
-      setFeedbacks(fbData);
-    } catch (err) {
-      console.error("❌ Lỗi tải lịch sử đơn:", err);
-    } finally {
-      setLoading(false);
+    const res = await axios.get("http://localhost:4000/api/users/orders/history", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    setOrders(res.data || []);
+
+    // Lấy feedback từng đơn
+    const fbData = {};
+    for (const order of res.data) {
+      const fbRes = await axios.get(
+        `http://localhost:4000/api/users/feedback/order/${order._id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      if (fbRes.data) fbData[order._id] = fbRes.data;
     }
-  };
+    setFeedbacks(fbData);
+  } catch (err) {
+    console.error("❌ Lỗi tải lịch sử đơn:", err);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   useEffect(() => {
     fetchOrders();

@@ -25,7 +25,7 @@ const orderSchema = new mongoose.Schema(
         "ON_THE_WAY",
         "ARRIVED",
         "INCIDENT",
-         "DELIVERED",
+        "DELIVERED",
         "PAUSED",
         "DECLINED",
         "COMPLETED",
@@ -58,6 +58,13 @@ const orderSchema = new mongoose.Schema(
         action: { type: String },
         note: { type: String, default: "" },
       },
+    ],
+    extra_fees: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "ExtraFee",
+        default: [],
+      }
     ],
   },
   { timestamps: true }

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle2, XCircle, Clock, Search, Eye, Download, RefreshCw, Ban } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Search, Eye, RefreshCw, Ban, QrCode } from "lucide-react";
 import { carrierApi } from "@/services/carrier.service";
 import type { JobItem } from "@/types/carrier";
 
@@ -20,13 +20,10 @@ export function JobHistory({ onViewJob }: JobHistoryProps) {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState("all");
-<<<<<<< HEAD
   const [payLoading, setPayLoading] = useState(false);
   // Lưu debt status cho mỗi order: { orderId: "PAID" | "PENDING" }
   const [debtStatuses, setDebtStatuses] = useState<Record<string, string>>({});
   const debtStatusesRef = useRef<Record<string, string>>({});
-=======
->>>>>>> long
 
   const refresh = async () => {
     try {
@@ -62,7 +59,6 @@ export function JobHistory({ onViewJob }: JobHistoryProps) {
     refresh();
   }, []);
 
-<<<<<<< HEAD
   // Tự động refresh debt status khi quay lại trang (sau khi thanh toán xong ở PayOS)
   const listRef = useRef(list);
   useEffect(() => {
@@ -127,8 +123,6 @@ export function JobHistory({ onViewJob }: JobHistoryProps) {
     }
   }, []);
 
-=======
->>>>>>> long
   const filtered = useMemo(() => {
     return list.filter((i) => {
       const okQ =
@@ -237,7 +231,6 @@ export function JobHistory({ onViewJob }: JobHistoryProps) {
                   <Button variant="outline" size="icon" onClick={() => onViewJob(i.id)}>
                     <Eye className="h-4 w-4" />
                   </Button>
-<<<<<<< HEAD
                   {i.status === "COMPLETED" && debtStatuses[i.id] !== "PAID" && (
                     <Button 
                       variant="default" 
@@ -255,9 +248,6 @@ export function JobHistory({ onViewJob }: JobHistoryProps) {
                       Đã thanh toán
                     </Badge>
                   )}
-=======
-                 
->>>>>>> long
                 </div>
               </div>
             </CardContent>

@@ -53,12 +53,7 @@ export default function OrderTracking() {
       try {
         setLoading(true);
         const { orders: fetchedOrders } = await orderApi.listMyOrders();
-        setOrders(
-          (fetchedOrders || []).map((o) => ({
-            ...o,
-            id: o.id || o._id, // 🟢 fallback nếu BE chưa đổi tên
-          }))
-        );
+        setOrders(fetchedOrders || []);
         if (fetchedOrders && fetchedOrders.length > 0) {
           setSelectedOrder(fetchedOrders[0].id);
         }
@@ -82,33 +77,23 @@ export default function OrderTracking() {
   // ============================================================
   // 🔹 3️⃣ Lấy danh sách items trong đơn hàng
   // ============================================================
-  // 🔹 3️⃣.bis Lấy chi tiết đơn hàng (để có orderCode)
   useEffect(() => {
     if (!selectedOrder) return;
-    const fetchOrderDetail = async () => {
+    const fetchOrderItems = async () => {
       try {
         const token = localStorage.getItem("auth_token");
-        const res = await fetch(`${API_BASE}/api/orders/${selectedOrder}`, {
+        const res = await fetch(`${API_BASE}/api/orders/${selectedOrder}/items`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
-        if (res.ok) {
-          // 🟩 Cập nhật order trong danh sách có orderCode
-          setOrders((prev) =>
-            prev.map((o) =>
-              o.id === selectedOrder
-                ? { ...o, orderCode: data.orderCode, total_price: data.total_price }
-                : o
-            )
-          );
-        }
+        setOrderItems(data.items || []);
       } catch (err) {
-        console.error("❌ Lỗi lấy chi tiết đơn hàng:", err);
+        console.error("❌ Lỗi lấy danh sách items:", err);
+        setOrderItems([]);
       }
     };
-    fetchOrderDetail();
+    fetchOrderItems();
   }, [selectedOrder]);
-
 
   // ============================================================
   // 🔹 4️⃣ Lấy danh sách tracking theo orderId
@@ -166,33 +151,26 @@ export default function OrderTracking() {
   // 🔹 6️⃣ Chuẩn hoá order cho UI hiển thị
   // ============================================================
   const mapOrderData = (order: any) => ({
-    ...order,
-    id: order.id || order._id,
-    orderNumber:
-      order.orderCode ||
-      order.code ||
-      order.order_code ||
-      `ORD-${order._id?.slice(-6)?.toUpperCase() || "UNKNOWN"}`,
+    id: order.id,
+    orderNumber: `#${order.id}`,
     status: (order.status || "").toLowerCase(),
     date: order.createdAt
       ? new Date(order.createdAt).toLocaleDateString("vi-VN")
       : "—",
-    total: `₫ ${Number(order.total_price || order.totalPrice || 0).toLocaleString("vi-VN")}`,
+    total: `₫ ${Number(order.totalPrice || 0).toLocaleString("vi-VN")}`,
     items: orderItems.length || 0,
-    estimatedDelivery: order.scheduled_time || order.scheduledTime || "Chưa có thời gian",
+    estimatedDelivery: order.scheduledTime || "Chưa có thời gian",
     currentLocation:
       (order.status || "").toLowerCase() === "delivered"
         ? "Đã giao"
-        : (order.pickup_address || order.pickupAddress || "").split(",")[0] || "Hà Nội",
-    recipient: order.customer_id?.fullName || "Khách hàng",
-    address: order.delivery_address || order.deliveryAddress,
+        : (order.pickupAddress || "").split(",")[0] || "Hà Nội",
+    recipient: "Khách hàng",
+    address: order.deliveryAddress,
     phone: order.phone,
   });
 
-
   const mappedCurrent = currentOrder ? mapOrderData(currentOrder) : null;
 
-<<<<<<< HEAD
   // ============================================================
   // 🔹 7️⃣ Chuẩn hoá timeline tracking cho hiển thị
   // ============================================================
@@ -206,8 +184,6 @@ export default function OrderTracking() {
   // ============================================================
   // 🔹 8️⃣ Render giao diện
   // ============================================================
-=======
->>>>>>> long
   return (
     <div className="min-h-screen bg-background">
       <OrderHeader />
@@ -255,10 +231,11 @@ export default function OrderTracking() {
                       <button
                         key={m.id}
                         onClick={() => setSelectedOrder(m.id)}
-                        className={`w-full text-left p-4 transition-colors ${selectedOrder === m.id
-                          ? "bg-primary/10 border-l-4 border-primary"
-                          : "hover:bg-muted"
-                          }`}
+                        className={`w-full text-left p-4 transition-colors ${
+                          selectedOrder === m.id
+                            ? "bg-primary/10 border-l-4 border-primary"
+                            : "hover:bg-muted"
+                        }`}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
@@ -273,12 +250,13 @@ export default function OrderTracking() {
                             </p>
                           </div>
                           <div
-                            className={`px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${m.status === "delivered"
-                              ? "bg-green-100 text-green-700"
-                              : m.status === "in-transit"
+                            className={`px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${
+                              m.status === "delivered"
+                                ? "bg-green-100 text-green-700"
+                                : m.status === "in-transit"
                                 ? "bg-primary/15 text-primary"
                                 : "bg-primary/10 text-primary"
-                              }`}
+                            }`}
                           >
                             {m.status === "delivered" && "Đã giao"}
                             {m.status === "in-transit" && "Đang giao"}
