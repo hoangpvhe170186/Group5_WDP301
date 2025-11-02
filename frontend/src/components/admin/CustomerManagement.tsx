@@ -214,6 +214,18 @@ export default function CustomerManagement() {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+<<<<<<< HEAD
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleViewUser(user.id)}
+                        className="text-blue-600 hover:text-blue-900 p-1"
+                        title="Xem chi tiết"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      
+                    </div>
+=======
                     <button
                       onClick={() => handleEditUserStatus(user)}
                       className="text-orange-600 hover:text-orange-900 p-1"
@@ -221,6 +233,7 @@ export default function CustomerManagement() {
                     >
                       <Edit className="w-4 h-4" />
                     </button>
+>>>>>>> long
                   </td>
                 </tr>
               ))}

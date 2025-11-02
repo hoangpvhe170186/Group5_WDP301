@@ -432,6 +432,129 @@ export const confirmDelivery = async (req: any, res: Response, next: NextFunctio
   }
 };
 
+<<<<<<< HEAD
+/* ==========================================================================
+ * Payments (Carrier commission)
+ * =========================================================================*/
+export const getDebtByOrder = async (req: any, res: Response) => {
+  const orderId = req.params.orderId;
+  const userId = getUserId(req);
+  let debt = await CarrierDebt.findOne({ orderId, carrierId: userId });
+
+  // Nếu chưa có debt, thử tạo on-demand khi đơn đã COMPLETED
+  if (!debt) {
+    const order = await Order.findById(orderId);
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    // Xác thực quyền truy cập
+    try { assertCarrierAccess(order as any, userId); } catch {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    if (String(order.status).toUpperCase() === "COMPLETED") {
+      const total = decimalToNumber((order as any).total_price);
+      const commission = Math.round(total * 0.2);
+      debt = await CarrierDebt.create({
+        orderId: order._id,
+        carrierId: new mongoose.Types.ObjectId(userId),
+        orderCode: order.orderCode,
+        totalOrderPrice: total,
+        commissionAmount: commission,
+        debtStatus: "PENDING",
+      } as any);
+    }
+  }
+
+  if (!debt) return res.status(404).json({ message: "Không có ghi nợ" });
+
+  return res.json({
+    debt: {
+      id: String(debt._id),
+      status: debt.debtStatus,
+      commissionAmount: decimalToNumber((debt as any).commissionAmount),
+      orderCode: (debt as any).orderCode,
+    },
+  });
+};
+
+// Stub: create payment link (PayOS integration sẽ thêm sau)
+export const createCommissionPayment = async (req: any, res: Response) => {
+  const orderId = new mongoose.Types.ObjectId(req.params.orderId);
+  const userId = new mongoose.Types.ObjectId(getUserId(req));
+  const debt = await CarrierDebt.findOne({ orderId, carrierId: userId });
+  if (!debt) return res.status(404).json({ message: "Không có ghi nợ" });
+  if (debt.debtStatus === "PAID") return res.status(400).json({ message: "Đã thanh toán" });
+
+  const amount = decimalToNumber((debt as any).commissionAmount);
+  // Build description and sanitize to ASCII for PayOS compatibility
+  let description = `hoa hong ${debt.orderCode}`;
+  if (description.length > 120) description = description.slice(0, 120);
+
+  const payment = await CommissionPayment.create({
+    debtId: debt._id,
+    orderId,
+    carrierId: userId,
+    orderCode: debt.orderCode,
+    amount,
+    description,
+    status: "PENDING",
+  } as any);
+
+  // Tạo link/QR PayOS
+  // PayOS yêu cầu orderCode là số nguyên duy nhất → hash đơn giản
+  const numericCode = Number(`${Date.now()}${String(payment._id).slice(-4)}`.replace(/\D/g, "").slice(0, 13));
+  const payInput = {
+    orderCode: Number.isFinite(numericCode) ? numericCode : Date.now(),
+    amount: Math.max(1000, Math.round(amount)),
+    description,
+  } as const;
+
+  if (!Number.isFinite(payInput.amount) || payInput.amount <= 0) {
+    console.error("Invalid commission amount", { raw: amount, computed: payInput.amount, debtId: String(debt._id) });
+    return res.status(400).json({ message: "Số tiền hoa hồng không hợp lệ" });
+  }
+  try {
+    const created = await createPaymentLink(payInput);
+    payment.payosCode = created.paymentLinkId;
+    payment.payosOrderCode = payInput.orderCode; // Lưu numericCode để webhook tìm kiếm
+    payment.payosLink = created.checkoutUrl;
+    payment.qrCode = created.qrCode;
+    await payment.save();
+
+    return res.json({
+      paymentId: String(payment._id),
+      amount,
+      description,
+      qrCode: payment.qrCode || null,
+      payosLink: payment.payosLink || null,
+    });
+  } catch (err: any) {
+    const payload = err?.response?.data || err?.message || err;
+    console.error("Create PayOS payment link failed:", { error: payload, input: payInput });
+    // Trả thêm ngữ cảnh để debug FE
+    return res.status(500).json({ message: "Không thể khởi tạo thanh toán PayOS", error: payload, input: payInput });
+  }
+};
+
+export const getCommissionPayments = async (req: any, res: Response) => {
+  const orderId = req.query.orderId;
+  const userId = getUserId(req);
+  const list = await CommissionPayment.find({ orderId, carrierId: userId })
+    .sort({ createdAt: -1 })
+    .lean();
+  res.json({
+    payments: list.map((p: any) => ({
+      id: String(p._id),
+      amount: Number(p.amount),
+      status: p.status,
+      description: p.description,
+      createdAt: p.createdAt,
+      paidAt: p.paidAt,
+    })),
+  });
+};
+
+=======
+>>>>>>> long
 /* ============================================================================
  * NEW ✅ Tracking riêng theo kiểu Shopee: /order-tracking/:id
  * ==========================================================================*/

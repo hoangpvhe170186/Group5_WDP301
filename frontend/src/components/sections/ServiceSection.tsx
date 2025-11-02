@@ -45,7 +45,11 @@ export default function ServiceSection() {
                 <h3 className="text-lg font-semibold text-gray-900">{s.title}</h3>
                 <p className="text-sm text-gray-600">{s.desc}</p>
                 <button className="mt-3 inline-flex rounded-md border border-[#FF6A00] px-3 py-1.5 text-sm font-medium text-[#FF6A00] transition hover:bg-[#FF6A00] hover:text-white">
+<<<<<<< HEAD
+                  đặt hàng ngay
+=======
                   Book Now
+>>>>>>> long
                 </button>
               </div>
             </div>

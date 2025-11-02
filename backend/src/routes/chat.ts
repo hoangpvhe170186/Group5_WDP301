@@ -32,6 +32,99 @@ router.post("/", async (req, res) => {
     // 2) gọi bot thực sự (placeholder)
     const reply = await generateReply(message); 
 
+<<<<<<< HEAD
+    res.json({ messages });
+  } catch (err) {
+    console.error("❌ Error fetching chat history:", err);
+    res.status(500).json({ error: "Failed to fetch chat history" });
+  }
+});
+
+// ✅ Thêm tin nhắn vào DB
+router.post("/append", async (req, res) => {
+  try {
+    const { roomId, sender, senderName, text } = req.body;
+
+    if (!roomId || !sender || !text) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const message = await ChatMessage.create({
+      roomId,
+      sender,
+      senderName,
+      text,
+      createdAt: new Date(),
+    });
+
+    res.json({ success: true, message });
+  } catch (err) {
+    console.error("❌ Error appending message:", err);
+    res.status(500).json({ error: "Failed to append message" });
+  }
+});
+
+// ✅ Lấy danh sách rooms gần đây (có thêm thông tin customer hoặc guest)
+router.get("/rooms", async (req, res) => {
+  try {
+    const { limit = 30 } = req.query;
+
+    // Lấy tin nhắn gần nhất của mỗi room
+    const recentMessages = await ChatMessage.aggregate([
+      { $sort: { createdAt: -1 } },
+      {
+        $group: {
+          _id: "$roomId",
+          lastMessage: { $first: "$$ROOT" },
+        },
+      },
+      { $limit: Number(limit) },
+      { $sort: { "lastMessage.createdAt": -1 } },
+    ]);
+
+    // ⚙️ Bỏ qua room lỗi/null
+    const validRooms = recentMessages.filter(
+      (item) => typeof item._id === "string" && item._id.trim() !== ""
+    );
+
+    // ✅ Gắn thêm thông tin khách hàng
+    const roomsWithCustomerInfo = await Promise.all(
+      validRooms.map(async (item) => {
+        const roomId = item._id;
+        const msg = item.lastMessage;
+        let customerName = msg?.senderName || "Khách hàng";
+
+        // ⚙️ Nếu room là customer:xxx
+        if (roomId.startsWith("customer:")) {
+          const customerId = roomId.replace("customer:", "");
+          if (customerId.startsWith("guest_")) {
+            // ⚙️ Khách vãng lai, không có ObjectId
+            customerName = `Khách vãng lai ${customerId.split("_")[1] || ""}`;
+          } else {
+            try {
+              const user = await User.findById(customerId)
+                .select("full_name")
+                .lean();
+              if (user && user.full_name) {
+                customerName = user.full_name;
+              }
+            } catch (err) {
+              console.warn(
+                `⚠️ Bỏ qua tên khách vì ${customerId} không phải ObjectId`
+              );
+            }
+          }
+        }
+
+        return {
+          roomId,
+          preview: msg?.text ?? "",
+          name: msg?.senderName ?? "",
+          customerName,
+          at: msg?.createdAt ?? new Date(),
+        };
+      })
+=======
     // 3) lưu chat + lưu cache
     await ChatMessage.create({ roomId, sender: "guest", senderName: "Khách", text: message });
     await ChatMessage.create({ roomId, sender: "bot", senderName: "Home Express Bot", text: reply });
@@ -39,6 +132,7 @@ router.post("/", async (req, res) => {
       { qKey: key },
       { $set: { qKey: key, qText: message, aText: reply }, $inc: { hits: 1 } },
       { upsert: true }
+>>>>>>> long
     );
 
     return res.json({ reply, cached: false });
@@ -48,6 +142,10 @@ router.post("/", async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
+
+export default router;
+=======
 router.get("/rooms", async (req, res) => {
   const limit = Number(req.query.limit ?? 100);
 
@@ -178,3 +276,4 @@ async function generateReply(q: string): Promise<string> {
   // fallback thân thiện
   return "Mình chưa chắc câu này. Bạn có thể mô tả rõ hơn (địa chỉ, loại đồ, thời gian)?";
 }
+>>>>>>> long

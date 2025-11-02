@@ -14,8 +14,6 @@ const orderSchema = new mongoose.Schema(
     pickup_address: { type: String, required: true },
     delivery_address: { type: String, required: true },
     scheduled_time: { type: Date },
-
-    // ✅ Updated: full delivery workflow (bỏ DELIVERING, DELIVERED)
     status: {
       type: String,
       enum: [
@@ -46,7 +44,13 @@ const orderSchema = new mongoose.Schema(
 
     declineReason: { type: String, default: null },
     signatureUrl: { type: String, default: null },
-
+ images: [
+      {
+        public_id: { type: String, required: true },
+        url: { type: String, required: true },
+        uploadedAt: { type: Date, default: Date.now }
+      }
+    ],
     auditLogs: [
       {
         at: { type: Date, default: Date.now },
