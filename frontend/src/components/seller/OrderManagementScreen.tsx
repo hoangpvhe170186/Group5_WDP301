@@ -1,14 +1,21 @@
 "use client";
 import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
-import { Eye, Truck, CheckCircle, Search, MessageCircle } from "lucide-react";
+<<<<<<< HEAD
+import { Eye, Truck, CheckCircle, Search, MessageCircle, Package, CheckSquare, X, Camera } from "lucide-react";
 import OrderDetailModal from "./OrderDetailModal";
 import OrderActionModal from "./OrderActionModal";
 import SellerChat from "./SellerChat";
-import io from "socket.io-client";
-import { socket } from "@/lib/socket";
+import OrderItemModal from "./OrderItemModal";
+import EditPackageModal from "./EditPackageModal";
+import OrderImageUploadModal from "./OrderImageUploadModal"; // Import component mới
+=======
+import { Eye, Truck, CheckCircle, Search } from "lucide-react";
+import OrderDetailModal from "./OrderDetailModal";
+import OrderActionModal from "./OrderActionModal";
+>>>>>>> long
 
-const ITEMS_PER_PAGE = 8;
+const ITEMS_PER_PAGE = 8; // số đơn / trang
 
 const OrderManagementScreen = () => {
   const [orders, setOrders] = useState([]);
@@ -20,6 +27,12 @@ const OrderManagementScreen = () => {
   const [selectedOrderDetailId, setSelectedOrderDetailId] = useState(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [isItemModalOpen, setIsItemModalOpen] = useState(false);
+  const [selectedOrderForItems, setSelectedOrderForItems] = useState(null);
+  const [isEditPackageOpen, setIsEditPackageOpen] = useState(false);
+  const [orderForEditPackage, setOrderForEditPackage] = useState(null);
+  const [isImageUploadOpen, setIsImageUploadOpen] = useState(false); // Modal upload ảnh
+  const [selectedOrderForImages, setSelectedOrderForImages] = useState(null);
 
   // Bộ lọc
   const [search, setSearch] = useState("");
@@ -27,6 +40,7 @@ const OrderManagementScreen = () => {
 
   // Phân trang
   const [currentPage, setCurrentPage] = useState(1);
+<<<<<<< HEAD
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [currentChatRoom, setCurrentChatRoom] = useState("");
   const [currentOrderCode, setCurrentOrderCode] = useState("");
@@ -42,38 +56,31 @@ const OrderManagementScreen = () => {
       return;
     }
 
-    const chatRoomId = `customer:${customerId}`; // 🔹 Gộp theo customer
+    const chatRoomId = `customer:${customerId}`;
     setCurrentChatRoom(chatRoomId);
     setCurrentOrderCode(order.orderCode);
     setCurrentCustomerName(order.customer_id?.full_name || "Khách hàng");
     setIsChatOpen(true);
 
-    // ✅ Tạo link chat cho khách hàng
     const customerChatLink = `${window.location.origin}/chat/customer/${customerId}`;
-
     navigator.clipboard.writeText(customerChatLink).then(() => {
       setMessage(`✅ Đã copy link chat! Gửi link này cho khách hàng: ${customerChatLink}`);
       setTimeout(() => setMessage(""), 5000);
     });
   };
+=======
+>>>>>>> long
 
   // 🧠 Lấy danh sách đơn hàng
-
   const fetchOrders = async () => {
     try {
-      const token = localStorage.getItem("auth_token");
+      const token = localStorage.getItem("auth-token"); // hoặc sessionStorage, hoặc state/context
       const res = await axios.get("http://localhost:4000/api/users/orders", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
       setOrders(res.data || []);
-
-      // ✅ Join rooms sau khi fetch
-      (res.data || []).forEach((order) => {
-        const room = `order:${order._id}`;
-        socket.emit("join_room", room);
-        console.log(`📡 Seller joined room: ${room}`);
-      });
     } catch (err) {
       console.error("❌ Lỗi khi tải danh sách đơn hàng:", err);
     } finally {
@@ -81,75 +88,15 @@ const OrderManagementScreen = () => {
     }
   };
 
-
-
   useEffect(() => {
     fetchOrders();
   }, []);
 
-  // 🧩 Lắng nghe socket cập nhật trạng thái đơn hàng realtime
-  useEffect(() => {
-    const sellerId = localStorage.getItem("seller_id");
-
-    const handleConnect = () => {
-      console.log("🟢 Seller socket connected:", socket.id);
-      if (sellerId) {
-        socket.emit("join_seller", sellerId);
-        console.log(`✅ Joined seller room: seller:${sellerId}`);
-      }
-    };
-
-    const handleOrderUpdated = (data: any) => {
-      console.log("🔁 Received order update:", data);
-
-      setOrders((prev) =>
-        prev.map((o) =>
-          o._id === data.orderId ? { ...o, status: data.status } : o
-        )
-      );
-
-      // 🟦 Toast thông báo realtime
-      const toast = document.createElement("div");
-      toast.textContent = `🚚 Đơn ${data.orderId} → ${data.status}`;
-      Object.assign(toast.style, {
-        position: "fixed",
-        bottom: "20px",
-        right: "20px",
-        background: "#2563eb",
-        color: "#fff",
-        padding: "8px 12px",
-        borderRadius: "6px",
-        fontSize: "14px",
-        zIndex: 9999,
-      });
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 3000);
-    };
-
-    socket.on("connect", handleConnect);
-    socket.on("order:updated", handleOrderUpdated);
-
-    return () => {
-      socket.off("connect", handleConnect);
-      socket.off("order:updated", handleOrderUpdated);
-    };
-  }, []);
-
-
   // ✅ Hàm xác nhận đơn
   const handleConfirmOrder = async (orderId) => {
     try {
-      const token = localStorage.getItem("auth_token");
-      if (!token) return alert("Bạn cần đăng nhập!");
-
       const res = await axios.post(
-        `http://localhost:4000/api/users/orders/${orderId}/confirm`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        `http://localhost:4000/api/users/orders/${orderId}/confirm`
       );
       if (res.data.success) {
         setMessage("✅ Đơn hàng đã được xác nhận!");
@@ -171,7 +118,8 @@ const OrderManagementScreen = () => {
         o.orderCode?.toLowerCase().includes(search.toLowerCase()) ||
         o.pickup_address?.toLowerCase().includes(search.toLowerCase()) ||
         o.delivery_address?.toLowerCase().includes(search.toLowerCase());
-      const matchStatus = statusFilter === "All" || o.status === statusFilter;
+      const matchStatus =
+        statusFilter === "All" || o.status === statusFilter;
       return matchSearch && matchStatus;
     });
   }, [orders, search, statusFilter]);
@@ -184,35 +132,32 @@ const OrderManagementScreen = () => {
   );
 
   // 🏷️ Status Badge
-  // 🏷️ Status Badge
-  const StatusBadge = ({ text }: { text: string }) => {
-    const statusMap: Record<string, { label: string; color: string }> = {
-      PENDING: { label: "Chờ xử lý", color: "bg-yellow-100 text-yellow-800" },
-      ASSIGNED: { label: "Đã giao việc", color: "bg-purple-100 text-purple-800" },
-      ACCEPTED: { label: "Đã chấp nhận", color: "bg-green-100 text-green-800" },
-      CONFIRMED: { label: "Đã xác nhận", color: "bg-blue-100 text-blue-800" },
-      ON_THE_WAY: { label: "Đang di chuyển", color: "bg-indigo-100 text-indigo-800" },
-      ARRIVED: { label: "Đã tới nơi", color: "bg-cyan-100 text-cyan-800" },
-      DELIVERED: { label: "Đã giao", color: "bg-emerald-100 text-emerald-800" },
-      COMPLETED: { label: "Hoàn tất", color: "bg-green-200 text-green-800" },
-      INCIDENT: { label: "Đang gặp sự cố", color: "bg-orange-100 text-orange-800" },
-      PAUSED: { label: "Tạm dừng", color: "bg-slate-100 text-slate-800" },
-      NOTE: { label: "Ghi chú", color: "bg-gray-200 text-gray-800" },
-      DECLINED: { label: "Từ chối", color: "bg-red-100 text-red-800" },
-      CANCELLED: { label: "Đã huỷ", color: "bg-gray-200 text-gray-700" },
+  const StatusBadge = ({ text }) => {
+    const colors = {
+      PENDING: "bg-yellow-100 text-yellow-800",
+      ASSIGNED: "bg-purple-100 text-purple-800",
+      ACCEPTED: "bg-green-100 text-green-800",
+      CONFIRMED: "bg-blue-100 text-blue-800",
+      ON_THE_WAY: "bg-indigo-100 text-indigo-800",
+      ARRIVED: "bg-cyan-100 text-cyan-800",
+      COMPLETED: "bg-emerald-100 text-emerald-800",
+      DECLINED
+
+: "bg-red-100 text-red-800",
+      Cancel: "bg-gray-300 text-gray-700",
+      Incident: "bg-orange-100 text-orange-800",
+      Pause: "bg-slate-200 text-slate-800",
     };
-
-    const s = statusMap[text?.toUpperCase()] || { label: text, color: "bg-gray-100 text-gray-700" };
-
+    
+    const colorClass = colors[text] || "bg-gray-100 text-gray-800";
     return (
       <span
-        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${s.color}`}
+        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${colorClass}`}
       >
-        {s.label}
+        {text}
       </span>
     );
   };
-
 
   if (loading) return <p className="text-gray-500">Đang tải dữ liệu...</p>;
 
@@ -247,21 +192,16 @@ const OrderManagementScreen = () => {
           className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700"
         >
           <option value="All">Tất cả trạng thái</option>
-          <option value="PENDING">Chờ xử lý</option>
-          <option value="ASSIGNED">Đã giao việc</option>
-          <option value="ACCEPTED">Đã chấp nhận</option>
-          <option value="CONFIRMED">Đã xác nhận</option>
-          <option value="ON_THE_WAY">Đang di chuyển</option>
-          <option value="ARRIVED">Đã tới nơi</option>
-          <option value="DELIVERED">Đã giao</option>
-          <option value="COMPLETED">Hoàn tất</option>
-          <option value="INCIDENT">Đang gặp sự cố</option>
-          <option value="PAUSED">Tạm dừng</option>
-          <option value="NOTE">Ghi chú</option>
-          <option value="DECLINED">Từ chối</option>
-          <option value="CANCELLED">Đã huỷ</option>
+          <option value="Pending">Pending</option>
+          <option value="Assigned">Assigned</option>
+          <option value="Accepted">Accepted</option>
+          <option value="Confirmed">Confirmed</option>
+          <option value="On_the_way">On_the_way</option>
+          <option value="Arrived">Arrived</option>
+          <option value="Completed">Completed</option>
+          <option value="Decline">Decline</option>
+          <option value="Cancel">Cancel</option>
         </select>
-
       </div>
 
       {/* 🧾 Bảng đơn hàng */}
@@ -351,7 +291,8 @@ const OrderManagementScreen = () => {
                       <Eye className="w-5 h-5 cursor-pointer" />
                     </button>
 
-                    {/* ✅ Nút nhắn tin - GỘP THEO CUSTOMER */}
+<<<<<<< HEAD
+                    {/* ✅ Nút nhắn tin */}
                     <button
                       onClick={() => openOrderChat(order)}
                       className="text-blue-600 hover:text-blue-900"
@@ -360,6 +301,50 @@ const OrderManagementScreen = () => {
                       <MessageCircle className="w-5 h-5 cursor-pointer" />
                     </button>
 
+                    {/* 📸 Upload ảnh - Chỉ hiện khi status là Pending */}
+                    {order.status === "Pending" && (
+                      <button
+                        onClick={() => {
+                          setSelectedOrderForImages(order);
+                          setIsImageUploadOpen(true);
+                        }}
+                        className="text-purple-600 hover:text-purple-900"
+                        title="Upload ảnh đơn hàng"
+                      >
+                        <Camera className="w-5 h-5 cursor-pointer" />
+                      </button>
+                    )}
+
+                    {/* Thêm chi tiết sản phẩm - Chỉ hiện khi status là Pending */}
+                    {order.status === "Pending" && (
+                      <button
+                        onClick={() => {
+                          setSelectedOrderForItems(order);
+                          setIsItemModalOpen(true);
+                        }}
+                        className="text-purple-600 hover:text-purple-900"
+                        title="Thêm chi tiết sản phẩm"
+                      >
+                        <Package className="w-5 h-5 cursor-pointer" />
+                      </button>
+                    )}
+
+                    {/* 🔧 Nút Đổi gói */}
+                    {order.status === "Pending" && (
+                      <button
+                        onClick={() => {
+                          setOrderForEditPackage(order);
+                          setIsEditPackageOpen(true);
+                        }}
+                        className="text-orange-500 hover:text-orange-700"
+                        title="Đổi gói dịch vụ"
+                      >
+                        <CheckSquare className="w-5 h-5" />
+                      </button>
+                    )}
+
+=======
+>>>>>>> long
                     {/* Xác nhận đơn */}
                     {order.status === "Pending" && (
                       <button
@@ -426,7 +411,42 @@ const OrderManagementScreen = () => {
         </div>
       )}
 
-      {/* ✅ Modal Chat - Hiển thị tên khách hàng */}
+<<<<<<< HEAD
+      {/* ✅ Modal Upload Ảnh */}
+      {isImageUploadOpen && selectedOrderForImages && (
+        <OrderImageUploadModal
+          isOpen={isImageUploadOpen}
+          onClose={() => {
+            setIsImageUploadOpen(false);
+            setSelectedOrderForImages(null);
+          }}
+          order={selectedOrderForImages}
+          onSuccess={() => {
+            fetchOrders();
+            setIsImageUploadOpen(false);
+            setSelectedOrderForImages(null);
+          }}
+        />
+      )}
+
+      {/* ✅ Modal Thêm chi tiết sản phẩm */}
+      {isItemModalOpen && selectedOrderForItems && (
+        <OrderItemModal
+          isOpen={isItemModalOpen}
+          onClose={() => {
+            setIsItemModalOpen(false);
+            setSelectedOrderForItems(null);
+          }}
+          order={selectedOrderForItems}
+          onSuccess={() => {
+            fetchOrders();
+            setIsItemModalOpen(false);
+            setSelectedOrderForItems(null);
+          }}
+        />
+      )}
+
+      {/* ✅ Modal Chat */}
       {isChatOpen && currentChatRoom && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg w-full max-w-4xl h-[80vh] flex flex-col">
@@ -438,9 +458,6 @@ const OrderManagementScreen = () => {
                 </h3>
                 <p className="text-sm text-gray-600">
                   Đơn hàng hiện tại: <strong>#{currentOrderCode}</strong>
-                </p>
-                <p className="text-xs text-gray-500">
-                  Room: <code>{currentChatRoom}</code>
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -480,6 +497,8 @@ const OrderManagementScreen = () => {
         </div>
       )}
 
+=======
+>>>>>>> long
       {/* Modal chi tiết */}
       {isDetailOpen && selectedOrderDetailId && (
         <OrderDetailModal
@@ -494,6 +513,18 @@ const OrderManagementScreen = () => {
           isOpen={isUpdateModalOpen}
           onClose={() => setIsUpdateModalOpen(false)}
           orderId={selectedOrderId}
+        />
+      )}
+
+      {/* ✅ Modal đổi gói dịch vụ */}
+      {isEditPackageOpen && orderForEditPackage && (
+        <EditPackageModal
+          orderId={orderForEditPackage._id}
+          onClose={() => setIsEditPackageOpen(false)}
+          onUpdated={() => {
+            setIsEditPackageOpen(false);
+            fetchOrders();
+          }}
         />
       )}
     </div>

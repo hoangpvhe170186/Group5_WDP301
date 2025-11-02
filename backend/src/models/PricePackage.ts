@@ -5,7 +5,6 @@ const pricePackageSchema = new mongoose.Schema({
   vehicle: { type: String, required: true },
   workers: { type: String, required: true },
   max_floor: { type: Number, default: 1 },
-  capacity: { type: Number },
   wait_time: { type: Number, default: 2 },
   base_price: { type: mongoose.Types.Decimal128, required: true }
 }, { timestamps: true });

@@ -10,10 +10,13 @@ import {
   addOrderItems,
   cancelOrder,
   deleteOrder, 
-  getOrderItemsByOrderId
+  updateOrderPackage,
+  getOrderItemsByOrderId,
+  addOrderImages
 } from "../controllers/order.controller";
 
 const router = Router();
+router.patch("/:id/update-package", updateOrderPackage); 
 router.get("/:orderId/items", requireAuth, getOrderItemsByOrderId);
 router.post("/temporary", createTemporaryOrder); // tạo đơn tạm
 router.post("/items", addOrderItems);            // thêm hàng hóa & xác nhận đơn
@@ -25,5 +28,5 @@ router.get("/:id", getOrderById);
 router.put("/:id", updateOrderStatus);
 router.patch("/:id/cancel", requireAuth, cancelOrder); // hủy đơn hàng
 router.delete("/:id", deleteOrder); //  đúng cú pháp
-
+router.post("/:id/images", requireAuth, addOrderImages);
 export default router;

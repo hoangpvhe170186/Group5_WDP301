@@ -26,116 +26,94 @@ const OrderActionModal: React.FC<OrderActionModalProps> = ({
 
   // 🧠 Lấy danh sách seller + carrier
   useEffect(() => {
-  const fetchLists = async () => {
+    const fetchLists = async () => {
+      try {
+        const [sellerRes, carrierRes] = await Promise.all([
+          axios.get("http://localhost:4000/api/users/sellers"),
+          axios.get("http://localhost:4000/api/users/carriers"),
+        ]);
+        setSellers(sellerRes.data.data || []);
+        setCarriers(carrierRes.data.data || []);
+      } catch (error) {
+        console.error("❌ Lỗi khi tải danh sách:", error);
+        setMessage("⚠️ Không thể tải danh sách người dùng!");
+      }
+    };
+    fetchLists();
+  }, []);
+
+  // 🧠 Lấy chi tiết đơn hàng
+  useEffect(() => {
+    if (!orderId) return;
+    const fetchOrder = async () => {
+      try {
+        const res = await axios.get(
+          `http://localhost:4000/api/users/orders/${orderId}`
+        );
+        const data = res.data.data || res.data;
+        setSellerId(data.seller_id?._id || data.seller_id || "");
+        setCarrierId(data.carrier_id?._id || data.carrier_id || "");
+        setStatus(data.status || "");
+        if (data.scheduled_time) {
+          const date = new Date(data.scheduled_time);
+          const localISO = new Date(
+            date.getTime() - date.getTimezoneOffset() * 60000
+          )
+            .toISOString()
+            .slice(0, 16);
+          setScheduledTime(localISO);
+        } else setScheduledTime("");
+      } catch (err) {
+        console.error("❌ Lỗi khi tải đơn:", err);
+      }
+    };
+    fetchOrder();
+  }, [orderId]);
+
+  // 🧠 Lấy lịch carrier 7 ngày tới
+  useEffect(() => {
+    const fetchCarrierSchedule = async () => {
+      try {
+        const res = await axios.get(
+          "http://localhost:4000/api/users/carriers/schedule"
+        );
+        if (res.data.success) {
+          setCarrierSchedule(res.data.data);
+        }
+      } catch (err) {
+        console.error("❌ Lỗi khi tải lịch carrier:", err);
+      }
+    };
+    fetchCarrierSchedule();
+  }, []);
+
+  // 🧠 Cập nhật đơn hàng
+  const handleSave = async () => {
+    if (!orderId) return;
+    setLoading(true);
     try {
-      const token = localStorage.getItem("auth_token");
-      if (!token) return;
-
-      const [sellerRes, carrierRes] = await Promise.all([
-        axios.get("http://localhost:4000/api/users/sellers", {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        axios.get("http://localhost:4000/api/users/carriers", {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ]);
-
-      setSellers(sellerRes.data.data || []);
-      setCarriers(carrierRes.data.data || []);
+      const res = await axios.put(
+        `http://localhost:4000/api/users/orders/${orderId}`,
+        {
+          seller_id: sellerId,
+          carrier_id: carrierId,
+          status,
+          scheduled_time: scheduledTime,
+        }
+      );
+      if (res.data.success !== false) {
+        setMessage("✅ Cập nhật thành công!");
+        setTimeout(() => onClose(), 1000);
+      } else {
+        setMessage("❌ Cập nhật thất bại!");
+      }
     } catch (error) {
-      console.error("❌ Lỗi khi tải danh sách:", error);
-      setMessage("⚠️ Không thể tải danh sách người dùng!");
+      console.error("❌ Lỗi khi cập nhật:", error);
+      setMessage("🚨 Không thể cập nhật đơn hàng!");
+    } finally {
+      setLoading(false);
     }
   };
-  fetchLists();
-}, []);
-
-// 🧠 Lấy chi tiết đơn hàng
-useEffect(() => {
-  if (!orderId) return;
-
-  const fetchOrder = async () => {
-    try {
-      const token = localStorage.getItem("auth_token");
-      if (!token) return;
-
-      const res = await axios.get(`http://localhost:4000/api/users/orders/${orderId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = res.data.data || res.data;
-      setSellerId(data.seller_id?._id || data.seller_id || "");
-      setCarrierId(data.carrier_id?._id || data.carrier_id || "");
-      setStatus(data.status || "");
-
-      if (data.scheduled_time) {
-        const date = new Date(data.scheduled_time);
-        const localISO = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-          .toISOString()
-          .slice(0, 16);
-        setScheduledTime(localISO);
-      } else setScheduledTime("");
-    } catch (err) {
-      console.error("❌ Lỗi khi tải đơn:", err);
-    }
-  };
-
-  fetchOrder();
-}, [orderId]);
-
-// 🧠 Lấy lịch carrier 7 ngày tới
-useEffect(() => {
-  const fetchCarrierSchedule = async () => {
-    try {
-      const token = localStorage.getItem("auth_token");
-      if (!token) return;
-
-      const res = await axios.get("http://localhost:4000/api/users/carriers/schedule", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.data.success) {
-        setCarrierSchedule(res.data.data);
-      }
-    } catch (err) {
-      console.error("❌ Lỗi khi tải lịch carrier:", err);
-    }
-  };
-  fetchCarrierSchedule();
-}, []);
-
-// 🧠 Cập nhật đơn hàng
-const handleSave = async () => {
-  if (!orderId) return;
-  setLoading(true);
-  try {
-    const token = localStorage.getItem("auth_token");
-    if (!token) return;
-
-    const res = await axios.put(
-      `http://localhost:4000/api/users/orders/${orderId}`,
-      {
-        seller_id: sellerId,
-        carrier_id: carrierId,
-        status,
-        scheduled_time: scheduledTime,
-      },
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
-
-    if (res.data.success !== false) {
-      setMessage("✅ Cập nhật thành công!");
-      setTimeout(() => onClose(), 1000);
-    } else {
-      setMessage("❌ Cập nhật thất bại!");
-    }
-  } catch (error) {
-    console.error("❌ Lỗi khi cập nhật:", error);
-    setMessage("🚨 Không thể cập nhật đơn hàng!");
-  } finally {
-    setLoading(false);
-  }
-};
 
   if (!isOpen) return null;
 

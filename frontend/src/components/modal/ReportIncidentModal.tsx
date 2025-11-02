@@ -12,26 +12,18 @@ const ReportIncidentModal = ({ orderId, customerId, onClose }) => {
 
   // 📦 Lấy danh sách các báo cáo trước đây
   useEffect(() => {
-  const fetchReports = async () => {
-    try {
-      const token = localStorage.getItem("auth_token");
-      if (!token) throw new Error("Chưa đăng nhập");
-
-      const res = await axios.get(
-        `http://localhost:4000/api/users/incidents/order/${orderId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      setPreviousReports(res.data);
-    } catch (err) {
-      console.error("❌ Lỗi khi tải báo cáo:", err);
-    }
-  };
-  if (orderId) fetchReports();
-}, [orderId]);
+    const fetchReports = async () => {
+      try {
+        const res = await axios.get(
+          `http://localhost:4000/api/users/incidents/order/${orderId}`
+        );
+        setPreviousReports(res.data);
+      } catch (err) {
+        console.error("❌ Lỗi khi tải báo cáo:", err);
+      }
+    };
+    fetchReports();
+  }, [orderId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -66,40 +58,15 @@ const ReportIncidentModal = ({ orderId, customerId, onClose }) => {
         evidence_file: evidenceUrl,
       };
 
-if (!token) return alert("Chưa đăng nhập");
+      await axios.post("http://localhost:4000/api/users/incidents/report", reportData);
 
-try {
-  // Gửi báo cáo
-  await axios.post(
-    "http://localhost:4000/api/users/incidents/report",
-    reportData,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
-
-  alert("✅ Báo cáo đã được gửi!");
-  onClose();
-  setDescription("");
-  setFile(null);
-
-  // Refresh list báo cáo
-  const res = await axios.get(
-    `http://localhost:4000/api/users/incidents/order/${orderId}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
-  setPreviousReports(res.data);
-} catch (err) {
-  console.error("❌ Lỗi khi gửi báo cáo:", err);
-  alert("Không thể gửi báo cáo.");
-}
-
+      alert("✅ Báo cáo đã được gửi!");
+      onClose();
+      setDescription("");
+      setFile(null);
+      // refresh list
+      const res = await axios.get(`http://localhost:4000/api/users/incidents/order/${orderId}`);
+      setPreviousReports(res.data);
     } catch (err) {
       console.error(err);
       alert("❌ Gửi thất bại!");

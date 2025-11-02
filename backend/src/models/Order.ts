@@ -14,8 +14,6 @@ const orderSchema = new mongoose.Schema(
     pickup_address: { type: String, required: true },
     delivery_address: { type: String, required: true },
     scheduled_time: { type: Date },
-
-    // ✅ Updated: full delivery workflow (bỏ DELIVERING, DELIVERED)
     status: {
       type: String,
       enum: [
@@ -27,7 +25,7 @@ const orderSchema = new mongoose.Schema(
         "ON_THE_WAY",
         "ARRIVED",
         "INCIDENT",
-        "DELIVERED",
+         "DELIVERED",
         "PAUSED",
         "DECLINED",
         "COMPLETED",
@@ -46,7 +44,13 @@ const orderSchema = new mongoose.Schema(
 
     declineReason: { type: String, default: null },
     signatureUrl: { type: String, default: null },
-
+ images: [
+      {
+        public_id: { type: String, required: true },
+        url: { type: String, required: true },
+        uploadedAt: { type: Date, default: Date.now }
+      }
+    ],
     auditLogs: [
       {
         at: { type: Date, default: Date.now },
@@ -54,13 +58,6 @@ const orderSchema = new mongoose.Schema(
         action: { type: String },
         note: { type: String, default: "" },
       },
-    ],
-    extra_fees: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "ExtraFee",
-        default: [],
-      }
     ],
   },
   { timestamps: true }

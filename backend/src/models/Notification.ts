@@ -10,12 +10,6 @@ interface Notification {
   type: "System" | "Order Update" | "DriverInterview";
   is_read: boolean;
   created_at: Date;
-   meta?: {
-    image_url?: string;
-    preferred_day?: string;
-    time_slot?: string;     
-    notes?: string;
-  };
 }
 
 const NotificationSchema = new Schema<Notification>(
@@ -28,13 +22,6 @@ const NotificationSchema = new Schema<Notification>(
     message: { type: String, required: true },
     type: { type: String, default: "DriverInterview", enum: ["System", "Order Update", "DriverInterview"] },
     is_read: { type: Boolean, default: false },
-    meta: {
-  image_url: { type: String },
-  preferred_day: { type: String },
-  time_slot: { type: String },
-  notes: { type: String },
-},
-
   },
   { timestamps: { createdAt: "created_at", updatedAt: false } }
 );

@@ -1,9 +1,11 @@
 import { Request, Response } from "express";
+import mongoose from "mongoose";
 import User from "../models/User";
 import Order from "../models/Order";
 import Feedback from "../models/Feedback";
 import Incident from "../models/Incident";
 import OrderItem from "../models/OrderItem";
+import OrderStatusLog from "../models/OrderStatusLog";
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
     const users = await User.find({}).select("-password_hash");
@@ -320,6 +322,7 @@ export const getDriverSchedule = async (req: Request, res: Response) => {
 export const confirmOrder = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const userId = (req as any).user?._id || (req as any).user?.id;
     const order = await Order.findById(id);
     if (!order) {
       return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng" });
@@ -331,6 +334,14 @@ export const confirmOrder = async (req: Request, res: Response) => {
 
     order.status = "CONFIRMED";
     await order.save();
+
+    // ✅ Tạo OrderStatusLog để ghi lại thời điểm chuyển sang CONFIRMED
+    await OrderStatusLog.create({
+      order_id: order._id,
+      updated_by: userId ? new mongoose.Types.ObjectId(userId) : undefined,
+      status: "CONFIRMED", // OrderStatusLog dùng "Confirmed" (chữ C hoa, còn lại thường)
+      note: "Đơn hàng đã được xác nhận từ Pending"
+    });
 
     res.status(200).json({
       success: true,
@@ -346,6 +357,59 @@ export const confirmOrder = async (req: Request, res: Response) => {
   }
 };
 
+
+
+// 🟧 Seller nhận đơn: chỉ nhận đơn đang Pending và chưa có seller_id
+export const claimSellerOrder = async (req: Request, res: Response) => {
+  try {
+    const sellerId = (req as any).user?.id;
+    const orderId = req.params.id;
+
+    if (!sellerId) {
+      return res.status(401).json({ success: false, message: "Bạn cần đăng nhập" });
+    }
+
+    const updated = await Order.findOneAndUpdate(
+      { _id: orderId, status: "Pending", seller_id: null },
+      {
+        $set: {
+          seller_id: sellerId,
+          // status intentionally unchanged to follow user's preference
+        },
+        $push: {
+          auditLogs: {
+            at: new Date(),
+            by: sellerId,
+            action: "SELLER_CLAIM",
+            note: "Seller đã nhận đơn",
+          },
+        },
+      },
+      { new: true }
+    )
+      .populate("seller_id", "_id full_name");
+
+    if (!updated) {
+      return res.status(409).json({
+        success: false,
+        message: "Đơn đã được seller khác nhận hoặc không còn ở trạng thái Pending",
+      });
+    }
+
+    const io = (req as any).io;
+    if (io) {
+      io.to("seller:all").emit("order:seller_claimed", {
+        orderId: String(updated._id),
+        sellerId: String(sellerId),
+      });
+    }
+
+    return res.status(200).json({ success: true, message: "Nhận đơn thành công", data: updated });
+  } catch (err: any) {
+    console.error("❌ Seller claim order failed:", err);
+    return res.status(500).json({ success: false, message: err.message || "Lỗi server" });
+  }
+};
 
 
 export const getOrdersByCustomer = async (req: Request, res: Response) => {
