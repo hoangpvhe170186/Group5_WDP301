@@ -552,6 +552,7 @@ export const createCommissionPayment = async (req: any, res: Response) => {
   try {
     const created = await createPaymentLink(payInput);
     payment.payosCode = created.paymentLinkId;
+    payment.payosOrderCode = payInput.orderCode; // Lưu numericCode để webhook tìm kiếm
     payment.payosLink = created.checkoutUrl;
     payment.qrCode = created.qrCode;
     await payment.save();
