@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect } from "react";
 import {
   Search,
@@ -21,6 +19,7 @@ import {
 } from "lucide-react";
 import { adminApi, type User as Driver } from "@/services/admin.service"; // Import adminApi
 import { useNavigate } from "react-router-dom";
+import DriverDetail from "./DriverDetail"; // Import DriverDetail component
 
 interface Driver {
   id: string;
@@ -29,7 +28,7 @@ interface Driver {
   phone: string;
   licenseNumber: string;
   vehicleType: string;
-  status: "active" | "inactive" | "suspended";
+  status: "active" | "inactive" | "banned";
   rating: number;
   totalTrips: number;
   completedTrips: number;
@@ -64,6 +63,8 @@ export default function DriverManagement() {
   const [totalDrivers, setTotalDrivers] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null); // Thêm state để lưu ID của tài xế được chọn
+  const [showDriverDetail, setShowDriverDetail] = useState(false); // Thêm state để hiển thị/ẩn chi tiết tài xế
   const itemsPerPage = 5;
   const navigate = useNavigate();
 
@@ -91,8 +92,9 @@ export default function DriverManagement() {
   // ⚙️ Hàm xử lý hành động
   const handleViewDriver = async (driverId: string) => {
     try {
-      const driver = await adminApi.getUserDetail(driverId);
-      navigate(`/admin/drivers/${driverId}`);
+      // Thay vì chuyển hướng, cập nhật state để hiển thị chi tiết
+      setSelectedDriverId(driverId);
+      setShowDriverDetail(true);
     } catch (err: any) {
       setError("Lỗi khi lấy chi tiết tài xế");
       console.error(err);
@@ -116,6 +118,12 @@ export default function DriverManagement() {
         console.error(err);
       }
     }
+  };
+
+  // Hàm để quay lại danh sách từ trang chi tiết
+  const handleBackFromDetail = () => {
+    setShowDriverDetail(false);
+    setSelectedDriverId(null);
   };
 
   const toggleExpandRow = (driverId: string) => {
@@ -230,6 +238,11 @@ export default function DriverManagement() {
     );
   }
 
+  // Nếu đang hiển thị chi tiết tài xế, render component DriverDetail
+  if (showDriverDetail) {
+    return <DriverDetail driverId={selectedDriverId || undefined} onBack={handleBackFromDetail} />;
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -316,20 +329,6 @@ export default function DriverManagement() {
               <option value="inactive">Không hoạt động</option>
               <option value="suspended">Bị khóa</option>
             </select>
-            <select
-              value={filterRating}
-              onChange={(e) => setFilterRating(e.target.value as any)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-            >
-              <option value="all">Tất cả rating</option>
-              <option value="high">Cao (≥4.5)</option>
-              <option value="medium">Trung bình (4.0-4.5)</option>
-              <option value="low">Thấp (&lt;4.0)</option>
-            </select>
-            <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2">
-              <Filter className="w-4 h-4" />
-              Bộ lọc
-            </button>
           </div>
         </div>
       </div>
@@ -423,14 +422,7 @@ export default function DriverManagement() {
                       <div className="text-sm text-gray-900">{driver.vehicleType || "Không xác định"}</div>
                       <div className="text-sm text-gray-500">{driver.licenseNumber || "Không xác định"}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <Star className={`w-4 h-4 mr-1 ${getRatingColor(driver.rating)}`} />
-                        <span className={`text-sm font-medium ${getRatingColor(driver.rating)}`}>
-                          {driver.rating.toFixed(1)}
-                        </span>
-                      </div>
-                    </td>
+
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
                         {driver.completedTrips}/{driver.totalTrips}

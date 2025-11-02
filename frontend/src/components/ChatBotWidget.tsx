@@ -1,5 +1,6 @@
 import { socket } from "@/lib/socket";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { io, Socket } from "socket.io-client";
 
 // --- Kiểu dữ liệu ---
 type Sender = "guest" | "seller" | "bot";
@@ -14,25 +15,18 @@ const API_BASE =
 const SOCKET_URL =
   import.meta.env.VITE_SOCKET_URL || API_BASE || "http://localhost:4000";
 
-// --- RoomID theo CUSTOMER ID ---
+// --- RoomID duy trì theo trình duyệt ---
 function useRoomId() {
-  // ✅ Ưu tiên lấy customer_id từ localStorage
-  const customerId = localStorage.getItem("userId") || localStorage.getItem("customer_id");
-  
-  if (customerId) {
-    return `customer:${customerId}`; // 🔹 Gộp tất cả tin nhắn theo customer
-  }
-
-  // Fallback: tạo guest ID nếu chưa đăng nhập
-  const KEY = "he_chat_guest_id";
-  let guestId = localStorage.getItem(KEY);
-  if (!guestId) {
-    guestId = `guest_${Date.now()}`;
-    localStorage.setItem(KEY, guestId);
-  }
-  return `customer:${guestId}`;
+  const KEY = "he_chat_room_id";
+  return useMemo(() => {
+    let id = localStorage.getItem(KEY);
+    if (!id) {
+      id = `guest_${Date.now()}`;
+      localStorage.setItem(KEY, id);
+    }
+    return id;
+  }, []);
 }
-
 async function persistMessage({
   roomId,
   sender,
@@ -52,13 +46,8 @@ async function persistMessage({
     });
   } catch {}
 }
-
 // --- Component chính ---
 export default function ChatBotWidget() {
-  const seenIdsRef = useRef<Set<string>>(new Set());
-  const recentKeyRef = useRef<Map<string, number>>(new Map());
-  const dedupeWindowMs = 3000;
-  
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"bot" | "agent">("bot");
   const [messages, setMessages] = useState<UiMessage[]>([]);
@@ -66,6 +55,7 @@ export default function ChatBotWidget() {
   const [connErr, setConnErr] = useState<string | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const socketRef = useRef<Socket | null>(null);
 
   const roomId = useRoomId();
   const displayName =
@@ -75,48 +65,50 @@ export default function ChatBotWidget() {
 
   // ✅ Kết nối socket 1 lần duy nhất
   useEffect(() => {
+  // Reset lỗi cũ
+  setConnErr(null);
+
+  // ✅ Tham gia room
+  socket.emit("join_room", roomId);
+
+  // ✅ Khi kết nối thành công
+  socket.on("connect", () => {
+    console.log("🔌 Connected to socket server");
     setConnErr(null);
+  });
 
-    // ✅ Tham gia room theo customer
-    socket.emit("join_room", roomId);
+  // ✅ Khi lỗi kết nối
+  socket.on("connect_error", (err) => {
+    console.error("⚠️ Socket connection error:", err);
+    setConnErr(err?.message || "Không thể kết nối server.");
+  });
 
-    // ✅ Khi kết nối thành công
-    socket.on("connect", () => {
-      console.log("🔌 Connected to socket server");
-      setConnErr(null);
-    });
-
-    // ✅ Khi lỗi kết nối
-    socket.on("connect_error", (err) => {
-      console.error("⚠️ Socket connection error:", err);
-      setConnErr(err?.message || "Không thể kết nối server.");
-    });
-
-    // ✅ Khi nhận tin nhắn realtime
-    socket.on("receive_message", (data) => {
+  // ✅ Khi nhận tin nhắn realtime
+  socket.on(
+    "receive_message",
+    (data: UiMessage & { roomId?: string; name?: string }) => {
+      // Nếu roomId không trùng thì bỏ qua
       if (data.roomId && data.roomId !== roomId) return;
 
-      // Dedupe: theo tempId / key 3s
-      if (data.tempId) {
-        if (seenIdsRef.current.has(data.tempId)) return;
-        seenIdsRef.current.add(data.tempId);
-      } else {
-        const key = `${data.sender}|${data.text}|${roomId}`;
-        const now = Date.now();
-        const last = recentKeyRef.current.get(key) || 0;
-        if (now - last < dedupeWindowMs) return;
-        recentKeyRef.current.set(key, now);
-      }
-
       setMessages((prev) => [...prev, data]);
-    });
 
-    return () => {
-      socket.off("connect");
-      socket.off("connect_error");
-      socket.off("receive_message");
-    };
-  }, [roomId]);
+      // ✅ Lưu DB khi nhận tin từ seller/bot qua socket
+      persistMessage({
+        roomId,
+        sender: (data.sender as any) || "seller",
+        senderName: data?.name,
+        text: data.text,
+      });
+    }
+  );
+
+  // ✅ Cleanup
+  return () => {
+    socket.off("connect");
+    socket.off("connect_error");
+    socket.off("receive_message");
+  };
+}, [roomId]);
 
   // Lấy lịch sử khi chuyển sang agent
   useEffect(() => {
@@ -161,20 +153,19 @@ export default function ChatBotWidget() {
   const sendMessage = async () => {
     const text = input.trim();
     if (!text) return;
-    const tempId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-    seenIdsRef.current.add(tempId);
+    const name = displayName;
 
     // ✅ append UI + lưu DB (khách)
     setMessages((prev) => [...prev, { sender: "guest", text }]);
     setInput("");
+    persistMessage({ roomId, sender: "guest", senderName: name, text });
 
     if (mode === "agent") {
-      socket.emit("send_message", { 
-        roomId, 
-        sender: "guest", 
-        name: displayName, 
-        text, 
-        tempId 
+      socketRef.current?.emit("send_message", {
+        roomId,
+        sender: "guest",
+        name: displayName,
+        text,
       });
       return;
     }
@@ -222,7 +213,7 @@ export default function ChatBotWidget() {
       },
     ]);
 
-    socket.emit("notify_support", {
+    socketRef.current?.emit("notify_support", {
       roomId,
       preview: "Khách yêu cầu hỗ trợ trực tiếp",
       name: displayName,
@@ -262,7 +253,7 @@ export default function ChatBotWidget() {
           <div className="flex-1 p-4 space-y-2 overflow-y-auto bg-orange-50/20">
             {connErr && (
               <div className="text-xs text-red-600 mb-2">
-                ⚠️ {connErr} – kiểm tra backend có đang chạy ở {SOCKET_URL}{" "}
+                ⚠️ {connErr} — kiểm tra backend có đang chạy ở {SOCKET_URL}{" "}
                 không.
               </div>
             )}
@@ -319,7 +310,7 @@ export default function ChatBotWidget() {
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
-                  sendMessage();
+                  sendMessage(); // <- hàm bạn đang dùng để gửi
                 }
               }}
               placeholder={

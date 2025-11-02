@@ -2,6 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import cloudinary from "../lib/cloudinary";
 import { requireAuth } from "../middleware/requireAuth";
+<<<<<<< HEAD
 import streamifier from "streamifier";
 
 const router = Router();
@@ -119,6 +120,19 @@ router.post("/", upload.single("file"), async (req, res) => {
     res.status(500).json({ message: "Có lỗi khi xử lý upload" });
   }
 });
+=======
+import fs from "fs";
+
+const router = Router();
+const upload = multer({ dest: "tmp/" }); // lưu tạm lên đĩa
+
+// POST /api/upload/images  (multi, trả về [{public_id,url}])
+router.post("/images", requireAuth, upload.array("files", 10), async (req, res) => {
+  try {
+    const folder = (req.body.folder as string) || "orders/incidents";
+    const files = (req.files as Express.Multer.File[]) || [];
+    const results: { public_id: string; url: string }[] = [];
+>>>>>>> long
 
 // ✅ FIXED: Upload vehicle image
 router.post("/vehicle", requireAuth, upload.single("file"), async (req, res) => {

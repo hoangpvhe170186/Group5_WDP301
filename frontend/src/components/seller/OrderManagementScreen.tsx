@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
+<<<<<<< HEAD
 import { Eye, Truck, CheckCircle, Search, MessageCircle, Package, CheckSquare, X, Camera } from "lucide-react";
 import OrderDetailModal from "./OrderDetailModal";
 import OrderActionModal from "./OrderActionModal";
@@ -8,8 +9,13 @@ import SellerChat from "./SellerChat";
 import OrderItemModal from "./OrderItemModal";
 import EditPackageModal from "./EditPackageModal";
 import OrderImageUploadModal from "./OrderImageUploadModal"; // Import component mới
+=======
+import { Eye, Truck, CheckCircle, Search } from "lucide-react";
+import OrderDetailModal from "./OrderDetailModal";
+import OrderActionModal from "./OrderActionModal";
+>>>>>>> long
 
-const ITEMS_PER_PAGE = 8;
+const ITEMS_PER_PAGE = 8; // số đơn / trang
 
 const OrderManagementScreen = () => {
   const [orders, setOrders] = useState([]);
@@ -34,6 +40,7 @@ const OrderManagementScreen = () => {
 
   // Phân trang
   const [currentPage, setCurrentPage] = useState(1);
+<<<<<<< HEAD
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [currentChatRoom, setCurrentChatRoom] = useState("");
   const [currentOrderCode, setCurrentOrderCode] = useState("");
@@ -61,17 +68,18 @@ const OrderManagementScreen = () => {
       setTimeout(() => setMessage(""), 5000);
     });
   };
+=======
+>>>>>>> long
 
   // 🧠 Lấy danh sách đơn hàng
   const fetchOrders = async () => {
     try {
-      const token = localStorage.getItem("auth_token");
+      const token = localStorage.getItem("auth-token"); // hoặc sessionStorage, hoặc state/context
       const res = await axios.get("http://localhost:4000/api/users/orders", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
       setOrders(res.data || []);
     } catch (err) {
       console.error("❌ Lỗi khi tải danh sách đơn hàng:", err);
@@ -87,17 +95,8 @@ const OrderManagementScreen = () => {
   // ✅ Hàm xác nhận đơn
   const handleConfirmOrder = async (orderId) => {
     try {
-      const token = localStorage.getItem("auth_token");
-      if (!token) return alert("Bạn cần đăng nhập!");
-
       const res = await axios.post(
-        `http://localhost:4000/api/users/orders/${orderId}/confirm`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        `http://localhost:4000/api/users/orders/${orderId}/confirm`
       );
       if (res.data.success) {
         setMessage("✅ Đơn hàng đã được xác nhận!");
@@ -119,7 +118,8 @@ const OrderManagementScreen = () => {
         o.orderCode?.toLowerCase().includes(search.toLowerCase()) ||
         o.pickup_address?.toLowerCase().includes(search.toLowerCase()) ||
         o.delivery_address?.toLowerCase().includes(search.toLowerCase());
-      const matchStatus = statusFilter === "All" || o.status === statusFilter;
+      const matchStatus =
+        statusFilter === "All" || o.status === statusFilter;
       return matchSearch && matchStatus;
     });
   }, [orders, search, statusFilter]);
@@ -141,12 +141,14 @@ const OrderManagementScreen = () => {
       ON_THE_WAY: "bg-indigo-100 text-indigo-800",
       ARRIVED: "bg-cyan-100 text-cyan-800",
       COMPLETED: "bg-emerald-100 text-emerald-800",
-      DECLINED: "bg-red-100 text-red-800",
+      DECLINED
+
+: "bg-red-100 text-red-800",
       Cancel: "bg-gray-300 text-gray-700",
       Incident: "bg-orange-100 text-orange-800",
       Pause: "bg-slate-200 text-slate-800",
     };
-
+    
     const colorClass = colors[text] || "bg-gray-100 text-gray-800";
     return (
       <span
@@ -289,6 +291,7 @@ const OrderManagementScreen = () => {
                       <Eye className="w-5 h-5 cursor-pointer" />
                     </button>
 
+<<<<<<< HEAD
                     {/* ✅ Nút nhắn tin */}
                     <button
                       onClick={() => openOrderChat(order)}
@@ -340,6 +343,8 @@ const OrderManagementScreen = () => {
                       </button>
                     )}
 
+=======
+>>>>>>> long
                     {/* Xác nhận đơn */}
                     {order.status === "Pending" && (
                       <button
@@ -406,6 +411,7 @@ const OrderManagementScreen = () => {
         </div>
       )}
 
+<<<<<<< HEAD
       {/* ✅ Modal Upload Ảnh */}
       {isImageUploadOpen && selectedOrderForImages && (
         <OrderImageUploadModal
@@ -491,6 +497,8 @@ const OrderManagementScreen = () => {
         </div>
       )}
 
+=======
+>>>>>>> long
       {/* Modal chi tiết */}
       {isDetailOpen && selectedOrderDetailId && (
         <OrderDetailModal
