@@ -11,7 +11,7 @@ import ForgotPasswordPage from "./components/auth/forgot-password";
 import VehiclePricingPage from "./pages/VehiclePricingPage";
 import CheckoutPage from "./pages/CheckoutPage";
 // ... các trang khác: /portal (role), /login, ...
-import AdminDashboard from "./pages/AdminDashboard";
+import AdminDashboard from "./pages/AdminDashboardPage";
 import Seller from "./pages/SellerPage";
 import OrderCreatePage from "./pages/OrderCreatePage";
 import OrderSearchPage from "./pages/OrderSearchPage";

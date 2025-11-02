@@ -286,3 +286,269 @@ export const updateStatusCustomer = async (req: Request, res: Response) => {
     });
   }
 };
+
+
+/**
+ * 📊 Lấy thống kê trạng thái đơn hàng (cho Pie Chart)
+ * API: GET /api/admin/orders/status-stats
+ */
+export const getOrderStatusStats = async (req: Request, res: Response) => {
+  try {
+    const statusStats = await Order.aggregate([
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Chuyển đổi thành object dễ sử dụng
+    const stats = statusStats.reduce((acc: any, curr) => {
+      acc[curr._id] = curr.count;
+      return acc;
+    }, {});
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        completed: stats["Completed"] || 0,      // Hoàn thành
+        cancelled: stats["Cancelled"] || 0,      // Đã hủy
+        delivering: stats["Delivering"] || 0,    // Đang giao
+        pending: stats["Pending"] || 0,          // Chờ xử lý
+        // Thêm các trạng thái khác nếu có
+        confirmed: stats["Confirmed"] || 0,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Lỗi khi lấy thống kê trạng thái đơn hàng:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server khi lấy thống kê trạng thái đơn hàng",
+    });
+  }
+};
+
+/**
+ * 🚗 Lấy hiệu suất tài xế (cho Bar Chart)
+ * API: GET /api/admin/drivers/performance?limit=5
+ */
+export const getDriverPerformance = async (req: Request, res: Response) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 5;
+
+    // Aggregate đơn hàng theo tài xế
+    const driverStats = await Order.aggregate([
+      {
+        $match: {
+          driver_id: { $ne: null }, // Chỉ lấy đơn có tài xế
+        },
+      },
+      {
+        $group: {
+          _id: "$driver_id",
+          totalOrders: { $sum: 1 },
+          completedOrders: {
+            $sum: {
+              $cond: [{ $eq: ["$status", "Completed"] }, 1, 0],
+            },
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: "users", // Tên collection của User
+          localField: "_id",
+          foreignField: "_id",
+          as: "driverInfo",
+        },
+      },
+      {
+        $unwind: "$driverInfo",
+      },
+      {
+        $project: {
+          driverId: "$_id",
+          driverName: "$driverInfo.full_name",
+          totalOrders: 1,
+          completedOrders: 1,
+        },
+      },
+      {
+        $sort: { completedOrders: -1 }, // Sắp xếp theo số chuyến hoàn thành
+      },
+      {
+        $limit: limit,
+      },
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: driverStats,
+    });
+  } catch (error) {
+    console.error("❌ Lỗi khi lấy hiệu suất tài xế:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server khi lấy hiệu suất tài xế",
+    });
+  }
+};
+
+/**
+ * 📈 Lấy dashboard với % thay đổi so với tháng trước
+ * API: GET /api/admin/dashboard/enhanced
+ */
+export const getDashboardEnhanced = async (req: Request, res: Response) => {
+  try {
+    // Ngày hiện tại và tháng trước
+    const now = new Date();
+    const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+
+    // ===== THÁNG NÀY =====
+    const [
+      totalCustomersNow,
+      totalDriversNow,
+      totalSellersNow,
+      ordersThisMonth,
+    ] = await Promise.all([
+      User.countDocuments({ role: "Customer" }),
+      User.countDocuments({ role: "Driver" }),
+      User.countDocuments({ role: "Seller" }),
+      Order.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: startOfThisMonth },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalOrders: { $sum: 1 },
+            totalRevenue: { $sum: "$total_price" },
+          },
+        },
+      ]),
+    ]);
+
+    const totalOrdersNow = ordersThisMonth[0]?.totalOrders || 0;
+    const totalRevenueNow = ordersThisMonth[0]?.totalRevenue || 0;
+
+    // ===== THÁNG TRƯỚC =====
+    const [
+      totalCustomersLast,
+      totalDriversLast,
+      totalSellersLast,
+      ordersLastMonth,
+    ] = await Promise.all([
+      User.countDocuments({
+        role: "Customer",
+        createdAt: { $lt: startOfThisMonth },
+      }),
+      User.countDocuments({
+        role: "Driver",
+        createdAt: { $lt: startOfThisMonth },
+      }),
+      User.countDocuments({
+        role: "Seller",
+        createdAt: { $lt: startOfThisMonth },
+      }),
+      Order.aggregate([
+        {
+          $match: {
+            createdAt: {
+              $gte: startOfLastMonth,
+              $lte: endOfLastMonth,
+            },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalOrders: { $sum: 1 },
+            totalRevenue: { $sum: "$total_price" },
+          },
+        },
+      ]),
+    ]);
+
+    const totalOrdersLast = ordersLastMonth[0]?.totalOrders || 0;
+    const totalRevenueLast = ordersLastMonth[0]?.totalRevenue || 0;
+
+    // ===== TÍNH % THAY ĐỔI =====
+    const calculateChange = (current: number, previous: number) => {
+      if (previous === 0) return current > 0 ? 100 : 0;
+      return Math.round(((current - previous) / previous) * 100);
+    };
+
+    const totalCustomersChange = calculateChange(
+      totalCustomersNow,
+      totalCustomersLast
+    );
+    const totalOrdersChange = calculateChange(totalOrdersNow, totalOrdersLast);
+    const totalRevenueChange = calculateChange(
+      totalRevenueNow,
+      totalRevenueLast
+    );
+
+    // ===== BIỂU ĐỒ 7 NGÀY GẦN NHẤT =====
+    const orderStats = await Order.aggregate([
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+          },
+          count: { $sum: 1 },
+          totalRevenue: { $sum: "$total_price" },
+        },
+      },
+      { $sort: { _id: -1 } },
+      { $limit: 7 },
+    ]);
+
+    const ordersByTime = orderStats
+      .map((d) => ({
+        date: d._id,
+        count: d.count,
+      }))
+      .reverse();
+
+    const revenueByTime = orderStats
+      .map((d) => ({
+        date: d._id,
+        total: d.totalRevenue,
+      }))
+      .reverse();
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        totalCustomers: totalCustomersNow,
+        totalCustomersChange,
+        
+        totalDrivers: totalDriversNow,
+        totalDriversChange: calculateChange(totalDriversNow, totalDriversLast),
+        
+        totalSellers: totalSellersNow,
+        totalSellersChange: calculateChange(totalSellersNow, totalSellersLast),
+        
+        totalOrders: totalOrdersNow,
+        totalOrdersChange,
+        
+        totalRevenue: totalRevenueNow,
+        totalRevenueChange,
+        
+        ordersByTime,
+        revenueByTime,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Lỗi khi lấy dashboard enhanced:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server khi lấy dashboard enhanced",
+    });
+  }
+};

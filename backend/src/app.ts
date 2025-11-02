@@ -63,7 +63,6 @@ app.use("/api/driver-interviews", driverInterviewRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/carrier", carrierRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
-app.use("/api/admin", sellerSalaryRoutes);
 
 // 👉 mới mount
 app.use("/api/feedback", feedbackRoute);
