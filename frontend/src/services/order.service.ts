@@ -67,9 +67,9 @@ export const orderApi = {
       const { data } = await api.get("/orders/myorder", {
         headers: { Authorization: `Bearer ${getAuthToken()}` },
       });
-      const rawOrders = data.data || []; // Lấy mảng từ data.data
+      const rawOrders = data.orders || data.data || [];
       const orders: Order[] = rawOrders.map((o: any) => ({
-        code: o.orderCode || "",
+          code: o.orderCode || o.code || o.order_code || "",
         id: String(o._id),
         pickupAddress: o.pickup_address || "",
         deliveryAddress: o.delivery_address || "",
