@@ -10,7 +10,7 @@ export const getDashboardOverview = async (req: Request, res: Response) => {
     // Tổng số user theo vai trò
     const [totalCustomers, totalDrivers, totalSellers] = await Promise.all([
       User.countDocuments({ role: "Customer" }),
-      User.countDocuments({ role: "Driver" }),
+      User.countDocuments({ role: "Carrier" }),
       User.countDocuments({ role: "Seller" }),
     ]);
 
@@ -132,7 +132,7 @@ export const getPaginationAllOrders = async (req: Request, res: Response) => {
       Order.find()
         .populate("seller_id")
         .populate("package_id")
-        .populate("driver_id")
+        .populate("carrier_id")
         .populate("customer_id")
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -165,26 +165,26 @@ export const getPaginationDrivers = async (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 10;
     const skip = (page - 1) * limit;
 
-    const [drivers, total] = await Promise.all([
-      User.find({ role: "Driver", status: "Active" })
+    const [carriers, total] = await Promise.all([
+      User.find({ role: "Carrier", status: "Active" })
         .select("_id full_name email phone")
         .skip(skip)
         .limit(limit),
-      User.countDocuments({ role: "Driver", status: "Active" }),
+      User.countDocuments({ role: "Carrier", status: "Active" }),
     ]);
 
     res.status(200).json({
       success: true,
-      data: drivers,
+      data: carriers,
       total,
       currentPage: page,
       totalPages: Math.ceil(total / limit),
     });
   } catch (error) {
-    console.error("Error getting drivers:", error);
+    console.error("Error getting carriers:", error);
     res.status(500).json({
       success: false,
-      message: "Lỗi server khi lấy danh sách driver",
+      message: "Lỗi server khi lấy danh sách carrier",
     });
   }
 };
@@ -331,7 +331,7 @@ export const getOrderStatusStats = async (req: Request, res: Response) => {
 
 /**
  * 🚗 Lấy hiệu suất tài xế (cho Bar Chart)
- * API: GET /api/admin/drivers/performance?limit=5
+ * API: GET /api/admin/carriers/performance?limit=5
  */
 export const getDriverPerformance = async (req: Request, res: Response) => {
   try {
@@ -341,12 +341,12 @@ export const getDriverPerformance = async (req: Request, res: Response) => {
     const driverStats = await Order.aggregate([
       {
         $match: {
-          driver_id: { $ne: null }, // Chỉ lấy đơn có tài xế
+          carrier_id: { $ne: null }, // Chỉ lấy đơn có tài xế
         },
       },
       {
         $group: {
-          _id: "$driver_id",
+          _id: "$carrier_id",
           totalOrders: { $sum: 1 },
           completedOrders: {
             $sum: {
@@ -368,7 +368,7 @@ export const getDriverPerformance = async (req: Request, res: Response) => {
       },
       {
         $project: {
-          driverId: "$_id",
+          carrierId: "$_id",
           driverName: "$driverInfo.full_name",
           totalOrders: 1,
           completedOrders: 1,
@@ -415,7 +415,7 @@ export const getDashboardEnhanced = async (req: Request, res: Response) => {
       ordersThisMonth,
     ] = await Promise.all([
       User.countDocuments({ role: "Customer" }),
-      User.countDocuments({ role: "Driver" }),
+      User.countDocuments({ role: "Carrier" }),
       User.countDocuments({ role: "Seller" }),
       Order.aggregate([
         {
@@ -448,7 +448,7 @@ export const getDashboardEnhanced = async (req: Request, res: Response) => {
         createdAt: { $lt: startOfThisMonth },
       }),
       User.countDocuments({
-        role: "Driver",
+        role: "Carrier",
         createdAt: { $lt: startOfThisMonth },
       }),
       User.countDocuments({

@@ -120,7 +120,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
     const orders = await Order.find()
       .populate("seller_id")
       .populate("package_id")
-      .populate("driver_id")
+      .populate("carrier_id")
       .populate("customer_id")
       .sort({ createdAt: -1 }); // ✅ Sắp xếp từ sớm nhất → muộn nhất
 
@@ -136,20 +136,20 @@ export const getAllOrders = async (req: Request, res: Response) => {
 };
 export const getDrivers = async (req: Request, res: Response) => {
   try {
-    const drivers = await User.find({ role: "Driver", status: "Active" }).select(
+    const carriers = await User.find({ role: "Carrier", status: "Active" }).select(
       "_id full_name email phone"
     );
 
     res.status(200).json({
       success: true,
-      data: drivers,
-      total: drivers.length,
+      data: carriers,
+      total: carriers.length,
     });
   } catch (error) {
-    console.error("Error getting drivers:", error);
+    console.error("Error getting carriers:", error);
     res.status(500).json({
       success: false,
-      message: "Lỗi server khi lấy danh sách driver",
+      message: "Lỗi server khi lấy danh sách carrier",
     });
   }
 };
@@ -197,21 +197,20 @@ export const getSellers = async (req: Request, res: Response) => {
 export const assignOrder = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { driver_id, carrier_id } = req.body;
+    const {  carrier_id } = req.body;
 
-    if (!driver_id || !carrier_id) {
-      return res.status(400).json({ success: false, message: "Thiếu driver_id hoặc carrier_id" });
+    if ( !carrier_id) {
+      return res.status(400).json({ success: false, message: "Thiếu d carrier_id" });
     }
 
     const updatedOrder = await Order.findByIdAndUpdate(
       id,
       {
-        driver_id,
         carrier_id,
         status: "Assigned", // ✅ CHỈ ĐÁNH DẤU ĐÃ GIAO VIỆC
       },
       { new: true }
-    ).populate("driver_id carrier_id");
+    ).populate("carrier_id");
 
     if (!updatedOrder) {
       return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng" });
@@ -234,7 +233,7 @@ export const getOrderById = async (req: Request, res: Response) => {
     const order = await Order.findById(req.params.id)
       .populate("seller_id")
       .populate("package_id")
-      .populate("driver_id")
+      .populate("carrier_id")
       .populate("customer_id");  
     if (!order) return res.status(404).json({ message: "Order not found" });
     const orderItems = await OrderItem.find({ order_id: req.params.id });
@@ -298,24 +297,24 @@ export const getDriverSchedule = async (req: Request, res: Response) => {
     const nextWeek = new Date();
     nextWeek.setDate(today.getDate() + 7);
     
-    // Lấy tất cả orders có driver_id và scheduled_time trong 7 ngày tới
+    // Lấy tất cả orders có carrier_id và scheduled_time trong 7 ngày tới
     const orders = await Order.find({
-      driver_id: { $ne: null },
+      carrier_id: { $ne: null },
       scheduled_time: { $gte: today, $lte: nextWeek }
-    }).populate("driver_id", "full_name");
+    }).populate("carrier_id", "full_name");
     
     const scheduleMap: Record<string, any[]> = {};
     
     for (const order of orders) {
-      const driver = order.driver_id?.full_name || "Chưa rõ";
+      const carrier = order.carrier_id?.full_name || "Chưa rõ";
       const date = new Date(order.scheduled_time).toISOString().slice(0, 10);
       if (!scheduleMap[date]) scheduleMap[date] = [];
-      scheduleMap[date].push(driver);
+      scheduleMap[date].push(carrier);
     }
     
     res.status(200).json({ success: true, data: scheduleMap });
   } catch (err) {
-    console.error("❌ Lỗi khi lấy lịch driver:", err);
+    console.error("❌ Lỗi khi lấy lịch carrier:", err);
     res.status(500).json({ success: false, message: "Không thể tải lịch tài xế!" });
   }
 };
@@ -423,7 +422,7 @@ export const getOrdersByCustomer = async (req: Request, res: Response) => {
       .populate("seller_id")
       .populate("carrier_id")
       .populate("package_id")
-      .populate("driver_id")
+      .populate("carrier_id")
       .populate("customer_id")
       .sort({ createdAt: -1 }); // 🕒 Mới nhất lên đầu
 
@@ -519,7 +518,7 @@ export const getCompletedAndCancelledOrders = async (req: Request, res: Response
     const orders = await Order.find({
       status: { $in: ["COMPLETED", "CANCELLED"] },
     })
-      .populate("customer_id seller_id carrier_id driver_id")
+      .populate("customer_id seller_id carrier_id carrier_id")
       .sort({ createdAt: -1 });
 
     res.json(orders);

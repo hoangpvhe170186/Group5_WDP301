@@ -47,8 +47,8 @@ router.post("/orders/:id/confirm", confirmOrder);
 // ---------------------------
 //  DRIVER
 // ---------------------------
-router.get("/drivers", getDrivers);
-router.get("/drivers/schedule", getDriverSchedule);
+router.get("/carriers", getDrivers);
+router.get("/carriers/schedule", getDriverSchedule);
 
 
 // ---------------------------
@@ -65,7 +65,7 @@ router.get("/", getAllUsers);
 router.put("/:id", updateUser);
 router.delete("/:id", deleteUser);
 router.post("/orders/:id/assign", assignOrder);
-router.get("/drivers/schedule", getDriverSchedule);
+router.get("/carriers/schedule", getDriverSchedule);
 router.post("/orders/:id/confirm", confirmOrder);
 router.get("/feedback/order/:order_id", getFeedbackByOrderId);
 router.post("/feedbacks", RatingOrders);

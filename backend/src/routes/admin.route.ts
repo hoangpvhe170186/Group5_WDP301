@@ -26,7 +26,7 @@ router.get("/orders/pagination", getPaginationAllOrders);
 
 router.get("/customers/pagination", getPaginationCustomers);
 
-router.get("/drivers/pagination", getPaginationDrivers);
+router.get("/carriers/pagination", getPaginationDrivers);
 
 
 router.get("/sellers/pagination", getPaginationSellers);
@@ -35,6 +35,6 @@ router.get("/orders/status", getOrderStatusStats);
 
 router.get("/dashboard/enhanced", getDashboardEnhanced);
 
-router.get("/drivers/performance", getDriverPerformance);
+router.get("/carriers/performance", getDriverPerformance);
 
 export default router;

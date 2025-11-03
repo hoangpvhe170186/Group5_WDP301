@@ -22,7 +22,7 @@ export interface User {
   email: string;
   phone?: string;
   avatar?: string;
-  role: "Customer" | "Driver" | "Seller" | "Admin";
+  role: "Customer" | "Seller" |"Carrier" | "Admin";
   status: "Active" | "Inactive" | "Banned";
   banReason?: string; // Add this line
   createdAt: string;
@@ -40,7 +40,7 @@ export interface Order {
   pickupAddress: string;
   deliveryAddress: string;
   seller?: any;
-  driver?: any;
+  carrier?: any;
   customer?: any;
   createdAt: string;
 }
@@ -122,7 +122,6 @@ const normalizeOrder = (o: any): Order => ({
   status: o.status || "",
   price: o.total_price || 0,
   seller: o.seller_id || null,
-  driver: o.driver_id || null,
   customer: o.customer_id || null,
   createdAt: o.createdAt
     ? new Date(o.createdAt).toLocaleString("vi-VN")
@@ -199,10 +198,10 @@ export const adminApi = {
 
   /**
    * 🚚 Lấy thống kê hiệu suất tài xế
-   * API: GET /api/admin/drivers/performance
+   * API: GET /api/admin/carriers/performance
    */
   async getDriverPerformance(limit: number = 5): Promise<DriverPerformance[]> {
-    const { data } = await api.get("/admin/drivers/performance", {
+    const { data } = await api.get("/admin/carriers/performance", {
       params: { limit },
       headers: { Authorization: `Bearer ${getAuthToken()}` },
     });
@@ -213,10 +212,10 @@ export const adminApi = {
   // 👥 USER MANAGEMENT
   // ===========================================================
   /**
-   * 🔍 Lấy danh sách user theo vai trò (Customer / Driver / Seller)
+   * 🔍 Lấy danh sách user theo vai trò (Customer / Carrier / Seller)
    * API: GET /api/admin/{role}/pagination?page=1&limit=10
    */
-  async getUsersByRole(role: "customers" | "drivers" | "sellers", page = 1, limit = 10) {
+  async getUsersByRole(role: "customers" | "carriers" | "sellers", page = 1, limit = 10) {
     const { data } = await api.get(`/admin/${role}/pagination`, {
       params: { page, limit },
       headers: { Authorization: `Bearer ${getAuthToken()}` },

@@ -4,7 +4,7 @@ import type React from "react"
 import { useState } from "react"
 import { ArrowLeft, AlertCircle } from "lucide-react"
 
-interface Driver {
+interface Carrier {
   id: string
   fullName: string
   email: string
@@ -34,12 +34,12 @@ interface Driver {
   }
 }
 
-interface AddDriverPageProps {
+interface AddCarrierPageProps {
   onBack: () => void
-  onSubmit: (data: Partial<Driver>) => void
+  onSubmit: (data: Partial<Carrier>) => void
 }
 
-export default function AddDriverPage({ onBack, onSubmit }: AddDriverPageProps) {
+export default function AddCarrierPage({ onBack, onSubmit }: AddCarrierPageProps) {
   const [step, setStep] = useState(1)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formData, setFormData] = useState({
@@ -95,7 +95,7 @@ export default function AddDriverPage({ onBack, onSubmit }: AddDriverPageProps) 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (validateStep(2)) {
-      const newDriver: Partial<Driver> = {
+      const newCarrier: Partial<Carrier> = {
         id: `DRV${Date.now()}`,
         fullName: formData.fullName,
         email: formData.email,
@@ -124,7 +124,7 @@ export default function AddDriverPage({ onBack, onSubmit }: AddDriverPageProps) 
           inspection: "Chưa xác nhận",
         },
       }
-      onSubmit(newDriver)
+      onSubmit(newCarrier)
       setStep(1)
       setFormData({
         fullName: "",

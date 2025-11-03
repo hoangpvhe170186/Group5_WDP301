@@ -17,11 +17,11 @@ import {
   ChevronUp,
   ArrowUpDown,
 } from "lucide-react";
-import { adminApi, type User as Driver } from "@/services/admin.service"; // Import adminApi
+import { adminApi, type User as Carrier } from "@/services/admin.service"; // Import adminApi
 import { useNavigate } from "react-router-dom";
 import DriverDetail from "./DriverDetail"; // Import DriverDetail component
 
-interface Driver {
+interface Carrier {
   id: string;
   fullName: string;
   email: string;
@@ -51,7 +51,7 @@ type SortField = "fullName" | "rating" | "totalTrips" | "earnings" | "joinDate";
 type SortOrder = "asc" | "desc";
 
 export default function DriverManagement() {
-  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [carriers, setDrivers] = useState<Carrier[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive" | "suspended">("all");
   const [filterRating, setFilterRating] = useState<"all" | "high" | "medium" | "low">("all");
@@ -74,7 +74,7 @@ export default function DriverManagement() {
       try {
         setLoading(true);
         setError(null);
-        const response = await adminApi.getUsersByRole("drivers", currentPage, itemsPerPage);
+        const response = await adminApi.getUsersByRole("carriers", currentPage, itemsPerPage);
         setDrivers(response.users);
         setTotalPages(response.totalPages);
         setTotalDrivers(response.total);
@@ -90,10 +90,10 @@ export default function DriverManagement() {
   }, [currentPage]);
 
   // ⚙️ Hàm xử lý hành động
-  const handleViewDriver = async (driverId: string) => {
+  const handleViewDriver = async (carrierId: string) => {
     try {
       // Thay vì chuyển hướng, cập nhật state để hiển thị chi tiết
-      setSelectedDriverId(driverId);
+      setSelectedDriverId(carrierId);
       setShowDriverDetail(true);
     } catch (err: any) {
       setError("Lỗi khi lấy chi tiết tài xế");
@@ -101,15 +101,15 @@ export default function DriverManagement() {
     }
   };
 
-  const handleEditDriver = (driverId: string) => {
-    navigate(`/admin/drivers/edit/${driverId}`);
+  const handleEditDriver = (carrierId: string) => {
+    navigate(`/admin/carriers/edit/${carrierId}`);
   };
 
-  const handleDeleteDriver = async (driverId: string) => {
+  const handleDeleteDriver = async (carrierId: string) => {
     if (window.confirm("Bạn có chắc muốn xóa tài xế này?")) {
       try {
-        await adminApi.deleteUser(driverId);
-        setDrivers(drivers.filter((driver) => driver.id !== driverId));
+        await adminApi.deleteUser(carrierId);
+        setDrivers(carriers.filter((carrier) => carrier.id !== carrierId));
         if (filteredAndSortedDrivers.length === 1 && currentPage > 1) {
           setCurrentPage(currentPage - 1);
         }
@@ -126,12 +126,12 @@ export default function DriverManagement() {
     setSelectedDriverId(null);
   };
 
-  const toggleExpandRow = (driverId: string) => {
+  const toggleExpandRow = (carrierId: string) => {
     const newExpanded = new Set(expandedRows);
-    if (newExpanded.has(driverId)) {
-      newExpanded.delete(driverId);
+    if (newExpanded.has(carrierId)) {
+      newExpanded.delete(carrierId);
     } else {
-      newExpanded.add(driverId);
+      newExpanded.add(carrierId);
     }
     setExpandedRows(newExpanded);
   };
@@ -190,20 +190,20 @@ export default function DriverManagement() {
     return "text-red-600";
   };
 
-  const filteredAndSortedDrivers = drivers
-    .filter((driver) => {
+  const filteredAndSortedDrivers = carriers
+    .filter((carrier) => {
       const matchesSearch =
-        driver.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        driver.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        driver.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        driver.phone.includes(searchTerm);
+        carrier.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        carrier.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        carrier.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        carrier.phone.includes(searchTerm);
 
-      const matchesStatus = filterStatus === "all" || driver.status === filterStatus;
+      const matchesStatus = filterStatus === "all" || carrier.status === filterStatus;
       const matchesRating =
         filterRating === "all" ||
-        (filterRating === "high" && driver.rating >= 4.5) ||
-        (filterRating === "medium" && driver.rating >= 4.0 && driver.rating < 4.5) ||
-        (filterRating === "low" && driver.rating < 4.0);
+        (filterRating === "high" && carrier.rating >= 4.5) ||
+        (filterRating === "medium" && carrier.rating >= 4.0 && carrier.rating < 4.5) ||
+        (filterRating === "low" && carrier.rating < 4.0);
 
       return matchesSearch && matchesStatus && matchesRating;
     })
@@ -240,7 +240,7 @@ export default function DriverManagement() {
 
   // Nếu đang hiển thị chi tiết tài xế, render component DriverDetail
   if (showDriverDetail) {
-    return <DriverDetail driverId={selectedDriverId || undefined} onBack={handleBackFromDetail} />;
+    return <DriverDetail carrierId={selectedDriverId || undefined} onBack={handleBackFromDetail} />;
   }
 
   return (
@@ -249,7 +249,7 @@ export default function DriverManagement() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Quản lý tài xế</h1>
         <button
-          onClick={() => navigate("/admin/drivers/add")}
+          onClick={() => navigate("/admin/carriers/add")}
           className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
@@ -273,7 +273,7 @@ export default function DriverManagement() {
             <div>
               <p className="text-sm text-gray-600">Đang hoạt động</p>
               <p className="text-2xl font-bold text-green-600">
-                {drivers.filter((d) => d.status === "active").length}
+                {carriers.filter((d) => d.status === "active").length}
               </p>
             </div>
             <CheckCircle className="w-8 h-8 text-green-500 opacity-20" />
@@ -284,7 +284,7 @@ export default function DriverManagement() {
             <div>
               <p className="text-sm text-gray-600">Trung bình rating</p>
               <p className="text-2xl font-bold text-yellow-600">
-                {(drivers.reduce((sum, d) => sum + d.rating, 0) / drivers.length || 0).toFixed(1)}
+                {(carriers.reduce((sum, d) => sum + d.rating, 0) / carriers.length || 0).toFixed(1)}
               </p>
             </div>
             <Star className="w-8 h-8 text-yellow-500 opacity-20" />
@@ -295,7 +295,7 @@ export default function DriverManagement() {
             <div>
               <p className="text-sm text-gray-600">Tổng doanh thu</p>
               <p className="text-2xl font-bold text-blue-600">
-                ₫{(drivers.reduce((sum, d) => sum + d.earnings, 0) / 1000000).toFixed(0)}M
+                ₫{(carriers.reduce((sum, d) => sum + d.earnings, 0) / 1000000).toFixed(0)}M
               </p>
             </div>
             <TrendingUp className="w-8 h-8 text-blue-500 opacity-20" />
@@ -383,12 +383,12 @@ export default function DriverManagement() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {paginatedDrivers.map((driver) => (
-                <tbody key={driver.id}>
+              {paginatedDrivers.map((carrier) => (
+                <tbody key={carrier.id}>
                   <tr className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <button onClick={() => toggleExpandRow(driver.id)} className="p-1 hover:bg-gray-200 rounded">
-                        {expandedRows.has(driver.id) ? (
+                      <button onClick={() => toggleExpandRow(carrier.id)} className="p-1 hover:bg-gray-200 rounded">
+                        {expandedRows.has(carrier.id) ? (
                           <ChevronUp className="w-4 h-4" />
                         ) : (
                           <ChevronDown className="w-4 h-4" />
@@ -401,8 +401,8 @@ export default function DriverManagement() {
                           <Truck className="w-5 h-5 text-orange-600" />
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{driver.fullName}</div>
-                          <div className="text-sm text-gray-500">ID: {driver.id}</div>
+                          <div className="text-sm font-medium text-gray-900">{carrier.fullName}</div>
+                          <div className="text-sm text-gray-500">ID: {carrier.id}</div>
                         </div>
                       </div>
                     </td>
@@ -410,63 +410,63 @@ export default function DriverManagement() {
                       <div>
                         <div className="flex items-center text-sm text-gray-900">
                           <Mail className="w-4 h-4 mr-2 text-gray-400" />
-                          {driver.email}
+                          {carrier.email}
                         </div>
                         <div className="flex items-center text-sm text-gray-500">
                           <Phone className="w-4 h-4 mr-2 text-gray-400" />
-                          {driver.phone}
+                          {carrier.phone}
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{driver.vehicleType || "Không xác định"}</div>
-                      <div className="text-sm text-gray-500">{driver.licenseNumber || "Không xác định"}</div>
+                      <div className="text-sm text-gray-900">{carrier.vehicleType || "Không xác định"}</div>
+                      <div className="text-sm text-gray-500">{carrier.licenseNumber || "Không xác định"}</div>
                     </td>
 
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        {driver.completedTrips}/{driver.totalTrips}
+                        {carrier.completedTrips}/{carrier.totalTrips}
                       </div>
                       <div className="text-xs text-gray-500">
-                        {driver.totalTrips > 0
-                          ? ((driver.completedTrips / driver.totalTrips) * 100).toFixed(0)
+                        {carrier.totalTrips > 0
+                          ? ((carrier.completedTrips / carrier.totalTrips) * 100).toFixed(0)
                           : 0}
                         % hoàn thành
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
-                        ₫{(driver.earnings / 1000000).toFixed(1)}M
+                        ₫{(carrier.earnings / 1000000).toFixed(1)}M
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
-                          driver.status
+                          carrier.status
                         )}`}
                       >
-                        {getStatusIcon(driver.status)}
-                        <span className="ml-1">{getStatusText(driver.status)}</span>
+                        {getStatusIcon(carrier.status)}
+                        <span className="ml-1">{getStatusText(carrier.status)}</span>
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
                         <button
-                          onClick={() => handleViewDriver(driver.id)}
+                          onClick={() => handleViewDriver(carrier.id)}
                           className="text-blue-600 hover:text-blue-900 p-1"
                           title="Xem chi tiết"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleEditDriver(driver.id)}
+                          onClick={() => handleEditDriver(carrier.id)}
                           className="text-orange-600 hover:text-orange-900 p-1"
                           title="Chỉnh sửa"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDeleteDriver(driver.id)}
+                          onClick={() => handleDeleteDriver(carrier.id)}
                           className="text-red-600 hover:text-red-900 p-1"
                           title="Xóa"
                         >
@@ -475,7 +475,7 @@ export default function DriverManagement() {
                       </div>
                     </td>
                   </tr>
-                  {expandedRows.has(driver.id) && (
+                  {expandedRows.has(carrier.id) && (
                     <tr className="bg-gray-50">
                       <td colSpan={9} className="px-6 py-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -485,19 +485,19 @@ export default function DriverManagement() {
                               <div>
                                 <span className="text-gray-600">Biển số:</span>
                                 <span className="ml-2 font-medium text-gray-900">
-                                  {driver.vehicle?.plate || "Không xác định"}
+                                  {carrier.vehicle?.plate || "Không xác định"}
                                 </span>
                               </div>
                               <div>
                                 <span className="text-gray-600">Model:</span>
                                 <span className="ml-2 font-medium text-gray-900">
-                                  {driver.vehicle?.model || "Không xác định"}
+                                  {carrier.vehicle?.model || "Không xác định"}
                                 </span>
                               </div>
                               <div>
                                 <span className="text-gray-600">Năm sản xuất:</span>
                                 <span className="ml-2 font-medium text-gray-900">
-                                  {driver.vehicle?.year || "Không xác định"}
+                                  {carrier.vehicle?.year || "Không xác định"}
                                 </span>
                               </div>
                             </div>
@@ -508,19 +508,19 @@ export default function DriverManagement() {
                               <div>
                                 <span className="text-gray-600">Bằng lái:</span>
                                 <span className="ml-2 font-medium text-gray-900">
-                                  {driver.documents?.license || "Không xác định"}
+                                  {carrier.documents?.license || "Không xác định"}
                                 </span>
                               </div>
                               <div>
                                 <span className="text-gray-600">Bảo hiểm:</span>
                                 <span className="ml-2 font-medium text-gray-900">
-                                  {driver.documents?.insurance || "Không xác định"}
+                                  {carrier.documents?.insurance || "Không xác định"}
                                 </span>
                               </div>
                               <div>
                                 <span className="text-gray-600">Kiểm định:</span>
                                 <span className="ml-2 font-medium text-gray-900">
-                                  {driver.documents?.inspection || "Không xác định"}
+                                  {carrier.documents?.inspection || "Không xác định"}
                                 </span>
                               </div>
                             </div>

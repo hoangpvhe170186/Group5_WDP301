@@ -23,7 +23,7 @@ import DriverManagement from "../components/admin/DriverManagement";
 type AdminSection = 
   | "dashboard" 
   | "orders" 
-  | "drivers" 
+  | "carriers" 
   | "sellers"
   | "users" 
   | "complaints" 
@@ -40,7 +40,7 @@ export default function AdminDashboard() {
     { id: "dashboard" as AdminSection, label: "Tổng quan", icon: LayoutDashboard },
     { id: "orders" as AdminSection, label: "Quản lý đơn hàng", icon: Package },
     { id: "users" as AdminSection, label: "Quản lý khách hàng", icon: Users },
-    { id: "drivers" as AdminSection, label: "Quản lý tài xế", icon: Users },
+    { id: "carriers" as AdminSection, label: "Quản lý tài xế", icon: Users },
     { id: "complaints" as AdminSection, label: "Xử lý sự cố", icon: MessageSquare },
     { id: "quality" as AdminSection, label: "Quản lý chất lượng", icon: Star }
   ];
@@ -58,7 +58,7 @@ export default function AdminDashboard() {
         return <OrderManagement />;
       case "users":
         return <CustomerManagement />;
-      case "drivers":
+      case "carriers":
         return <DriverManagement/>;
       case "complaints":
         return <ComplaintManagement />;
