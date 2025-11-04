@@ -34,7 +34,7 @@ const orderSchema = new mongoose.Schema(
       ],
       default: "Pending",
     },
-
+    base_price: { type: Number, default: 0 },
     total_price: { type: Number, required: true },
     isPaid: { type: Boolean, default: false },
 
@@ -44,7 +44,7 @@ const orderSchema = new mongoose.Schema(
 
     declineReason: { type: String, default: null },
     signatureUrl: { type: String, default: null },
- images: [
+    images: [
       {
         public_id: { type: String, required: true },
         url: { type: String, required: true },
