@@ -4,6 +4,7 @@ import OrderItem from "../models/OrderItem";
 import PricePackage from "../models/PricePackage";
 import mongoose from "mongoose";
 import OrderStatusLog from "../models/OrderStatusLog";
+import ExtraFee from "../models/ExtraFee";
 import OrderTracking from "../models/OrderTracking";
 export const createTemporaryOrder = async (req, res) => {
   try {
@@ -441,27 +442,24 @@ export const getOrderItemsByOrderId = async (req: Request, res: Response) => {
 };
 export const updateOrderPackage = async (req, res) => {
   try {
-    const { id } = req.params; // orderId
+    const { id } = req.params;
     const { new_package_id } = req.body;
 
     if (!new_package_id) {
       return res.status(400).json({ success: false, message: "Thiếu gói mới." });
     }
 
-    // 1️⃣ Lấy đơn hàng hiện tại
+    // 🔹 Lấy đơn hàng và populate phụ phí
     const order = await Order.findById(id).populate("extra_fees");
     if (!order) {
       return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng." });
     }
 
-    const pickup_address = order.pickup_address;
-    const delivery_address = order.delivery_address;
-
-    // 2️⃣ Gọi API tính giá vận chuyển mới theo gói mới
+    // 🔹 Gọi API tính giá mới
     const axios = require("axios");
     const pricingRes = await axios.post("http://localhost:4000/api/pricing/estimate2", {
-      pickup_address,
-      delivery_address,
+      pickup_address: order.pickup_address,
+      delivery_address: order.delivery_address,
       pricepackage_id: new_package_id,
     });
 
@@ -471,24 +469,24 @@ export const updateOrderPackage = async (req, res) => {
 
     const { totalFee, distance, duration } = pricingRes.data.data;
 
-    // 3️⃣ Tính thêm tổng phí phụ (extra_fees)
+    // 🔹 Tính tổng phụ phí
     const extraFeeTotal = Array.isArray(order.extra_fees)
-      ? order.extra_fees.reduce(
-        (sum, fee) => sum + Number(fee.price || 0),
-        0
-      )
+      ? order.extra_fees.reduce((sum, fee) => sum + Number(fee.price || 0), 0)
       : 0;
 
     const finalTotal = totalFee + extraFeeTotal;
 
-    // 4️⃣ Cập nhật đơn hàng
+    // 🔹 Cập nhật gói
     order.package_id = new_package_id;
     order.total_price = finalTotal;
     order.distance = distance?.text || order.distance;
     order.duration = duration?.text || order.duration;
+
+    // 🔹 Chỉ lưu lại mảng ID (tránh lỗi validation)
+    order.extra_fees = order.extra_fees.map(fee => fee._id);
+
     await order.save();
 
-    // 5️⃣ Trả kết quả về frontend
     return res.json({
       success: true,
       message: "✅ Đã cập nhật gói và tính lại giá (bao gồm phụ phí).",
@@ -502,9 +500,10 @@ export const updateOrderPackage = async (req, res) => {
     });
   } catch (err) {
     console.error("updateOrderPackage error:", err);
-    return res.status(500).json({ success: false, message: "Lỗi server khi cập nhật gói." });
+    return res.status(500).json({ success: false, message: "Lỗi server khi cập nhật gói dịch vụ.", error: err.message });
   }
 };
+
 export const addOrderImages = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -543,6 +542,68 @@ export const addOrderImages = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: "Không thể thêm ảnh vào đơn hàng.",
+    });
+  }
+};
+export const updateOrderExtraFees = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { extra_fees } = req.body;
+
+    if (!Array.isArray(extra_fees)) {
+      return res.status(400).json({ success: false, message: "extra_fees phải là mảng." });
+    }
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng." });
+    }
+
+    // Lấy ID phụ phí
+    const feeIds = extra_fees.map((f) => (typeof f === "string" ? f : f._id));
+    const fees = await ExtraFee.find({ _id: { $in: feeIds } });
+
+    // ✅ Tính tổng phụ phí
+    const extraFeeTotal = fees.reduce((sum, f) => sum + Number(f.price || 0), 0);
+
+    // ✅ Tính lại tổng giá từ gói (không cộng chồng)
+    // Gọi API tính lại giá gói hiện tại
+    const axios = require("axios");
+    const pricingRes = await axios.post("http://localhost:4000/api/pricing/estimate2", {
+      pickup_address: order.pickup_address,
+      delivery_address: order.delivery_address,
+      pricepackage_id: order.package_id,
+    });
+
+    if (!pricingRes.data?.success) {
+      return res.status(400).json({ success: false, message: "Không tính được giá gói hiện tại." });
+    }
+
+    const baseFee = pricingRes.data.data.totalFee;
+    order.extra_fees = fees.map((f) => f._id);
+    order.total_price = baseFee + extraFeeTotal;
+
+    await order.save();
+
+    return res.json({
+      success: true,
+      message: "✅ Cập nhật phụ phí & tính lại giá thành công!",
+      data: {
+        extra_fees: fees.map((f) => ({
+          _id: f._id,
+          name: f.name,
+          price: Number(f.price),
+          description: f.description,
+        })),
+        total_price: order.total_price,
+      },
+    });
+  } catch (err) {
+    console.error("updateOrderExtraFees error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server khi cập nhật phụ phí.",
+      error: err.message,
     });
   }
 };
