@@ -5,6 +5,7 @@ import PricePackage from "../models/PricePackage";
 import mongoose from "mongoose";
 import OrderStatusLog from "../models/OrderStatusLog";
 import ExtraFee from "../models/ExtraFee";
+import OrderTracking from "../models/OrderTracking";
 export const createTemporaryOrder = async (req, res) => {
   try {
     const {
@@ -45,6 +46,19 @@ export const createTemporaryOrder = async (req, res) => {
       total_price: finalPrice,
       extra_fees: extra_fees.filter((x) => x) // ✅ Lưu danh sách ID phụ phí
     });
+
+    // 🟩 Gán mã đơn hàng sau khi tạo
+    function generateOrderCode(prefix = "ORD") {
+      const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const year = new Date().getFullYear().toString().slice(-2);
+      return `${prefix}-${year}-${rand}`;
+    }
+
+    order.orderCode = generateOrderCode();
+    await order.save();
+
+
+    // ✅ Trả về kết quả
 
     res.json({ success: true, message: "Tạo đơn hàng thành công ✅", order });
   } catch (err) {
@@ -217,18 +231,24 @@ export const getMyOrders = async (req: Request, res: Response) => {
       .populate("package_id", "name capacity")
       .populate("carrier_id", "name phone")
       .sort({ createdAt: -1 })
+      .skip(skip)
       .limit(limit)
       .lean();
 
 
     const totalOrders = await Order.countDocuments({ customer_id: userId });
 
+    // 🟢 Chuẩn hóa field để luôn có orderCode
+    for (const o of orders) {
+      o.orderCode = o.orderCode || o.code || o.order_code || "";
+    }
+
     return res.status(200).json({
       success: true,
       total: totalOrders,
       page,
       pages: Math.ceil(totalOrders / limit),
-      data: orders,
+      orders, // ✅ FE dùng orderApi.listMyOrders().orders
     });
   } catch (error) {
     console.error("❌ Error fetching orders:", error);
@@ -243,13 +263,48 @@ export const getMyOrders = async (req: Request, res: Response) => {
 //  Lấy chi tiết đơn hàng theo ID
 export const getOrderById = async (req: Request, res: Response) => {
   try {
-    const order = await Order.findById(req.params.id).populate("carrier_id vehicle_id");
-    if (!order) return res.status(404).json({ message: "Order not found" });
-    res.json(order);
+    const order = await Order.findById(req.params.id)
+      .select("orderCode status total_price phone delivery_address pickup_address scheduled_time createdAt customer_id")
+      .populate("carrier_id vehicle_id customer_id")
+      .lean(); // 🟩 Quan trọng — để dữ liệu thành plain object
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    const [items, trackings] = await Promise.all([
+      OrderItem.find({ order_id: order._id }).lean(),
+      OrderTracking.find({ order_id: order._id }).sort({ createdAt: -1 }).lean(),
+    ]);
+
+    const goods = (items || []).map((it) => ({
+      id: String(it._id),
+      description: it.description ?? "",
+      quantity: Number(it.quantity ?? 0),
+      weight: it?.weight?.$numberDecimal
+        ? Number(it.weight.$numberDecimal)
+        : typeof it?.weight === "object" && it?.weight?._bsontype === "Decimal128"
+          ? Number(it.weight.toString())
+          : Number(it?.weight ?? 0),
+      fragile: !!it.fragile,
+    }));
+
+    // 🟩 Đảm bảo trả về orderCode
+    res.json({
+      success: true,
+      ...order,
+      goods,
+      trackings,
+    });
+
   } catch (error) {
+    console.error("❌ getOrderById error:", error);
     res.status(500).json({ message: "Server error", error });
   }
 };
+
+
+
 export const updateOrderStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -362,11 +417,11 @@ export const cancelOrder = async (req, res) => {
     await OrderStatusLog.create({
       order_id: order._id,
       updated_by: userId,
-      status: "Canceled",
+      status: "CANCELLED",
       note: reason || "Người dùng hủy đơn hàng",
     });
 
-    order.status = "Canceled";
+    order.status = "CANCELLED";
     await order.save();
 
     return res.json({ success: true, message: "Đã hủy và xóa đơn hàng thành công." });
