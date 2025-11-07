@@ -20,6 +20,7 @@ import CustomerManagement from "../components/admin/CustomerManagement";
 import ComplaintManagement from "../components/admin/ComplaintManagement";
 import QualityManagement from "../components/admin/QualityManagement";
 import DriverManagement from "../components/admin/DriverManagement";
+import SellerManagement from "../components/admin/SellerManagement";
 type AdminSection = 
   | "dashboard" 
   | "orders" 
@@ -42,7 +43,8 @@ export default function AdminDashboard() {
     { id: "users" as AdminSection, label: "Quản lý khách hàng", icon: Users },
     { id: "carriers" as AdminSection, label: "Quản lý tài xế", icon: Users },
     { id: "complaints" as AdminSection, label: "Xử lý sự cố", icon: MessageSquare },
-    { id: "quality" as AdminSection, label: "Quản lý chất lượng", icon: Star }
+    { id: "quality" as AdminSection, label: "Quản lý chất lượng", icon: Star },
+    { id: "sellers" as AdminSection, label: "Quản lý nhân viên", icon: Star }
   ];
 
   const handleLogout = () => {
@@ -64,6 +66,8 @@ export default function AdminDashboard() {
         return <ComplaintManagement />;
       case "quality":
         return <QualityManagement />;
+      case "sellers":
+        return <SellerManagement />;
       default:
         return <DashboardOverview />;
     }

@@ -58,6 +58,7 @@ app.use("/api/vehicles", vehiclesRoute);
 app.use("/api/orders", orderRoutes);
 app.use("/api/order-tracking", orderTrackingRoute);
 app.use("/api/extrafees", extraFeeRoutes);
+app.use("/api/extra-fees", extraFeeRoutes);
 app.use("/api/upload", uploadRoute);
 app.use("/api/admin", adminRoute);
 app.use("/api/driver-interviews", driverInterviewRoutes);
