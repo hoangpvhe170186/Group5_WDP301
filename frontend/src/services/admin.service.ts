@@ -155,6 +155,7 @@ export const adminApi = {
    * 📈 Lấy thống kê tổng quan Dashboard
    * API: GET /api/admin/dashboard
    */
+  
   async getDashboard(): Promise<DashboardStats> {
     const { data } = await api.get("/admin/dashboard", {
       headers: { Authorization: `Bearer ${getAuthToken()}` },
@@ -281,4 +282,66 @@ export const adminApi = {
       totalPages: data.totalPages,
     };
   },
+   getCarrierDetail: async (carrierId: string): Promise<Carrier> => {
+    const response = await api.get(`/admin/carriers/${carrierId}`);
+    return response.data;
+  },
+
+  getCarrierOrders: async (carrierId: string, page: number = 1, limit: number = 10) => {
+    const response = await api.get(`/admin/carriers/${carrierId}/orders`, {
+      params: { page, limit }
+    });
+    return response.data;
+  },
+
+  getCarrierFinancials: async (carrierId: string) => {
+    const response = await api.get(`/admin/carriers/${carrierId}/financials`);
+    return response.data;
+  },
+
+  banCarrier: async (carrierId: string, reason: string) => {
+    const response = await api.post(`/admin/carriers/${carrierId}/ban`, { reason });
+    return response.data;
+  },
+
+  unbanCarrier: async (carrierId: string) => {
+    const response = await api.post(`/admin/carriers/${carrierId}/unban`);
+    return response.data;
+  }
 };
+
+export interface Carrier extends User {
+  licenseNumber: string;
+  vehiclePlate: string;
+  totalTrips: number;
+  completedTrips: number;
+  earnings: number;
+  commissionPaid: number;
+  rating: number;
+  joinDate: string;
+  lastActive: string;
+  vehicle?: {
+    plate: string;
+    type: string;
+    capacity: number;
+    status: string;
+  };
+  currentOrders?: Array<{
+    id: string;
+    orderCode: string;
+    status: string;
+    pickupAddress: string;
+    deliveryAddress: string;
+  }>;
+  reviews?: Array<{
+    rating: number;
+    comment: string;
+    createdAt: string;
+  }>;
+  reports?: Array<{
+    type: string;
+    description: string;
+    status: string;
+    createdAt: string;
+  }>;
+}
