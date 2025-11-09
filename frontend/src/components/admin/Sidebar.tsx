@@ -25,6 +25,11 @@ const menuItems = [
   { id: "orders" as AdminSection, label: "Quản lý đơn hàng", icon: Package },
   { id: "users" as AdminSection, label: "Quản lý khách hàng", icon: Users },
   { id: "carriers" as AdminSection, label: "Quản lý tài xế", icon: Users },
+  { 
+    id: "driver-applications" as AdminSection, 
+    label: "Hồ sơ ứng viên", 
+    icon: Users 
+  },
   { id: "complaints" as AdminSection, label: "Xử lý sự cố", icon: MessageSquare },
   { id: "quality" as AdminSection, label: "Quản lý chất lượng", icon: Star }
 ];

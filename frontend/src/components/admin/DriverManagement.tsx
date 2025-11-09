@@ -18,6 +18,8 @@ import DriverDetail from "./DriverDetail";
 import React from "react";
 import { orderApi } from "@/services/order.service";
 import DriverCreateModal from "./DriverCreateModal";
+import { io } from "socket.io-client"; // THÊM DÒNG NÀY
+
 interface Carrier {
   _id: string;
   full_name: string;
@@ -46,7 +48,7 @@ interface CarrierOrder {
   customer_name: string;
   __customer_id?: string;
   __needs_price?: boolean;
-  __order_key: string; // _id hoặc code (để chắc chắn có khóa)
+  __order_key: string;
   __by_code?: boolean;
 }
 
@@ -73,6 +75,266 @@ export default function DriverManagement() {
   const itemsPerPage = 10;
   const navigate = useNavigate();
 
+  // 🚀 Fetch dữ liệu carrier từ API
+  const fetchCarriers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Gọi API để lấy danh sách carriers với phân trang
+      const response = await adminApi.getPaginationCarriers(
+        currentPage,
+        itemsPerPage
+      );
+
+      // Fetch orders cho từng carrier
+      const carriersWithOrders = await Promise.all(
+        response.data.map(async (carrier: any) => {
+          try {
+            const ordersResponse = await adminApi.getCarrierOrders(
+              carrier.id || carrier._id,
+              1,
+              5
+            );
+
+            // Lấy danh sách đơn từ nhiều kiểu trả về khác nhau
+            const rawOrders: any[] =
+              ordersResponse?.orders ??
+              ordersResponse?.data?.orders ??
+              ordersResponse?.data ??
+              [];
+
+            // Chuẩn hóa từng đơn
+            const normalizedOrders: CarrierOrder[] = rawOrders.map(
+              (o: any) => {
+                const orderId = o._id || o.id || null;
+                const orderCode = o.orderCode || o.code || o.order_code || "";
+
+                const customer_id =
+                  (typeof o.customer === "string" && o.customer) ||
+                  (typeof o.customerId === "string" && o.customerId) ||
+                  o.customer?._id ||
+                  o.customerId?._id ||
+                  o.customer_id ||
+                  undefined;
+
+                const customer_name =
+                  o.customer?.full_name ??
+                  o.customer?.fullName ??
+                  o.customer?.name ??
+                  o.customerName ??
+                  o.customer_name ??
+                  "Không rõ";
+
+                let total_price =
+                  o.total_price ??
+                  o.totalPrice ??
+                  o.total ??
+                  o.amount ??
+                  o.payment?.total ??
+                  o.pricing?.total ??
+                  o.summary?.grandTotal;
+
+                if (
+                  (total_price === undefined || total_price === null) &&
+                  Array.isArray(o.items)
+                ) {
+                  const itemsTotal = o.items.reduce(
+                    (acc: number, it: any) => {
+                      const unit = Number(
+                        it?.price ?? it?.unitPrice ?? it?.amount ?? 0
+                      );
+                      const qty = Number(it?.quantity ?? it?.qty ?? 1);
+                      return acc + unit * qty;
+                    },
+                    0
+                  );
+                  const shipping = Number(
+                    o.shippingFee ?? o.fees?.shipping ?? o.deliveryFee ?? 0
+                  );
+                  const discount = Number(
+                    o.discount ?? o.promotion?.discount ?? 0
+                  );
+                  total_price = itemsTotal + shipping - discount;
+                }
+
+                return {
+                  _id: orderId || orderCode,
+                  orderCode: orderCode || "—",
+                  status: String(o.status || "PENDING").toUpperCase(),
+                  pickup_address:
+                    o.pickup_address ??
+                    o.pickupAddress ??
+                    o.pickUpAddress ??
+                    "—",
+                  delivery_address:
+                    o.delivery_address ??
+                    o.deliveryAddress ??
+                    o.dropoffAddress ??
+                    "—",
+                  scheduled_time: o.scheduled_time ?? o.scheduledAt,
+                  total_price: Number(total_price ?? 0),
+                  customer_name,
+
+                  __customer_id: customer_id,
+                  __needs_price: !(total_price > 0),
+                  __order_key: orderId || orderCode,
+                  __by_code: !orderId && !!orderCode,
+                };
+              }
+            );
+
+            return {
+              _id: carrier.id,
+              full_name: carrier.fullName,
+              email: carrier.email,
+              phone: carrier.phone || "Chưa cập nhật",
+              licenseNumber: carrier.licenseNumber || "Chưa cập nhật",
+              vehiclePlate: carrier.vehiclePlate || "Chưa cập nhật",
+              status: carrier.status,
+              avatar: carrier.avatar,
+              banReason: carrier.banReason,
+              created_at: carrier.createdAt,
+              orders: normalizedOrders,
+              vehicleType: carrier.vehicle?.type || "Chưa cập nhật",
+              vehicleCapacity: carrier.vehicle?.capacity || 0,
+              vehicleStatus: carrier.vehicle?.status || "Unknown",
+            };
+          } catch (err) {
+            console.error(
+              `Error fetching orders for carrier ${carrier.id}:`,
+              err
+            );
+            return {
+              _id: carrier.id,
+              full_name: carrier.fullName,
+              email: carrier.email,
+              phone: carrier.phone || "Chưa cập nhật",
+              licenseNumber: carrier.licenseNumber || "Chưa cập nhật",
+              vehiclePlate: carrier.vehiclePlate || "Chưa cập nhật",
+              status: carrier.status,
+              avatar: carrier.avatar,
+              banReason: carrier.banReason,
+              created_at: carrier.createdAt,
+              orders: [],
+            };
+          }
+        })
+      );
+
+      // Hydrate missing customer names and prices
+      const needDetailKeys = new Map<string, "id" | "code">();
+      for (const c of carriersWithOrders) {
+        for (const o of c.orders ?? []) {
+          if (o.customer_name === "Không rõ" || o.__needs_price) {
+            needDetailKeys.set(o.__order_key, o.__by_code ? "code" : "id");
+          }
+        }
+      }
+
+      const detailMap: Record<string, { name?: string; total?: number }> = {};
+
+      await Promise.all(
+        Array.from(needDetailKeys.entries()).map(async ([key, how]) => {
+          try {
+            let od: any | null = null;
+
+            if (how === "id" && key) {
+              od = await orderApi.getDetail(key);
+            } else {
+              const resp = await (orderApi as any).getOrderByCode?.(key);
+              od = resp?.data ?? resp ?? null;
+            }
+
+            if (!od) return;
+
+            const name =
+              od?.customer?.full_name ??
+              od?.customer?.fullName ??
+              od?.customer?.name ??
+              "";
+
+            let total: number | undefined =
+              typeof od?.totalPrice === "number" ? od.totalPrice : undefined;
+
+            if (
+              (total === undefined || total === null) &&
+              Array.isArray(od?.items)
+            ) {
+              const itemsTotal = od.items.reduce((acc: number, it: any) => {
+                const unit = Number(
+                  it?.price ?? it?.unitPrice ?? it?.amount ?? 0
+                );
+                const qty = Number(it?.quantity ?? it?.qty ?? 1);
+                return acc + unit * qty;
+              }, 0);
+              const shipping = Number(
+                od?.shippingFee ?? od?.fees?.shipping ?? od?.deliveryFee ?? 0
+              );
+              const discount = Number(
+                od?.discount ?? od?.promotion?.discount ?? 0
+              );
+              total = itemsTotal + shipping - discount;
+            }
+
+            detailMap[key] = {
+              name: name || undefined,
+              total: total !== undefined ? Number(total) : undefined,
+            };
+          } catch {}
+        })
+      );
+
+      // Áp kết quả hydrate
+      const hydrated = carriersWithOrders.map((c) => ({
+        ...c,
+        orders: (c.orders ?? []).map((o) => ({
+          ...o,
+          customer_name:
+            o.customer_name && o.customer_name !== "Không rõ"
+              ? o.customer_name
+              : detailMap[o.__order_key]?.name ?? "Không rõ",
+          total_price: detailMap[o.__order_key]?.total ?? o.total_price,
+        })),
+      }));
+
+      setCarriers(hydrated);
+      setTotalPages(response.totalPages);
+      setTotalCarriers(response.total);
+    } catch (err: any) {
+      console.error("❌ Lỗi khi tải danh sách carrier:", err);
+      setError(err.message || "Lỗi khi tải danh sách carrier");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCarriers();
+  }, [currentPage]);
+
+  // Socket.io để nhận thông báo realtime khi có tài xế mới đăng ký
+  useEffect(() => {
+    const socket = io("http://localhost:4000");
+    
+    console.log("🔌 Socket connected for driver management");
+    
+    socket.on("new_driver_registration", () => {
+      console.log("🔄 New driver registration detected, refreshing list...");
+      fetchCarriers(); // Refresh danh sách tài xế
+    });
+
+    socket.on("new_notification", (data) => {
+      if (data.type === "DriverInterview") {
+        console.log("📢 New driver interview notification, refreshing...");
+        fetchCarriers();
+      }
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
   // 🚀 Fetch dữ liệu carrier từ API
   useEffect(() => {
     const fetchCarriers = async () => {

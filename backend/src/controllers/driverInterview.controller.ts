@@ -57,7 +57,7 @@ export async function applyInterview(req: Request, res: Response) {
       message: `Ứng viên tài xế mới: ${doc.full_name} — ${doc.phone}`,
       ref_type: "DriverInterview",
       ref_id: String(doc._id),
-      recipient_role: "seller",
+      recipient_role: "admin",
       meta: {
         image_url: doc?.note_image?.url || undefined,
         preferred_day: toISODateOnly(doc?.preferred_day),
@@ -67,15 +67,25 @@ export async function applyInterview(req: Request, res: Response) {
     });
 
     const io = req.app.get("io");
-    if (io) {
-      io.to("support_staff").emit("new_notification", {
-        type: "DriverInterview",
-        ref_type: "DriverInterview",
-        ref_id: doc._id,
-        message: `Ứng viên tài xế mới: ${doc.full_name} — ${doc.phone}`,
-        created_at: new Date(),
-      });
-    }
+if (io) {
+  // THÊM CẢ HAI ROOM ĐỂ ĐẢM BẢO
+  io.to("support_staff").emit("new_notification", {
+    type: "DriverInterview",
+    ref_type: "DriverInterview", 
+    ref_id: doc._id,
+    message: `Ứng viên tài xế mới: ${doc.full_name} — ${doc.phone}`,
+    created_at: new Date(),
+  });
+  
+  // THÊM: Gửi cho admin room
+  io.to("admin").emit("new_notification", {
+    type: "DriverInterview",
+    ref_type: "DriverInterview",
+    ref_id: doc._id,
+    message: `Ứng viên tài xế mới: ${doc.full_name} — ${doc.phone}`,
+    created_at: new Date(),
+  });
+}
 
     return res.status(201).json({ ok: true, id: doc._id });
   } catch (e: any) {
