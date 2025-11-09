@@ -1,94 +1,76 @@
 import { useState, useEffect } from "react";
 import {
   Search,
-  Filter,
   Eye,
-  Edit,
-  Trash2,
-  Plus,
-  Truck,
-  Star,
-  Phone,
-  Mail,
-  TrendingUp,
-  AlertCircle,
-  CheckCircle,
-  ChevronDown,
-  ChevronUp,
-  ArrowUpDown,
   Ban,
   User,
+  Truck,
+  Phone,
+  Mail,
+  CheckCircle,
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
-import { adminApi, type User as Carrier } from "@/services/admin.service";
+import { adminApi } from "@/services/admin.service";
 import { useNavigate } from "react-router-dom";
 import DriverDetail from "./DriverDetail";
 import React from "react";
-
+import { orderApi } from "@/services/order.service";
+import DriverCreateModal from "./DriverCreateModal";
 interface Carrier {
-  id: string;
-  fullName: string;
+  _id: string;
+  full_name: string;
   email: string;
   phone: string;
   licenseNumber: string;
   vehiclePlate: string;
   status: "Active" | "Inactive" | "Banned";
-  rating: number;
-  totalTrips: number;
-  completedTrips: number;
-  joinDate: string;
-  lastActive: string;
-  earnings: number;
-  commissionPaid: number;
   avatar?: string;
   banReason?: string;
-  vehicle?: {
-    plate: string;
-    type: string;
-    capacity: number;
-    status: string;
-  };
-  currentOrders?: Array<{
-    id: string;
-    orderCode: string;
-    status: string;
-    pickupAddress: string;
-    deliveryAddress: string;
-  }>;
-  reviews?: Array<{
-    rating: number;
-    comment: string;
-    createdAt: string;
-  }>;
-  reports?: Array<{
-    type: string;
-    description: string;
-    status: string;
-    createdAt: string;
-  }>;
+  created_at: string;
+  orders?: CarrierOrder[];
+  vehicleType?: string;
+  vehicleCapacity?: number;
+  vehicleStatus?: string;
 }
 
-type SortField = "fullName" | "rating" | "totalTrips" | "earnings" | "joinDate";
-type SortOrder = "asc" | "desc";
+interface CarrierOrder {
+  _id: string;
+  orderCode: string;
+  status: string;
+  pickup_address: string;
+  delivery_address: string;
+  scheduled_time?: string;
+  total_price: number;
+  customer_name: string;
+  __customer_id?: string;
+  __needs_price?: boolean;
+  __order_key: string; // _id hoặc code (để chắc chắn có khóa)
+  __by_code?: boolean;
+}
 
 export default function DriverManagement() {
   const [carriers, setCarriers] = useState<Carrier[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"all" | "Active" | "Inactive" | "Banned">("all");
+  const [filterStatus, setFilterStatus] = useState<
+    "all" | "Active" | "Inactive" | "Banned"
+  >("all");
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const [sortField, setSortField] = useState<SortField>("fullName");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCarriers, setTotalCarriers] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedCarrierId, setSelectedCarrierId] = useState<string | null>(null);
+  const [selectedCarrierId, setSelectedCarrierId] = useState<string | null>(
+    null
+  );
   const [showCarrierDetail, setShowCarrierDetail] = useState(false);
   const [banReason, setBanReason] = useState("");
   const [showBanModal, setShowBanModal] = useState(false);
   const [carrierToBan, setCarrierToBan] = useState<string | null>(null);
-  
-  const itemsPerPage = 5;
+  const [openCreate, setOpenCreate] = useState(false);
+  const itemsPerPage = 10;
   const navigate = useNavigate();
 
   // 🚀 Fetch dữ liệu carrier từ API
@@ -97,89 +79,233 @@ export default function DriverManagement() {
       try {
         setLoading(true);
         setError(null);
-        const response = await adminApi.getUsersByRole("carriers", currentPage, itemsPerPage);
-        
-        // Transform data để thêm thông tin chi tiết
-        const carriersWithDetails = await Promise.all(
-          response.users.map(async (carrier) => {
+
+        // Gọi API để lấy danh sách carriers với phân trang
+        const response = await adminApi.getPaginationCarriers(
+          currentPage,
+          itemsPerPage
+        );
+
+        // Fetch orders cho từng carrier
+        const carriersWithOrders = await Promise.all(
+          response.data.map(async (carrier: any) => {
             try {
-              // Lấy thông tin chi tiết carrier
-              const carrierDetail = await adminApi.getUserDetail(carrier.id);
-              
-              // Mock data cho các thông tin bổ sung (trong thực tế sẽ gọi API riêng)
+              const ordersResponse = await adminApi.getCarrierOrders(
+                carrier.id || carrier._id,
+                1,
+                5
+              );
+
+              // Lấy danh sách đơn từ nhiều kiểu trả về khác nhau
+              const rawOrders: any[] =
+                ordersResponse?.orders ??
+                ordersResponse?.data?.orders ??
+                ordersResponse?.data ??
+                [];
+
+              // Chuẩn hóa từng đơn
+              const normalizedOrders: CarrierOrder[] = rawOrders.map(
+                (o: any) => {
+                  const orderId = o._id || o.id || null;
+                  const orderCode = o.orderCode || o.code || o.order_code || "";
+
+                  const customer_id =
+                    (typeof o.customer === "string" && o.customer) ||
+                    (typeof o.customerId === "string" && o.customerId) ||
+                    o.customer?._id ||
+                    o.customerId?._id ||
+                    o.customer_id ||
+                    undefined;
+
+                  const customer_name =
+                    o.customer?.full_name ??
+                    o.customer?.fullName ??
+                    o.customer?.name ??
+                    o.customerName ??
+                    o.customer_name ??
+                    "Không rõ";
+
+                  let total_price =
+                    o.total_price ??
+                    o.totalPrice ??
+                    o.total ??
+                    o.amount ??
+                    o.payment?.total ??
+                    o.pricing?.total ??
+                    o.summary?.grandTotal;
+
+                  if (
+                    (total_price === undefined || total_price === null) &&
+                    Array.isArray(o.items)
+                  ) {
+                    const itemsTotal = o.items.reduce(
+                      (acc: number, it: any) => {
+                        const unit = Number(
+                          it?.price ?? it?.unitPrice ?? it?.amount ?? 0
+                        );
+                        const qty = Number(it?.quantity ?? it?.qty ?? 1);
+                        return acc + unit * qty;
+                      },
+                      0
+                    );
+                    const shipping = Number(
+                      o.shippingFee ?? o.fees?.shipping ?? o.deliveryFee ?? 0
+                    );
+                    const discount = Number(
+                      o.discount ?? o.promotion?.discount ?? 0
+                    );
+                    total_price = itemsTotal + shipping - discount;
+                  }
+
+                  return {
+                    _id: orderId || orderCode, // để React có key ổn định
+                    orderCode: orderCode || "—",
+                    status: String(o.status || "PENDING").toUpperCase(),
+                    pickup_address:
+                      o.pickup_address ??
+                      o.pickupAddress ??
+                      o.pickUpAddress ??
+                      "—",
+                    delivery_address:
+                      o.delivery_address ??
+                      o.deliveryAddress ??
+                      o.dropoffAddress ??
+                      "—",
+                    scheduled_time: o.scheduled_time ?? o.scheduledAt,
+                    total_price: Number(total_price ?? 0),
+                    customer_name,
+
+                    __customer_id: customer_id,
+                    __needs_price: !(total_price > 0),
+                    __order_key: orderId || orderCode, // ✨ luôn có khóa
+                    __by_code: !orderId && !!orderCode, // ✨ nếu không có id → hydrate bằng code
+                  };
+                }
+              );
+
               return {
-                ...carrier,
-                licenseNumber: carrierDetail.licenseNumber || "Chưa cập nhật",
-                vehiclePlate: carrierDetail.vehiclePlate || "Chưa cập nhật",
-                totalTrips: Math.floor(Math.random() * 100) + 50,
-                completedTrips: Math.floor(Math.random() * 90) + 40,
-                earnings: Math.floor(Math.random() * 50000000) + 10000000,
-                commissionPaid: Math.floor(Math.random() * 10000000) + 1000000,
-                rating: parseFloat((Math.random() * 2 + 3).toFixed(1)), // 3.0 - 5.0
-                joinDate: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                lastActive: new Date().toISOString(),
-                vehicle: {
-                  plate: carrierDetail.vehiclePlate || "29A-XXXXX",
-                  type: "Truck",
-                  capacity: 2500,
-                  status: Math.random() > 0.3 ? "Available" : "In Use"
-                },
-                currentOrders: [
-                  {
-                    id: "ORD001",
-                    orderCode: "ORD-001",
-                    status: "ON_THE_WAY",
-                    pickupAddress: "123 Nguyễn Huệ, Q1",
-                    deliveryAddress: "456 Lê Lợi, Q1"
-                  },
-                  {
-                    id: "ORD002",
-                    orderCode: "ORD-002", 
-                    status: "ASSIGNED",
-                    pickupAddress: "789 Lý Tự Trọng, Q1",
-                    deliveryAddress: "321 Hai Bà Trưng, Q3"
-                  }
-                ].slice(0, Math.floor(Math.random() * 2) + 1),
-                reviews: [
-                  {
-                    rating: 5,
-                    comment: "Rất tốt, giao hàng nhanh",
-                    createdAt: "2024-01-15"
-                  },
-                  {
-                    rating: 4,
-                    comment: "Tốt, đúng giờ",
-                    createdAt: "2024-01-10"
-                  }
-                ],
-                reports: Math.random() > 0.7 ? [
-                  {
-                    type: "Delay",
-                    description: "Giao hàng trễ 30 phút",
-                    status: "Resolved",
-                    createdAt: "2024-01-12"
-                  }
-                ] : []
+                _id: carrier.id,
+                full_name: carrier.fullName,
+                email: carrier.email,
+                phone: carrier.phone || "Chưa cập nhật",
+                licenseNumber: carrier.licenseNumber || "Chưa cập nhật",
+                vehiclePlate: carrier.vehiclePlate || "Chưa cập nhật",
+                status: carrier.status,
+                avatar: carrier.avatar,
+                banReason: carrier.banReason,
+                created_at: carrier.createdAt,
+                orders: normalizedOrders,
+                vehicleType: carrier.vehicle?.type || "Chưa cập nhật",
+                vehicleCapacity: carrier.vehicle?.capacity || 0,
+                vehicleStatus: carrier.vehicle?.status || "Unknown",
               };
             } catch (err) {
-              console.error(`Error fetching details for carrier ${carrier.id}:`, err);
+              console.error(
+                `Error fetching orders for carrier ${carrier.id}:`,
+                err
+              );
               return {
-                ...carrier,
-                licenseNumber: "Lỗi tải",
-                vehiclePlate: "Lỗi tải",
-                totalTrips: 0,
-                completedTrips: 0,
-                earnings: 0,
-                commissionPaid: 0,
-                rating: 0,
-                joinDate: "N/A",
-                lastActive: "N/A"
+                _id: carrier.id,
+                full_name: carrier.fullName,
+                email: carrier.email,
+                phone: carrier.phone || "Chưa cập nhật",
+                licenseNumber: carrier.licenseNumber || "Chưa cập nhật",
+                vehiclePlate: carrier.vehiclePlate || "Chưa cập nhật",
+                status: carrier.status,
+                avatar: carrier.avatar,
+                banReason: carrier.banReason,
+                created_at: carrier.createdAt,
+                orders: [],
               };
             }
           })
         );
 
-        setCarriers(carriersWithDetails);
+        // Hydrate missing customer names and prices
+        const missingCustomerIds = new Set<string>();
+        // ==== HYDRATE CUSTOMER NAME + TOTAL PRICE TỪ CHI TIẾT ĐƠN (ID hoặc CODE) ====
+        const needDetailKeys = new Map<string, "id" | "code">();
+        for (const c of carriersWithOrders) {
+          for (const o of c.orders ?? []) {
+            if (o.customer_name === "Không rõ" || o.__needs_price) {
+              needDetailKeys.set(o.__order_key, o.__by_code ? "code" : "id");
+            }
+          }
+        }
+
+        const detailMap: Record<string, { name?: string; total?: number }> = {};
+
+        await Promise.all(
+          Array.from(needDetailKeys.entries()).map(async ([key, how]) => {
+            try {
+              let od: any | null = null;
+
+              if (how === "id" && key) {
+                // ✅ Dùng đúng hàm có thật trong order.service.ts
+                od = await orderApi.getDetail(key);
+              } else {
+                // ✅ Theo code: chỉ chạy nếu service có hàm này
+                const resp = await (orderApi as any).getOrderByCode?.(key);
+                od = resp?.data ?? resp ?? null;
+              }
+
+              if (!od) return;
+
+              // Seller normalize: customer_id đã populate -> ở service trả về "customer"
+              const name =
+                od?.customer?.full_name ??
+                od?.customer?.fullName ??
+                od?.customer?.name ??
+                "";
+
+              // Service đã chuẩn hóa "totalPrice"
+              let total: number | undefined =
+                typeof od?.totalPrice === "number" ? od.totalPrice : undefined;
+
+              // Fallback tự tính nếu code-path trả raw object
+              if (
+                (total === undefined || total === null) &&
+                Array.isArray(od?.items)
+              ) {
+                const itemsTotal = od.items.reduce((acc: number, it: any) => {
+                  const unit = Number(
+                    it?.price ?? it?.unitPrice ?? it?.amount ?? 0
+                  );
+                  const qty = Number(it?.quantity ?? it?.qty ?? 1);
+                  return acc + unit * qty;
+                }, 0);
+                const shipping = Number(
+                  od?.shippingFee ?? od?.fees?.shipping ?? od?.deliveryFee ?? 0
+                );
+                const discount = Number(
+                  od?.discount ?? od?.promotion?.discount ?? 0
+                );
+                total = itemsTotal + shipping - discount;
+              }
+
+              detailMap[key] = {
+                name: name || undefined,
+                total: total !== undefined ? Number(total) : undefined,
+              };
+            } catch {}
+          })
+        );
+
+        // Áp kết quả hydrate
+        const hydrated = carriersWithOrders.map((c) => ({
+          ...c,
+          orders: (c.orders ?? []).map((o) => ({
+            ...o,
+            customer_name:
+              o.customer_name && o.customer_name !== "Không rõ"
+                ? o.customer_name
+                : detailMap[o.__order_key]?.name ?? "Không rõ",
+            total_price: detailMap[o.__order_key]?.total ?? o.total_price,
+          })),
+        }));
+
+        setCarriers(hydrated);
+
         setTotalPages(response.totalPages);
         setTotalCarriers(response.total);
       } catch (err: any) {
@@ -192,38 +318,38 @@ export default function DriverManagement() {
 
     fetchCarriers();
   }, [currentPage]);
+  const getVehicleStatusColor = (status: string) => {
+    switch (status) {
+      case "Available":
+        return "text-green-600 bg-green-100";
+      case "In Use":
+        return "text-blue-600 bg-blue-100";
+      case "Maintenance":
+        return "text-yellow-600 bg-yellow-100";
+      default:
+        return "text-gray-600 bg-gray-100";
+    }
+  };
 
+  const getVehicleStatusText = (status: string) => {
+    switch (status) {
+      case "Available":
+        return "Sẵn sàng";
+      case "In Use":
+        return "Đang sử dụng";
+      case "Maintenance":
+        return "Bảo trì";
+      default:
+        return "Không xác định";
+    }
+  };
   // ⚙️ Hàm xử lý hành động
-  const handleViewCarrier = async (carrierId: string) => {
-    try {
-      setSelectedCarrierId(carrierId);
-      setShowCarrierDetail(true);
-    } catch (err: any) {
-      setError("Lỗi khi lấy chi tiết carrier");
-      console.error(err);
-    }
+  const handleViewCarrier = (carrierId: string) => {
+    setSelectedCarrierId(carrierId);
+    setShowCarrierDetail(true);
   };
 
-  const handleEditCarrier = (carrierId: string) => {
-    navigate(`/admin/carriers/edit/${carrierId}`);
-  };
-
-  const handleDeleteCarrier = async (carrierId: string) => {
-    if (window.confirm("Bạn có chắc muốn xóa carrier này?")) {
-      try {
-        await adminApi.deleteUser(carrierId);
-        setCarriers(carriers.filter((carrier) => carrier.id !== carrierId));
-        if (filteredAndSortedCarriers.length === 1 && currentPage > 1) {
-          setCurrentPage(currentPage - 1);
-        }
-      } catch (err: any) {
-        setError("Lỗi khi xóa carrier");
-        console.error(err);
-      }
-    }
-  };
-
-  const handleBanCarrier = (carrierId: string) => {
+  const handleBanCarrier = async (carrierId: string) => {
     setCarrierToBan(carrierId);
     setShowBanModal(true);
   };
@@ -232,17 +358,20 @@ export default function DriverManagement() {
     if (!carrierToBan || !banReason.trim()) return;
 
     try {
-      await adminApi.updateUser(carrierToBan, {
+      await adminApi.updateUserStatus(carrierToBan, {
         status: "Banned",
-        banReason: banReason.trim()
+        banReason: banReason.trim(),
       });
-      
-      setCarriers(carriers.map(carrier => 
-        carrier.id === carrierToBan 
-          ? { ...carrier, status: "Banned", banReason: banReason.trim() }
-          : carrier
-      ));
-      
+
+      // Update local state
+      setCarriers(
+        carriers.map((carrier) =>
+          carrier._id === carrierToBan
+            ? { ...carrier, status: "Banned", banReason: banReason.trim() }
+            : carrier
+        )
+      );
+
       setShowBanModal(false);
       setBanReason("");
       setCarrierToBan(null);
@@ -254,16 +383,19 @@ export default function DriverManagement() {
 
   const handleUnbanCarrier = async (carrierId: string) => {
     try {
-      await adminApi.updateUser(carrierId, {
+      await adminApi.updateUserStatus(carrierId, {
         status: "Active",
-        banReason: ""
+        banReason: "",
       });
-      
-      setCarriers(carriers.map(carrier => 
-        carrier.id === carrierId 
-          ? { ...carrier, status: "Active", banReason: "" }
-          : carrier
-      ));
+
+      // Update local state
+      setCarriers(
+        carriers.map((carrier) =>
+          carrier._id === carrierId
+            ? { ...carrier, status: "Active", banReason: "" }
+            : carrier
+        )
+      );
     } catch (err: any) {
       setError("Lỗi khi mở khóa carrier");
       console.error(err);
@@ -283,15 +415,6 @@ export default function DriverManagement() {
       newExpanded.add(carrierId);
     }
     setExpandedRows(newExpanded);
-  };
-
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-    } else {
-      setSortField(field);
-      setSortOrder("asc");
-    }
   };
 
   const getStatusColor = (status: string) => {
@@ -338,53 +461,56 @@ export default function DriverManagement() {
       case "ON_THE_WAY":
         return "bg-blue-100 text-blue-800";
       case "ASSIGNED":
+      case "ACCEPTED":
         return "bg-yellow-100 text-yellow-800";
       case "DELIVERED":
+      case "COMPLETED":
         return "bg-green-100 text-green-800";
+      case "CANCELLED":
+        return "bg-red-100 text-red-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
   };
 
   const getOrderStatusText = (status: string) => {
-    switch (status) {
-      case "ON_THE_WAY":
-        return "Đang giao";
-      case "ASSIGNED":
-        return "Đã phân công";
-      case "DELIVERED":
-        return "Đã giao";
-      default:
-        return status;
-    }
+    const statusMap: { [key: string]: string } = {
+      PENDING: "Chờ xử lý",
+      CONFIRMED: "Đã xác nhận",
+      ASSIGNED: "Đã phân công",
+      ACCEPTED: "Đã nhận đơn",
+      ON_THE_WAY: "Đang giao",
+      ARRIVED: "Đã đến nơi",
+      DELIVERING: "Đang giao hàng",
+      DELIVERED: "Đã giao",
+      COMPLETED: "Hoàn thành",
+      CANCELLED: "Đã hủy",
+      INCIDENT: "Sự cố",
+    };
+
+    return statusMap[status] || status;
   };
 
-  const filteredAndSortedCarriers = carriers
-    .filter((carrier) => {
-      const matchesSearch =
-        carrier.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        carrier.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        carrier.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        carrier.phone.includes(searchTerm) ||
-        carrier.vehiclePlate.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredCarriers = carriers.filter((carrier) => {
+    const matchesSearch =
+      carrier.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      carrier.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      carrier._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (carrier.phone && carrier.phone.includes(searchTerm)) ||
+      (carrier.vehiclePlate &&
+        carrier.vehiclePlate.toLowerCase().includes(searchTerm.toLowerCase()));
 
-      const matchesStatus = filterStatus === "all" || carrier.status === filterStatus;
+    const matchesStatus =
+      filterStatus === "all" || carrier.status === filterStatus;
 
-      return matchesSearch && matchesStatus;
-    })
-    .sort((a, b) => {
-      const aValue: any = a[sortField];
-      const bValue: any = b[sortField];
-
-      if (sortOrder === "asc") {
-        return aValue > bValue ? 1 : -1;
-      } else {
-        return aValue < bValue ? 1 : -1;
-      }
-    });
+    return matchesSearch && matchesStatus;
+  });
 
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedCarriers = filteredAndSortedCarriers.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedCarriers = filteredCarriers.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  );
 
   // 🧭 Loading & Error
   if (loading) {
@@ -404,8 +530,13 @@ export default function DriverManagement() {
   }
 
   // Nếu đang hiển thị chi tiết carrier
-  if (showCarrierDetail) {
-    return <DriverDetail carrierId={selectedCarrierId || undefined} onBack={handleBackFromDetail} />;
+  if (showCarrierDetail && selectedCarrierId) {
+    return (
+      <DriverDetail
+        carrierId={selectedCarrierId}
+        onBack={handleBackFromDetail}
+      />
+    );
   }
 
   return (
@@ -415,7 +546,9 @@ export default function DriverManagement() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-96">
             <h3 className="text-lg font-semibold mb-4">Khóa Carrier</h3>
-            <p className="text-gray-600 mb-4">Vui lòng nhập lý do khóa carrier:</p>
+            <p className="text-gray-600 mb-4">
+              Vui lòng nhập lý do khóa carrier:
+            </p>
             <textarea
               value={banReason}
               onChange={(e) => setBanReason(e.target.value)}
@@ -447,23 +580,24 @@ export default function DriverManagement() {
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Thông tin tài xế</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Quản lý Tài xế</h1>
         <button
-          onClick={() => navigate("/admin/carriers/add")}
-          className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+          onClick={() => setOpenCreate(true)}
+          className="px-4 py-2 rounded-lg bg-orange-600 text-white hover:bg-orange-700 transition-colors flex items-center gap-2"
         >
-          <Plus className="w-4 h-4" />
-          Thêm carrier
+          <User className="w-4 h-4" />
+          Thêm tài xế
         </button>
       </div>
-
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg shadow p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Tổng carrier</p>
-              <p className="text-2xl font-bold text-gray-900">{totalCarriers}</p>
+              <p className="text-sm text-gray-600">Tổng tài xế</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {totalCarriers}
+              </p>
             </div>
             <Truck className="w-8 h-8 text-orange-500 opacity-20" />
           </div>
@@ -482,23 +616,23 @@ export default function DriverManagement() {
         <div className="bg-white rounded-lg shadow p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Trung bình rating</p>
-              <p className="text-2xl font-bold text-yellow-600">
-                {(carriers.reduce((sum, d) => sum + d.rating, 0) / carriers.length || 0).toFixed(1)}
+              <p className="text-sm text-gray-600">Không hoạt động</p>
+              <p className="text-2xl font-bold text-gray-600">
+                {carriers.filter((d) => d.status === "Inactive").length}
               </p>
             </div>
-            <Star className="w-8 h-8 text-yellow-500 opacity-20" />
+            <AlertCircle className="w-8 h-8 text-gray-500 opacity-20" />
           </div>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Tổng doanh thu</p>
-              <p className="text-2xl font-bold text-blue-600">
-                ₫{(carriers.reduce((sum, d) => sum + d.earnings, 0) / 1000000).toFixed(0)}M
+              <p className="text-sm text-gray-600">Bị khóa</p>
+              <p className="text-2xl font-bold text-red-600">
+                {carriers.filter((d) => d.status === "Banned").length}
               </p>
             </div>
-            <TrendingUp className="w-8 h-8 text-blue-500 opacity-20" />
+            <Ban className="w-8 h-8 text-red-500 opacity-20" />
           </div>
         </div>
       </div>
@@ -540,57 +674,43 @@ export default function DriverManagement() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-8"></th>
-                <th
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("fullName")}
-                >
-                  <div className="flex items-center gap-2">
-                    Thông tin carrier
-                    <ArrowUpDown className="w-4 h-4" />
-                  </div>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Thông tin tài xế
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Liên hệ & Xe</th>
-                <th
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("rating")}
-                >
-                  <div className="flex items-center gap-2">
-                    Rating
-                    <ArrowUpDown className="w-4 h-4" />
-                  </div>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Liên hệ & Xe
                 </th>
-                <th
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("totalTrips")}
-                >
-                  <div className="flex items-center gap-2">
-                    Chuyến
-                    <ArrowUpDown className="w-4 h-4" />
-                  </div>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Đơn hàng
                 </th>
-                <th
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("earnings")}
-                >
-                  <div className="flex items-center gap-2">
-                    Doanh thu & Hoa hồng
-                    <ArrowUpDown className="w-4 h-4" />
-                  </div>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Trạng thái
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Thao tác</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Thao tác
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {paginatedCarriers.map((carrier) => (
-                  <React.Fragment key={carrier.id}>
+                <React.Fragment key={carrier._id}>
                   <tr className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <button onClick={() => toggleExpandRow(carrier.id)} className="p-1 hover:bg-gray-200 rounded">
-                        {expandedRows.has(carrier.id) ? (
-                          <ChevronUp className="w-4 h-4" />
+                      <button
+                        onClick={() => toggleExpandRow(carrier._id)}
+                        className="p-1 hover:bg-gray-200 rounded"
+                        disabled={
+                          !carrier.orders || carrier.orders.length === 0
+                        }
+                      >
+                        {carrier.orders && carrier.orders.length > 0 ? (
+                          expandedRows.has(carrier._id) ? (
+                            <ChevronUp className="w-4 h-4" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4" />
+                          )
                         ) : (
-                          <ChevronDown className="w-4 h-4" />
+                          <ChevronDown className="w-4 h-4 text-gray-300" />
                         )}
                       </button>
                     </td>
@@ -598,15 +718,25 @@ export default function DriverManagement() {
                       <div className="flex items-center">
                         <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
                           {carrier.avatar ? (
-                            <img src={carrier.avatar} alt={carrier.fullName} className="h-10 w-10 rounded-full" />
+                            <img
+                              src={carrier.avatar}
+                              alt={carrier.full_name}
+                              className="h-10 w-10 rounded-full"
+                            />
                           ) : (
                             <User className="w-5 h-5 text-orange-600" />
                           )}
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{carrier.fullName}</div>
-                          <div className="text-sm text-gray-500">ID: {carrier.id}</div>
-                          <div className="text-sm text-gray-500">GPLX: {carrier.licenseNumber}</div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {carrier.full_name}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            ID: {carrier._id}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            GPLX: {carrier.licenseNumber}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -620,37 +750,77 @@ export default function DriverManagement() {
                           <Phone className="w-4 h-4 mr-2 text-gray-400" />
                           {carrier.phone}
                         </div>
-                        <div className="flex items-center text-sm text-gray-500 mt-1">
-                          <Truck className="w-4 h-4 mr-2 text-gray-400" />
-                          {carrier.vehiclePlate}
+
+                        {/* Thêm thông tin xe chi tiết */}
+                        <div className="mt-2 p-2 bg-gray-50 rounded border">
+                          <div className="flex items-center justify-between text-sm text-gray-900 font-medium mb-1">
+                            <div className="flex items-center">
+                              <Truck className="w-4 h-4 mr-2 text-orange-500" />
+                              Thông tin xe
+                            </div>
+                            {carrier.vehicleStatus &&
+                              carrier.vehicleStatus !== "Unknown" && (
+                                <span
+                                  className={`px-2 py-1 text-xs rounded-full ${getVehicleStatusColor(
+                                    carrier.vehicleStatus
+                                  )}`}
+                                >
+                                  {getVehicleStatusText(carrier.vehicleStatus)}
+                                </span>
+                              )}
+                          </div>
+
+                          {carrier.vehiclePlate &&
+                          carrier.vehiclePlate !== "Chưa cập nhật" ? (
+                            <div className="space-y-1 text-xs">
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Biển số:</span>
+                                <span className="font-medium">
+                                  {carrier.vehiclePlate}
+                                </span>
+                              </div>
+                              {carrier.vehicleType &&
+                                carrier.vehicleType !== "Chưa cập nhật" && (
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">
+                                      Loại xe:
+                                    </span>
+                                    <span className="font-medium">
+                                      {carrier.vehicleType}
+                                    </span>
+                                  </div>
+                                )}
+                              {carrier.vehicleCapacity &&
+                                carrier.vehicleCapacity > 0 && (
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">
+                                      Tải trọng:
+                                    </span>
+                                    <span className="font-medium">
+                                      {carrier.vehicleCapacity} kg
+                                    </span>
+                                  </div>
+                                )}
+                            </div>
+                          ) : (
+                            <div className="text-xs text-gray-500 italic text-center py-1">
+                              Chưa có thông tin xe
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-1">
-                        <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                        <span className="text-sm font-semibold text-gray-900">{carrier.rating.toFixed(1)}</span>
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {carrier.reviews?.length || 0} đánh giá
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        {carrier.completedTrips}/{carrier.totalTrips}
+                        {carrier.orders ? carrier.orders.length : 0} đơn hàng
                       </div>
                       <div className="text-xs text-gray-500">
-                        {carrier.totalTrips > 0
-                          ? ((carrier.completedTrips / carrier.totalTrips) * 100).toFixed(0)
-                          : 0}% hoàn thành
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        ₫{(carrier.earnings / 1000000).toFixed(1)}M
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        Đã trả: ₫{(carrier.commissionPaid / 1000000).toFixed(1)}M
+                        {carrier.orders
+                          ? carrier.orders.filter((order) =>
+                              ["COMPLETED", "DELIVERED"].includes(order.status)
+                            ).length
+                          : 0}{" "}
+                        đã hoàn thành
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -660,10 +830,15 @@ export default function DriverManagement() {
                         )}`}
                       >
                         {getStatusIcon(carrier.status)}
-                        <span className="ml-1">{getStatusText(carrier.status)}</span>
+                        <span className="ml-1">
+                          {getStatusText(carrier.status)}
+                        </span>
                       </span>
                       {carrier.banReason && (
-                        <div className="text-xs text-red-600 mt-1 max-w-xs truncate" title={carrier.banReason}>
+                        <div
+                          className="text-xs text-red-600 mt-1 max-w-xs truncate"
+                          title={carrier.banReason}
+                        >
                           {carrier.banReason}
                         </div>
                       )}
@@ -671,16 +846,16 @@ export default function DriverManagement() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
                         <button
-                          onClick={() => handleViewCarrier(carrier.id)}
+                          onClick={() => handleViewCarrier(carrier._id)}
                           className="text-blue-600 hover:text-blue-900 p-1"
                           title="Xem chi tiết"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
-                        
+
                         {carrier.status === "Banned" ? (
                           <button
-                            onClick={() => handleUnbanCarrier(carrier.id)}
+                            onClick={() => handleUnbanCarrier(carrier._id)}
                             className="text-green-600 hover:text-green-900 p-1"
                             title="Mở khóa"
                           >
@@ -688,7 +863,7 @@ export default function DriverManagement() {
                           </button>
                         ) : (
                           <button
-                            onClick={() => handleBanCarrier(carrier.id)}
+                            onClick={() => handleBanCarrier(carrier._id)}
                             className="text-red-600 hover:text-red-900 p-1"
                             title="Khóa tài khoản"
                           >
@@ -698,139 +873,106 @@ export default function DriverManagement() {
                       </div>
                     </td>
                   </tr>
-                  {expandedRows.has(carrier.id) && (
-                    <tr className="bg-gray-50">
-                      <td colSpan={8} className="px-6 py-4">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                          {/* Thông tin xe */}
-                          <div>
-                            <h4 className="font-semibold text-gray-900 mb-3">Thông tin xe</h4>
-                            <div className="space-y-2 text-sm">
-                              <div>
-                                <span className="text-gray-600">Biển số:</span>
-                                <span className="ml-2 font-medium text-gray-900">
-                                  {carrier.vehicle?.plate || "Không xác định"}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-gray-600">Loại xe:</span>
-                                <span className="ml-2 font-medium text-gray-900">
-                                  {carrier.vehicle?.type || "Không xác định"}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-gray-600">Tải trọng:</span>
-                                <span className="ml-2 font-medium text-gray-900">
-                                  {carrier.vehicle?.capacity ? `${carrier.vehicle.capacity}kg` : "Không xác định"}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-gray-600">Trạng thái xe:</span>
-                                <span className="ml-2 font-medium text-gray-900">
-                                  {carrier.vehicle?.status === "Available" ? "Sẵn sàng" : "Đang sử dụng"}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
+                  {expandedRows.has(carrier._id) &&
+                    carrier.orders &&
+                    carrier.orders.length > 0 && (
+                      <tr className="bg-gray-50">
+                        <td colSpan={6} className="px-6 py-4">
+                          <div className="space-y-3">
+                            <h4 className="font-semibold text-gray-900">
+                              Đơn hàng hiện tại
+                            </h4>
+                            <div className="overflow-x-auto bg-white border rounded">
+                              <table className="min-w-full text-sm">
+                                <thead className="bg-gray-100">
+                                  <tr>
+                                    <th className="px-3 py-2 text-left font-medium text-gray-700">
+                                      Mã đơn
+                                    </th>
+                                    <th className="px-3 py-2 text-left font-medium text-gray-700">
+                                      Khách hàng
+                                    </th>
+                                    <th className="px-3 py-2 text-left font-medium text-gray-700">
+                                      Giá trị
+                                    </th>
+                                    <th className="px-3 py-2 text-left font-medium text-gray-700">
+                                      Địa chỉ lấy
+                                    </th>
+                                    <th className="px-3 py-2 text-left font-medium text-gray-700">
+                                      Địa chỉ giao
+                                    </th>
+                                    <th className="px-3 py-2 text-left font-medium text-gray-700">
+                                      Trạng thái
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {carrier.orders.map((order) => (
+                                    <tr key={order._id} className="border-t">
+                                      <td className="px-3 py-2 font-medium text-gray-900">
+                                        {order.orderCode}
+                                      </td>
+                                      <td className="px-3 py-2">
+                                        {order.customer_name}
+                                      </td>
+                                      <td className="px-3 py-2">
+                                        {`₫${Number(
+                                          order.total_price ?? 0
+                                        ).toLocaleString("vi-VN")}`}
+                                      </td>
 
-                          {/* Đơn hàng hiện tại */}
-                          <div>
-                            <h4 className="font-semibold text-gray-900 mb-3">Đơn hàng hiện tại</h4>
-                            <div className="space-y-2">
-                              {carrier.currentOrders && carrier.currentOrders.length > 0 ? (
-                                carrier.currentOrders.map((order) => (
-                                  <div key={order.id} className="flex items-center justify-between p-2 bg-white rounded border">
-                                    <div>
-                                      <div className="font-medium text-gray-900">{order.orderCode}</div>
-                                      <div className="text-xs text-gray-500 truncate max-w-xs">
-                                        {order.pickupAddress} → {order.deliveryAddress}
-                                      </div>
-                                    </div>
-                                    <span
-                                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getOrderStatusColor(
-                                        order.status
-                                      )}`}
-                                    >
-                                      {getOrderStatusText(order.status)}
-                                    </span>
-                                  </div>
-                                ))
-                              ) : (
-                                <div className="text-sm text-gray-500">Không có đơn hàng nào</div>
-                              )}
+                                      <td
+                                        className="px-3 py-2 max-w-[280px] truncate"
+                                        title={order.pickup_address}
+                                      >
+                                        {order.pickup_address}
+                                      </td>
+                                      <td
+                                        className="px-3 py-2 max-w-[280px] truncate"
+                                        title={order.delivery_address}
+                                      >
+                                        {order.delivery_address}
+                                      </td>
+                                      <td className="px-3 py-2">
+                                        <span
+                                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getOrderStatusColor(
+                                            order.status
+                                          )}`}
+                                        >
+                                          {getOrderStatusText(order.status)}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
                             </div>
                           </div>
-
-                          {/* Đánh giá & Report */}
-                          <div>
-                            <h4 className="font-semibold text-gray-900 mb-3">Đánh giá & Báo cáo</h4>
-                            <div className="space-y-2 text-sm">
-                              <div>
-                                <span className="text-gray-600">Số đánh giá:</span>
-                                <span className="ml-2 font-medium text-gray-900">
-                                  {carrier.reviews?.length || 0}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-gray-600">Số báo cáo:</span>
-                                <span className="ml-2 font-medium text-gray-900">
-                                  {carrier.reports?.length || 0}
-                                </span>
-                              </div>
-                              {carrier.reports && carrier.reports.length > 0 && (
-                                <div>
-                                  <span className="text-gray-600">Báo cáo gần nhất:</span>
-                                  <div className="ml-2 text-red-600 text-xs">
-                                    {carrier.reports[0].type} - {carrier.reports[0].status}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Tài chính */}
-                          <div>
-                            <h4 className="font-semibold text-gray-900 mb-3">Tài chính</h4>
-                            <div className="space-y-2 text-sm">
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Tổng doanh thu:</span>
-                                <span className="font-medium text-gray-900">
-                                  ₫{(carrier.earnings / 1000000).toFixed(1)}M
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Hoa hồng đã trả:</span>
-                                <span className="font-medium text-green-600">
-                                  ₫{(carrier.commissionPaid / 1000000).toFixed(1)}M
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Còn lại:</span>
-                                <span className="font-medium text-blue-600">
-                                  ₫{((carrier.earnings - carrier.commissionPaid) / 1000000).toFixed(1)}M
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Tỷ lệ hoa hồng:</span>
-                                <span className="font-medium text-gray-900">20%</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
+                        </td>
+                      </tr>
+                    )}
                 </React.Fragment>
               ))}
             </tbody>
           </table>
         </div>
-
+        <DriverCreateModal
+          open={openCreate}
+          onClose={() => setOpenCreate(false)}
+          onCreated={(id) => {
+            setOpenCreate(false);
+            // Refresh danh sách hiện tại
+            // Cách nhanh: về trang 1 hoặc gọi lại fetch
+            setCurrentPage(1);
+            // hoặc: window.location.reload();
+          }}
+        />
         {/* Pagination */}
         <div className="bg-white px-4 py-3 border-t border-gray-200 flex items-center justify-between">
           <div className="text-sm text-gray-700">
-            Hiển thị {startIndex + 1}-{Math.min(startIndex + itemsPerPage, totalCarriers)} của{" "}
-            {totalCarriers} carrier
+            Hiển thị {startIndex + 1}-
+            {Math.min(startIndex + itemsPerPage, totalCarriers)} của{" "}
+            {totalCarriers} tài xế
           </div>
           <div className="flex gap-2">
             <button
@@ -845,14 +987,18 @@ export default function DriverManagement() {
                 key={page}
                 onClick={() => setCurrentPage(page)}
                 className={`px-3 py-1 rounded-lg ${
-                  currentPage === page ? "bg-orange-500 text-white" : "border border-gray-300 hover:bg-gray-50"
+                  currentPage === page
+                    ? "bg-orange-500 text-white"
+                    : "border border-gray-300 hover:bg-gray-50"
                 }`}
               >
                 {page}
               </button>
             ))}
             <button
-              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+              onClick={() =>
+                setCurrentPage(Math.min(totalPages, currentPage + 1))
+              }
               disabled={currentPage === totalPages}
               className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >

@@ -141,6 +141,12 @@ export const orderApi = {
       totalPages: data.totalPages,
     };
   },
+  async getByCode(code: string) {
+  const { data } = await api.get(`/orders/by-code/${code}`, {
+    headers: { Authorization: `Bearer ${getAuthToken()}` },
+  });
+  return data?.data || data;
+}
 };
 
 
