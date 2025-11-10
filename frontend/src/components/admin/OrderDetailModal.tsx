@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { 
   X, Package, Truck, Users, Building, Clock, Weight, MapPin, Phone, Mail, User,
-  FileText, History, DollarSign, Car, Calendar, AlertCircle, Image as ImageIcon
+  FileText, History, DollarSign, Car, Calendar, AlertCircle
 } from "lucide-react";
 import { adminApi } from "@/services/admin.service";
 
@@ -39,6 +39,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ orderId, onClose })
   }, [orderId]);
 
   const getStatusColor = (status: string) => {
+    const s = (status || "").toString().toUpperCase();
     const colors: { [key: string]: string } = {
       PENDING: "bg-yellow-100 text-yellow-800",
       CONFIRMED: "bg-blue-100 text-blue-800",
@@ -55,10 +56,11 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ orderId, onClose })
       PAUSED: "bg-slate-200 text-slate-800",
       NOTE: "bg-gray-100 text-gray-800",
     };
-    return colors[status] || "bg-gray-100 text-gray-800";
+    return colors[s] || "bg-gray-100 text-gray-800";
   };
 
   const getStatusText = (status: string) => {
+    const s = (status || "").toString().toUpperCase();
     const statusMap: { [key: string]: string } = {
       PENDING: "Chờ xử lý",
       CONFIRMED: "Đã xác nhận",
@@ -67,7 +69,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ orderId, onClose })
       ACCEPTED: "Đã chấp nhận",
       ON_THE_WAY: "Đang vận chuyển",
       ARRIVED: "Đã đến nơi",
-      DELIVERED: "Đã giao hàng",
+      DELIVERED: "Đã giao",
       COMPLETED: "Hoàn thành",
       DECLINED: "Từ chối",
       CANCELLED: "Đã hủy",
@@ -75,7 +77,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ orderId, onClose })
       PAUSED: "Tạm dừng",
       NOTE: "Ghi chú",
     };
-    return statusMap[status] || status;
+    return statusMap[s] || status;
   };
 
   const safeString = (value: any): string => {
@@ -159,7 +161,6 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ orderId, onClose })
     { id: "tracking", label: "📍 Tracking", count: order.trackings?.length || 0 },
     { id: "statusLogs", label: "📝 Lịch sử trạng thái", count: order.statusLogs?.length || 0 },
     { id: "extraFees", label: "💰 Phụ phí", count: order.extra_fees?.length || 0 },
-    { id: "media", label: "🖼️ Media", count: order.media?.length || 0 },
     { id: "audit", label: "📊 Audit Logs", count: order.auditLogs?.length || 0 },
   ];
 
@@ -350,7 +351,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ orderId, onClose })
               </div>
 
               {/* Thông tin người dùng */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="bg-white border rounded-lg p-4">
                   <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
                     <User className="w-5 h-5" />
@@ -369,27 +370,6 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ orderId, onClose })
                     <p className="text-sm text-gray-500 mt-1 flex items-center gap-1">
                       <Phone className="w-4 h-4" />
                       {order.customer_id?.phone || order.phone}
-                    </p>
-                  )}
-                </div>
-                <div className="bg-white border rounded-lg p-4">
-                  <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                    <Truck className="w-5 h-5" />
-                    Tài xế
-                  </h4>
-                  <p className="text-gray-900 font-medium">
-                    {order.driver_id?.full_name || order.driver?.full_name || "Chưa phân công"}
-                  </p>
-                  {order.driver_id?.phone && (
-                    <p className="text-sm text-gray-500 mt-1 flex items-center gap-1">
-                      <Phone className="w-4 h-4" />
-                      {order.driver_id.phone}
-                    </p>
-                  )}
-                  {order.driver_id?.email && (
-                    <p className="text-sm text-gray-500 mt-1 flex items-center gap-1">
-                      <Mail className="w-4 h-4" />
-                      {order.driver_id.email}
                     </p>
                   )}
                 </div>
@@ -748,42 +728,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ orderId, onClose })
             </div>
           )}
 
-          {activeTab === "media" && (
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Media đơn hàng</h3>
-              {order.media && order.media.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {order.media.map((media: any, idx: number) => (
-                    <div key={idx} className="border rounded-lg overflow-hidden bg-white shadow-sm">
-                      {media.file_url && (
-                        <img
-                          src={media.file_url}
-                          alt={`Media ${idx + 1}`}
-                          className="w-full h-48 object-cover hover:scale-105 transition-transform cursor-pointer"
-                          onClick={() => window.open(media.file_url, '_blank')}
-                        />
-                      )}
-                      <div className="p-3">
-                        <p className="text-sm font-semibold text-gray-800">{media.media_type || "Other"}</p>
-                        {media.description && (
-                          <p className="text-sm text-gray-600 mt-1">{media.description}</p>
-                        )}
-                        <p className="text-xs text-gray-500 mt-2">
-                          {media.uploaded_by?.full_name || "Hệ thống"} - {safeDate(media.createdAt)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <ImageIcon className="w-12 h-12 mx-auto text-gray-400 mb-3" />
-                  <p>Chưa có media nào</p>
-                </div>
-              )}
-            </div>
-          )}
-
+          
           {activeTab === "audit" && (
             <div>
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Audit Logs</h3>

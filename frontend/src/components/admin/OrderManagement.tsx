@@ -103,10 +103,10 @@ export default function OrderManagement() {
         return "Đang xử lý";
       case "Shipping":
         return "Đang giao";
-      case "Delivered":
+      case "COMPLETED":
         return "Đã giao";
       case "Cancelled":
-        return "Đã hủy";
+        return "Đã hủy"   
       default:
         return "Không xác định";
     }
