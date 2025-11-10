@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { clearAuthData } from "@/lib/auth";
 
-type AdminSection = "dashboard" | "orders" | "drivers" | "sellers" | "users" | "complaints" | "quality" | "finance" | "vehicles";
+type AdminSection = "dashboard" | "orders" | "carriers" | "sellers" | "users" | "complaints" | "quality" | "finance" | "vehicles";
 
 interface SidebarProps {
   activeSection: AdminSection;
@@ -24,7 +24,12 @@ const menuItems = [
   { id: "dashboard" as AdminSection, label: "Tổng quan", icon: LayoutDashboard },
   { id: "orders" as AdminSection, label: "Quản lý đơn hàng", icon: Package },
   { id: "users" as AdminSection, label: "Quản lý khách hàng", icon: Users },
-  { id: "drivers" as AdminSection, label: "Quản lý tài xế", icon: Users },
+  { id: "carriers" as AdminSection, label: "Quản lý tài xế", icon: Users },
+  { 
+    id: "driver-applications" as AdminSection, 
+    label: "Hồ sơ ứng viên", 
+    icon: Users 
+  },
   { id: "complaints" as AdminSection, label: "Xử lý sự cố", icon: MessageSquare },
   { id: "quality" as AdminSection, label: "Quản lý chất lượng", icon: Star }
 ];

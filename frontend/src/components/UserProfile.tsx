@@ -16,7 +16,7 @@ import {
 import { getCurrentUserId } from "../lib/auth";
 
 // ---- Interface & type ----
-type Role = "Admin" | "Seller" | "Customer" | "Driver" | "Carrier";
+type Role = "Admin" | "Seller" | "Customer" | "Carrier";
 type Status = "Active" | "Inactive" | "Suspended";
 
 type User = {
@@ -102,8 +102,6 @@ export default function UserProfile() {
         return "bg-blue-100 text-blue-800";
       case "Customer":
         return "bg-green-100 text-green-800";
-      case "Driver":
-        return "bg-yellow-100 text-yellow-800";
       case "Carrier":
         return "bg-purple-100 text-purple-800";
       default:

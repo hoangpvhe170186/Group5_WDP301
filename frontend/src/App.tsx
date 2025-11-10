@@ -30,6 +30,7 @@ import PricingCard from "./components/PricingCard";
 // ✅ Import trang Messages mới
 import UserMessagesPage from "./pages/UserMessagesPage";
 import EstimatePricePage from "./pages/EstimatePricePage";
+import AdminDriverApplications from "./components/admin/AdminDriverApplications";
 
 export default function App() {
   return (
@@ -63,7 +64,7 @@ export default function App() {
         <Route path="/seller/home" element={<Seller />} />
         <Route path="/driver-recruit" element={<DriverInterviewPage />} />
         <Route path="/seller/driver-applications" element={<SellerDriverApplications />} />
-        
+        <Route path="/admin/driver-applications" element={<AdminDriverApplications />} />
         {/* ✅ Thêm route Messages vào User Order Layout */}
         <Route path="/myorder" element={<UserOrderLayout />}>
           <Route path="tracking" element={<OrderTracking />} />

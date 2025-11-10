@@ -31,7 +31,7 @@ export interface Order {
   status: string;
   scheduledTime: string;
   vehicleId?: string;
-  driverId?: string;
+  carrierId?: string;
   customer?: string;
 }
 
@@ -41,7 +41,6 @@ const normalizeOrder = (o: any): Order => ({
   code: o.code || "",
   status: o.status || "",
   seller: o.seller_id || null,
-  driverId: o.driver_id || null,
   customer: o.customer_id || null,
   totalPrice: o.total_price || 0,
   pickupAddress: o.pickup_address || "",
@@ -80,7 +79,6 @@ export const orderApi = {
           ? new Date(o.scheduled_time).toLocaleString("vi-VN")
           : "Chưa có thời gian",
         vehicleId: o.vehicle_id,
-        driverId: o.driver_id,
         carrierId: o.carrier_id,
       }));
       return { orders };
@@ -118,7 +116,7 @@ export const orderApi = {
           ? new Date(data.scheduled_time).toLocaleString("vi-VN")
           : "Chưa có thời gian",
         vehicleId: data.vehicle_id,
-        driverId: data.driver_id,
+        carrierId: data.carrier_id,
         
       };
     } catch (error: any) {
@@ -143,6 +141,12 @@ export const orderApi = {
       totalPages: data.totalPages,
     };
   },
+  async getByCode(code: string) {
+  const { data } = await api.get(`/orders/by-code/${code}`, {
+    headers: { Authorization: `Bearer ${getAuthToken()}` },
+  });
+  return data?.data || data;
+}
 };
 
 

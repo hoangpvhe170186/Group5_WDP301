@@ -2,14 +2,12 @@ import mongoose from "mongoose";
 
 const vehicleSchema = new mongoose.Schema(
   {
-    driver_id: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    carrier_id: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     plate_number: { type: String, unique: true, required: true },
 
-    // Loại xe
-    type: { type: String, enum: ["Truck"], required: true },
-    capacity: { type: Number },
+    type: { type: String, required: true }, 
+    capacity: { type: Number, default: 500 },
 
-    // Hình ảnh
     image: {
       original: String,
       thumb: String,
@@ -17,7 +15,6 @@ const vehicleSchema = new mongoose.Schema(
       updatedAt: Date,
     },
 
-    // Trạng thái xe
     status: {
       type: String,
       enum: ["Available", "In Use", "Maintenance"],

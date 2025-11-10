@@ -55,7 +55,7 @@ const normalizeUser = (u: any): User => ({
 export const userApi = {
   /**
    * 🔍 Lấy danh sách user với bộ lọc (role, status, search, phân trang)
-   * API: GET /users?role=Driver&status=Active&search=An&page=1&limit=20
+   * API: GET /users?role=Carrier&status=Active&search=An&page=1&limit=20
    */
   async listUsers(
     filters?: { role?: string; status?: string; search?: string; page?: number; limit?: number }

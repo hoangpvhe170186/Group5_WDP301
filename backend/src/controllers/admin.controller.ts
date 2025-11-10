@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import mongoose from "mongoose";
 import User from "../models/User";
 import Order from "../models/Order";
 import OrderItem from "../models/OrderItem";
@@ -7,6 +8,80 @@ import OrderStatusLog from "../models/OrderStatusLog";
 import OrderMedia from "../models/OrderMedia";
 
 /**
+ * ➕ Tạo Carrier mới (alias cho createUser với role="Carrier")
+ * API: POST /api/admin/carriers
+ */
+export const createCarrier = async (req: Request, res: Response) => {
+  // Force role to be Carrier
+  req.body.role = "Carrier";
+  return createUser(req, res);
+};
+
+/**
+ * 🚗 Tạo Vehicle mới
+ * API: POST /api/admin/vehicles
+ */
+export const createVehicle = async (req: Request, res: Response) => {
+  try {
+    const { plate_number, type, capacity, carrier_id, status } = req.body;
+
+    // Validate required fields - đã bỏ enum check
+    if (!plate_number || !type || !carrier_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Vui lòng điền đầy đủ: Biển số xe, Loại xe, Carrier ID",
+      });
+    }
+
+    // Kiểm tra carrier tồn tại
+    const carrier = await User.findById(carrier_id);
+    if (!carrier || carrier.role !== "Carrier") {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy carrier hoặc user không phải là carrier",
+      });
+    }
+
+    // Kiểm tra biển số đã tồn tại
+    const existingVehicle = await Vehicle.findOne({
+      plate_number: plate_number.toUpperCase(),
+    });
+    if (existingVehicle) {
+      return res.status(409).json({
+        success: false,
+        message: "Biển số xe đã tồn tại trong hệ thống",
+      });
+    }
+
+    // Tạo vehicle mới - không cần validate enum
+    const newVehicle = await Vehicle.create({
+      carrier_id,
+      plate_number: plate_number.toUpperCase(),
+      type: type.trim(), // Nhận bất kỳ loại xe nào
+      capacity: capacity || 500,
+      status: status || "Available",
+    });
+
+    // Cập nhật vehiclePlate cho carrier
+    await User.findByIdAndUpdate(carrier_id, {
+      vehiclePlate: plate_number.toUpperCase(),
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Tạo phương tiện thành công",
+      data: newVehicle,
+    });
+  } catch (error: any) {
+    console.error("❌ Lỗi khi tạo vehicle:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi server khi tạo phương tiện",
+      error: error.message,
+    });
+  }
+};
+/**
  * 📊 Lấy thống kê tổng quan Dashboard
  */
 export const getDashboardOverview = async (req: Request, res: Response) => {
@@ -14,7 +89,7 @@ export const getDashboardOverview = async (req: Request, res: Response) => {
     // Tổng số user theo vai trò
     const [totalCustomers, totalDrivers, totalSellers] = await Promise.all([
       User.countDocuments({ role: "Customer" }),
-      User.countDocuments({ role: "Driver" }),
+      User.countDocuments({ role: "Carrier" }),
       User.countDocuments({ role: "Seller" }),
     ]);
 
@@ -82,7 +157,6 @@ export const getDashboardOverview = async (req: Request, res: Response) => {
   }
 };
 
-
 export const getRevenueStats = async (req: Request, res: Response) => {
   try {
     const { startDate, endDate } = req.query;
@@ -136,7 +210,7 @@ export const getPaginationAllOrders = async (req: Request, res: Response) => {
       Order.find()
         .populate("seller_id")
         .populate("package_id")
-        .populate("driver_id")
+        .populate("carrier_id")
         .populate("customer_id")
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -169,31 +243,29 @@ export const getPaginationDrivers = async (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 10;
     const skip = (page - 1) * limit;
 
-    const [drivers, total] = await Promise.all([
-      User.find({ role: "Driver", status: "Active" })
+    const [carriers, total] = await Promise.all([
+      User.find({ role: "Carrier", status: "Active" })
         .select("_id full_name email phone")
         .skip(skip)
         .limit(limit),
-      User.countDocuments({ role: "Driver", status: "Active" }),
+      User.countDocuments({ role: "Carrier", status: "Active" }),
     ]);
 
     res.status(200).json({
       success: true,
-      data: drivers,
+      data: carriers,
       total,
       currentPage: page,
       totalPages: Math.ceil(total / limit),
     });
   } catch (error) {
-    console.error("Error getting drivers:", error);
+    console.error("Error getting carriers:", error);
     res.status(500).json({
       success: false,
-      message: "Lỗi server khi lấy danh sách driver",
+      message: "Lỗi server khi lấy danh sách carrier",
     });
   }
 };
-
-
 
 export const getPaginationSellers = async (req: Request, res: Response) => {
   try {
@@ -237,7 +309,7 @@ export const getPaginationCustomers = async (req: Request, res: Response) => {
         .skip(skip)
         .limit(limit),
       User.countDocuments({ role: "Customer" }),
-    ]); 
+    ]);
 
     res.status(200).json({
       success: true,
@@ -255,32 +327,31 @@ export const getPaginationCustomers = async (req: Request, res: Response) => {
   }
 };
 
-
 export const updateStatusCustomer = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;  // Giả sử id được truyền qua params
+    const { id } = req.params; // Giả sử id được truyền qua params
     const { status, banReason } = req.body;
-    
+
     const customer = await User.findById(id);
     if (!customer) {
       return res.status(404).json({ message: "Không tìm thấy khách hàng nào" });
     }
-    
+
     customer.status = status;
-    
+
     // Chỉ cập nhật banReason nếu status là Banned
     if (status === "Banned") {
       customer.banReason = banReason;
     } else {
       customer.banReason = undefined;
     }
-    
+
     await customer.save();
-    
-    res.status(200).json({ 
+
+    res.status(200).json({
       success: true,
       message: "Cập nhật trạng thái khách hàng thành công",
-      data: customer
+      data: customer,
     });
   } catch (error) {
     console.error("Error updating customer status:", error);
@@ -290,7 +361,6 @@ export const updateStatusCustomer = async (req: Request, res: Response) => {
     });
   }
 };
-
 
 /**
  * 📊 Lấy thống kê trạng thái đơn hàng (cho Pie Chart)
@@ -316,10 +386,10 @@ export const getOrderStatusStats = async (req: Request, res: Response) => {
     return res.status(200).json({
       success: true,
       data: {
-        completed: stats["Completed"] || 0,      // Hoàn thành
-        cancelled: stats["Cancelled"] || 0,      // Đã hủy
-        delivering: stats["Delivering"] || 0,    // Đang giao
-        pending: stats["Pending"] || 0,          // Chờ xử lý
+        completed: stats["Completed"] || 0, // Hoàn thành
+        cancelled: stats["Cancelled"] || 0, // Đã hủy
+        delivering: stats["Delivering"] || 0, // Đang giao
+        pending: stats["Pending"] || 0, // Chờ xử lý
         // Thêm các trạng thái khác nếu có
         confirmed: stats["Confirmed"] || 0,
       },
@@ -335,7 +405,7 @@ export const getOrderStatusStats = async (req: Request, res: Response) => {
 
 /**
  * 🚗 Lấy hiệu suất tài xế (cho Bar Chart)
- * API: GET /api/admin/drivers/performance?limit=5
+ * API: GET /api/admin/carriers/performance?limit=5
  */
 export const getDriverPerformance = async (req: Request, res: Response) => {
   try {
@@ -345,12 +415,12 @@ export const getDriverPerformance = async (req: Request, res: Response) => {
     const driverStats = await Order.aggregate([
       {
         $match: {
-          driver_id: { $ne: null }, // Chỉ lấy đơn có tài xế
+          carrier_id: { $ne: null }, // Chỉ lấy đơn có tài xế
         },
       },
       {
         $group: {
-          _id: "$driver_id",
+          _id: "$carrier_id",
           totalOrders: { $sum: 1 },
           completedOrders: {
             $sum: {
@@ -372,7 +442,7 @@ export const getDriverPerformance = async (req: Request, res: Response) => {
       },
       {
         $project: {
-          driverId: "$_id",
+          carrierId: "$_id",
           driverName: "$driverInfo.full_name",
           totalOrders: 1,
           completedOrders: 1,
@@ -419,7 +489,7 @@ export const getDashboardEnhanced = async (req: Request, res: Response) => {
       ordersThisMonth,
     ] = await Promise.all([
       User.countDocuments({ role: "Customer" }),
-      User.countDocuments({ role: "Driver" }),
+      User.countDocuments({ role: "Carrier" }),
       User.countDocuments({ role: "Seller" }),
       Order.aggregate([
         {
@@ -452,7 +522,7 @@ export const getDashboardEnhanced = async (req: Request, res: Response) => {
         createdAt: { $lt: startOfThisMonth },
       }),
       User.countDocuments({
-        role: "Driver",
+        role: "Carrier",
         createdAt: { $lt: startOfThisMonth },
       }),
       User.countDocuments({
@@ -531,19 +601,19 @@ export const getDashboardEnhanced = async (req: Request, res: Response) => {
       data: {
         totalCustomers: totalCustomersNow,
         totalCustomersChange,
-        
+
         totalDrivers: totalDriversNow,
         totalDriversChange: calculateChange(totalDriversNow, totalDriversLast),
-        
+
         totalSellers: totalSellersNow,
         totalSellersChange: calculateChange(totalSellersNow, totalSellersLast),
-        
+
         totalOrders: totalOrdersNow,
         totalOrdersChange,
-        
+
         totalRevenue: totalRevenueNow,
         totalRevenueChange,
-        
+
         ordersByTime,
         revenueByTime,
       },

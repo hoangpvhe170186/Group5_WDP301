@@ -367,7 +367,7 @@ export default function DashboardOverview() {
         </div>
       </div>
 
-      {/* Driver Performance */}
+      {/* Carrier Performance */}
       <div className="bg-white rounded-lg shadow p-6">
         <div className="mb-4">
           <h2 className="text-lg font-semibold text-gray-900">

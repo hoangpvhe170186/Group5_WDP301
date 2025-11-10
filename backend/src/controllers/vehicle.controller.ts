@@ -29,10 +29,6 @@ export const getVehicles = async (req: Request, res: Response) => {
   try {
     const vehicles = await Vehicle.find()
       .populate({
-        path: "driver_id",
-        select: "fullName phone email avatar role",
-      })
-      .populate({
         path: "carrier_id",
         select: "fullName phone email role",
       })
@@ -46,7 +42,7 @@ export const getVehicles = async (req: Request, res: Response) => {
         type: v.type,
         capacity: v.capacity,
         status: v.status,
-        driver: v.driver_id || null,
+        carrier: v.carrier_id || null,
         image: v.image?.thumb
           ? v.image
           : {

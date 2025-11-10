@@ -14,7 +14,7 @@ import ComplaintManagement from "@/components/admin/ComplaintManagement";
 import QualityManagement from "@/components/admin/QualityManagement";
 import DriverManagement from "@/components/admin/DriverManagement";
 
-type AdminSection = "dashboard" | "orders" | "drivers" | "sellers" | "users" | "complaints" | "quality" | "finance" | "vehicles";
+type AdminSection = "dashboard" | "orders" | "carriers" | "sellers" | "users" | "complaints" | "quality" | "finance" | "vehicles";
 
 export default function AdminDashboard() {
   const [activeSection, setActiveSection] = useState<AdminSection>("dashboard");
@@ -25,7 +25,7 @@ export default function AdminDashboard() {
   // Đọc tab từ URL khi load
   useEffect(() => {
     const tab = searchParams.get("tab") as AdminSection;
-    if (tab && ["dashboard", "orders", "users", "drivers", "complaints", "quality"].includes(tab)) {
+    if (tab && ["dashboard", "orders", "users", "carriers", "complaints", "quality"].includes(tab)) {
       setActiveSection(tab);
     } else if (!searchParams.get("tab")) {
       setSearchParams({ tab: "dashboard" });
@@ -40,7 +40,7 @@ export default function AdminDashboard() {
         return <OrderManagement />;
       case "users":
         return <CustomerManagement />;
-      case "drivers":
+      case "carriers":
         return <DriverManagement />;
       case "complaints":
         return <ComplaintManagement />;
