@@ -8,11 +8,12 @@ import {
   Menu,
   X,
   LogOut,
-  User
+  User,
+  Bell // Thêm icon Bell
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { clearAuthData, getCurrentUserRole } from "../lib/auth";
-import { adminApi } from "../services/admin.service"; // Giả sử đường dẫn import đúng đến file service adminApi
+import { adminApi } from "../services/admin.service";
 
 // Import các component quản lý
 import OrderManagement from "../components/admin/OrderManagement";
@@ -21,6 +22,8 @@ import ComplaintManagement from "../components/admin/ComplaintManagement";
 import QualityManagement from "../components/admin/QualityManagement";
 import DriverManagement from "../components/admin/DriverManagement";
 import SellerManagement from "../components/admin/SellerManagement";
+import AdminNotifications from "../components/admin/AdminNotifications"; // Thêm import notifications
+
 type AdminSection = 
   | "dashboard" 
   | "orders" 
@@ -148,14 +151,17 @@ export default function AdminDashboard() {
               <Menu className="w-6 h-6" />
             </button>
             
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <User className="w-5 h-5 text-gray-400" />
-                <span className="text-sm font-medium text-gray-700">
-                  {getCurrentUserRole()}
-                </span>
-              </div>
-            </div>
+           <div className="flex items-center justify-between w-full">
+  <div className="flex items-center space-x-2">
+    <User className="w-5 h-5 text-gray-400" />
+    <span className="text-sm font-medium text-gray-700">
+      {getCurrentUserRole()}
+    </span>
+  </div>
+  
+  {/* Nút thông báo ở bên phải */}
+  <AdminNotifications />
+</div>
           </div>
         </div>
 
@@ -168,7 +174,7 @@ export default function AdminDashboard() {
   );
 }
 
-// Component tổng quan dashboard
+// Component tổng quan dashboard (giữ nguyên)
 function DashboardOverview() {
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);

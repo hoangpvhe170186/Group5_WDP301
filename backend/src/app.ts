@@ -62,6 +62,8 @@ app.use("/api/extra-fees", extraFeeRoutes);
 app.use("/api/upload", uploadRoute);
 app.use("/api/admin", adminRoute);
 app.use("/api/driver-interviews", driverInterviewRoutes);
+app.use("/api/driver-interviews/list  ", driverInterviewRoutes);
+app.use("/api/driver-interviews/:id/status", driverInterviewRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/carrier", carrierRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
