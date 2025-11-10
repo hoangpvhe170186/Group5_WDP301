@@ -9,13 +9,7 @@ import {
   getOrderStatusStats,
   getDashboardEnhanced,
   getDriverPerformance,
-  getPaginationCarriers,
-  getCarrierDetail,
-  getCarrierOrders,
-  updateStatusCustomer,
-  createUser,
-  createCarrier,
-  createVehicle,
+  getAdminOrderDetail
 } from "../controllers/admin.controller";
 import { requireAuth } from "../middleware/requireAuth";
 
@@ -28,7 +22,8 @@ router.get("/dashboard/enhanced", getDashboardEnhanced);
 router.get("/revenue", getRevenueStats);
 router.get("/orders/status", getOrderStatusStats);
 
-router.post("/users", createUser);
+router.get("/orders/pagination", getPaginationAllOrders);
+router.get("/orders/:id", getAdminOrderDetail);
 
 router.get("/carriers/pagination", getPaginationCarriers);
 router.get("/carriers/performance", getDriverPerformance);

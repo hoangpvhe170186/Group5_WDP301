@@ -2,80 +2,10 @@ import { Request, Response } from "express";
 import mongoose from "mongoose";
 import User from "../models/User";
 import Order from "../models/Order";
-import bcrypt from "bcryptjs";
-import Vehicle from "../models/Vehicle";
-
-export const createUser = async (req: Request, res: Response) => {
-  try {
-    const {
-      full_name,
-      email,
-      phone,
-      password,
-      role,
-      licenseNumber,
-      vehiclePlate,
-    } = req.body;
-
-    // Validate required fields
-    if (!full_name || !email || !phone || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Vui lòng điền đầy đủ thông tin: Họ tên, Email, SĐT, Mật khẩu",
-      });
-    }
-
-    // Kiểm tra email đã tồn tại
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
-    if (existingUser) {
-      return res.status(409).json({
-        success: false,
-        message: "Email đã được sử dụng",
-      });
-    }
-
-    // Kiểm tra phone đã tồn tại
-    const existingPhone = await User.findOne({ phone });
-    if (existingPhone) {
-      return res.status(409).json({
-        success: false,
-        message: "Số điện thoại đã được sử dụng",
-      });
-    }
-
-    // Hash password
-    const password_hash = await bcrypt.hash(password, 10);
-
-    // Tạo user mới
-    const newUser = await User.create({
-      full_name: full_name.trim(),
-      email: email.toLowerCase().trim(),
-      phone: phone.trim(),
-      password_hash,
-      role: role || "Customer",
-      status: "Active",
-      licenseNumber: licenseNumber?.trim() || "",
-      vehiclePlate: vehiclePlate?.trim() || "",
-    });
-
-    // Không trả về password_hash
-    const userResponse = newUser.toObject();
-    delete userResponse.password_hash;
-
-    return res.status(201).json({
-      success: true,
-      message: `Tạo ${role || "user"} thành công`,
-      data: userResponse,
-    });
-  } catch (error: any) {
-    console.error("❌ Lỗi khi tạo user:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Lỗi server khi tạo user",
-      error: error.message,
-    });
-  }
-};
+import OrderItem from "../models/OrderItem";
+import OrderTracking from "../models/OrderTracking";
+import OrderStatusLog from "../models/OrderStatusLog";
+import OrderMedia from "../models/OrderMedia";
 
 /**
  * ➕ Tạo Carrier mới (alias cho createUser với role="Carrier")
@@ -696,129 +626,70 @@ export const getDashboardEnhanced = async (req: Request, res: Response) => {
     });
   }
 };
-export const getPaginationCarriers = async (req: Request, res: Response) => {
-  try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const skip = (page - 1) * limit;
-
-    const [carriers, total] = await Promise.all([
-      User.find({ role: "Carrier" })
-        .select(
-          "_id full_name email phone licenseNumber vehiclePlate status avatar banReason created_at"
-        )
-        .skip(skip)
-        .limit(limit)
-        .sort({ created_at: -1 }),
-      User.countDocuments({ role: "Carrier" }),
-    ]);
-
-    res.status(200).json({
-      success: true,
-      data: carriers,
-      total,
-      currentPage: page,
-      totalPages: Math.ceil(total / limit),
-    });
-  } catch (error) {
-    console.error("Error getting carriers:", error);
-    res.status(500).json({
-      success: false,
-      message: "Lỗi server khi lấy danh sách carrier",
-    });
-  }
-};
 
 /**
- * 📦 Lấy đơn hàng của carrier cụ thể
+ * 📦 Lấy chi tiết đơn hàng đầy đủ cho admin
+ * API: GET /api/admin/orders/:id
  */
-export const getCarrierOrders = async (req: Request, res: Response) => {
+export const getAdminOrderDetail = async (req: Request, res: Response) => {
   try {
-    const { carrierId } = req.params;
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const skip = (page - 1) * limit;
+    const { id } = req.params;
 
-    const [orders, total] = await Promise.all([
-      Order.find({ carrier_id: carrierId })
-        .select(
-          "_id orderCode status pickup_address delivery_address scheduled_time total_price"
-        )
-        .skip(skip)
-        .limit(limit)
-        .sort({ createdAt: -1 }),
-      Order.countDocuments({ carrier_id: carrierId }),
-    ]);
+    // Lấy đơn hàng với tất cả các populate
+    const order = await Order.findById(id)
+      .populate("customer_id", "full_name email phone avatar")
+      .populate("seller_id", "full_name email phone avatar")
+      .populate("driver_id", "full_name email phone avatar")
+      .populate("carrier_id", "full_name email phone avatar")
+      .populate("assignedCarrier", "full_name email phone avatar")
+      .populate("acceptedBy", "full_name email phone avatar")
+      .populate("package_id")
+      .populate("vehicle_id")
+      .populate("extra_fees")
+      .lean();
 
-    res.status(200).json({
-      success: true,
-      orders,
-      total,
-      currentPage: page,
-      totalPages: Math.ceil(total / limit),
-    });
-  } catch (error) {
-    console.error("Error getting carrier orders:", error);
-    res.status(500).json({
-      success: false,
-      message: "Lỗi server khi lấy đơn hàng của carrier",
-    });
-  }
-};
-
-/**
- * 🔍 Lấy chi tiết carrier
- */
-export const getCarrierDetail = async (req: Request, res: Response) => {
-  try {
-    const { carrierId } = req.params;
-
-    const carrier = await User.findById(carrierId).select("-password_hash");
-
-    if (!carrier) {
+    if (!order) {
       return res.status(404).json({
         success: false,
-        message: "Không tìm thấy carrier",
+        message: "Không tìm thấy đơn hàng",
       });
     }
 
-    // Lấy thống kê đơn hàng
-    const orderStats = await Order.aggregate([
-      { $match: { carrier_id: new mongoose.Types.ObjectId(carrierId) } },
-      {
-        $group: {
-          _id: "$status",
-          count: { $sum: 1 },
-        },
-      },
+    // Lấy các dữ liệu liên quan
+    const [items, trackings, statusLogs, media] = await Promise.all([
+      OrderItem.find({ order_id: id }).lean(),
+      OrderTracking.find({ order_id: id })
+        .populate("carrier_id", "full_name email phone")
+        .sort({ createdAt: -1 })
+        .lean(),
+      OrderStatusLog.find({ order_id: id })
+        .populate("updated_by", "full_name email")
+        .sort({ createdAt: -1 })
+        .lean(),
+      OrderMedia.find({ order_id: id })
+        .populate("uploaded_by", "full_name email")
+        .sort({ createdAt: -1 })
+        .lean(),
     ]);
 
-    // Lấy đơn hàng hiện tại
-    const currentOrders = await Order.find({
-      carrier_id: carrierId,
-      status: {
-        $in: ["ASSIGNED", "ACCEPTED", "ON_THE_WAY", "ARRIVED", "DELIVERING"],
-      },
-    })
-      .select(
-        "orderCode status pickup_address delivery_address scheduled_time total_price"
-      )
-      .limit(5)
-      .sort({ scheduled_time: 1 });
+    // Kết hợp tất cả dữ liệu
+    const orderDetail = {
+      ...order,
+      items,
+      trackings,
+      statusLogs,
+      media,
+    };
 
     res.status(200).json({
       success: true,
-      data: {
-        ...carrier.toObject(),
-        orderStats,
-        currentOrders,
-      },
+      data: orderDetail,
     });
   } catch (error) {
-    console.error("Error getting carrier detail:", error);
+    console.error("❌ Lỗi khi lấy chi tiết đơn hàng:", error);
     res.status(500).json({
       success: false,
-      message: "Lỗi server khi lấy chi tiết carrier",
+      message: "Lỗi server khi lấy chi tiết đơn hàng",
     });
   }
 };
