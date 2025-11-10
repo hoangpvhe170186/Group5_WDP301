@@ -5,21 +5,29 @@ import {
 	TrendingUp,
 	Users,
 	Package,
-	DollarSign,
 	Search,
-	ChevronLeft,
-	ChevronRight,
 	Eye,
 	Star,
 	Calendar,
 	Trophy,
 	BarChart3,
+	ChevronDown,
+	ChevronUp,
+	ArrowUpDown,
+	Ban,
+	User,
+	CheckCircle,
+	AlertCircle,
+	Phone,
+	Mail,
 } from "lucide-react";
+import React from "react";
+import SellerDetail from "./SellerDetail";
 // @ts-ignore - recharts types may not be available but package is installed
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 // ====== Configs ======
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 5;
 const BASE_SALARY_VND = 5_000_000; // 5 triệu VND
 const KPI_MIN_ORDERS = 10; // KPI: 10 đơn/tháng
 const COMMISSION_RATE = 0.02; // 2%
@@ -120,11 +128,23 @@ function calcPayout3P(
 	return { commission, baseAdjusted, bonusPoints, bonusSalary, totalPayout };
 }
 
+type SortField = "fullName" | "rating" | "completedOrders" | "totalPayout" | "createdAt";
+type SortOrder = "asc" | "desc";
+
 export default function SellerManagement() {
 	// ===== UI state =====
 	const [loading, setLoading] = useState(true);
 	const [search, setSearch] = useState("");
 	const [currentPage, setCurrentPage] = useState(1);
+	const [filterStatus, setFilterStatus] = useState<"all" | "Active" | "Inactive" | "Banned">("all");
+	const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+	const [sortField, setSortField] = useState<SortField>("fullName");
+	const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
+	const [selectedSellerId, setSelectedSellerId] = useState<string | null>(null);
+	const [showSellerDetail, setShowSellerDetail] = useState(false);
+	const [showBanModal, setShowBanModal] = useState(false);
+	const [banReason, setBanReason] = useState("");
+	const [sellerToBan, setSellerToBan] = useState<string | null>(null);
 
 	// period selection (default: current month)
 	const now = new Date();
@@ -134,16 +154,13 @@ export default function SellerManagement() {
 	// data
 	const [sellers, setSellers] = useState<UserType[]>([]);
 	const [totalSellers, setTotalSellers] = useState(0);
+	const [totalPages, setTotalPages] = useState(1);
 	const [orders, setOrders] = useState<OrderLite[]>([]);
 
 	// derived
 	const [statsBySeller, setStatsBySeller] = useState<Record<string, SellerStats>>({});
 
 	// modal
-	const [openOrdersForSeller, setOpenOrdersForSeller] = useState<UserType | null>(null);
-	const [ordersForSeller, setOrdersForSeller] = useState<OrderLite[]>([]);
-	const [sellerRating, setSellerRating] = useState<Record<string, number | null>>({});
-	const [modalLoading, setModalLoading] = useState(false);
 	const [showFormulaModal, setShowFormulaModal] = useState(false);
 
 	// ===== Fetch data =====
@@ -158,6 +175,7 @@ export default function SellerManagement() {
 				const sellerRes = await adminApi.getUsersByRole("sellers", page, limit);
 				setSellers(sellerRes.users);
 				setTotalSellers(sellerRes.total);
+				setTotalPages(sellerRes.totalPages || Math.ceil(sellerRes.total / limit));
 
 				// 2) All orders (admin can use /users/orders which returns full list)
 				const { data: allOrdersData } = await api.get("/users/orders", {
@@ -261,7 +279,7 @@ export default function SellerManagement() {
 				bonusPoints,
 				bonusSalary,
 				totalPayout,
-				rating: sellerRating[s.id] ?? null,
+				rating: null, // Rating sẽ được tính trong SellerDetail
 			};
 		}
 		
@@ -273,7 +291,7 @@ export default function SellerManagement() {
 		
 		setStatsBySeller(byId);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [sellers, orders, selectedYear, selectedMonth, sellerRating]);
+	}, [sellers, orders, selectedYear, selectedMonth]);
 
 	// ===== Dashboard aggregates =====
 	const dashboard = useMemo(() => {
@@ -289,62 +307,226 @@ export default function SellerManagement() {
 		return { totalCompletedOrders, totalPayout, avgRating };
 	}, [sellers, statsBySeller]);
 
-	// ===== Open modal to view seller orders (and lazy-load rating) =====
-	const openSellerOrders = async (seller: UserType) => {
-		setOpenOrdersForSeller(seller);
-		setModalLoading(true);
-		try {
-		const sellerOrders = orders
-			.filter((o) => {
-				if (o.sellerId !== seller.id) return false;
-				// Nếu đơn COMPLETED, dùng completedAt; nếu không, dùng createdAt
-				const dateToCheck = o.status === "COMPLETED" && o.completedAt ? o.completedAt : o.createdAt;
-				return isSameMonth(dateToCheck, selectedYear, selectedMonth);
-			})
-			.sort((a, b) => {
-				const dateA = a.completedAt || a.createdAt;
-				const dateB = b.completedAt || b.createdAt;
-				return new Date(dateB).getTime() - new Date(dateA).getTime();
-			});
-			setOrdersForSeller(sellerOrders);
+	// ===== Handlers =====
+	const handleViewSeller = (sellerId: string) => {
+		setSelectedSellerId(sellerId);
+		setShowSellerDetail(true);
+	};
 
-			// Lazy compute rating: average rating from feedbacks of seller's orders (only Completed)
-			const completed = sellerOrders.filter((o) => o.status === "COMPLETED");
-			const token = getAuthToken();
-			let ratings: number[] = [];
-			for (const od of completed) {
-				try {
-					const { data } = await api.get(`/users/feedback/order/${od.id}`, {
-						headers: { Authorization: `Bearer ${token}` },
-					});
-					if (data && typeof data.rating === "number") ratings.push(Number(data.rating));
-				} catch {}
-			}
-			const avg = ratings.length
-				? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10
-				: null;
-			setSellerRating((prev) => ({ ...prev, [seller.id]: avg }));
-		} finally {
-			setModalLoading(false);
+	const handleBanSeller = (sellerId: string) => {
+		setSellerToBan(sellerId);
+		setShowBanModal(true);
+	};
+
+	const confirmBanSeller = async () => {
+		if (!sellerToBan || !banReason.trim()) return;
+
+		try {
+			await adminApi.updateUser(sellerToBan, {
+				status: "Banned",
+				banReason: banReason.trim()
+			});
+			
+			setSellers(sellers.map(seller => 
+				seller.id === sellerToBan 
+					? { ...seller, status: "Banned", banReason: banReason.trim() }
+					: seller
+			));
+			
+			setShowBanModal(false);
+			setBanReason("");
+			setSellerToBan(null);
+		} catch (err: any) {
+			console.error("Lỗi khi khóa seller:", err);
 		}
 	};
 
-	const totalPages = Math.max(1, Math.ceil(totalSellers / ITEMS_PER_PAGE));
+	const handleUnbanSeller = async (sellerId: string) => {
+		try {
+			await adminApi.updateUser(sellerId, {
+				status: "Active",
+				banReason: ""
+			});
+			
+			setSellers(sellers.map(seller => 
+				seller.id === sellerId 
+					? { ...seller, status: "Active", banReason: "" }
+					: seller
+			));
+		} catch (err: any) {
+			console.error("Lỗi khi mở khóa seller:", err);
+		}
+	};
+
+	const handleBackFromDetail = () => {
+		setShowSellerDetail(false);
+		setSelectedSellerId(null);
+	};
+
+	const toggleExpandRow = (sellerId: string) => {
+		const newExpanded = new Set(expandedRows);
+		if (newExpanded.has(sellerId)) {
+			newExpanded.delete(sellerId);
+		} else {
+			newExpanded.add(sellerId);
+		}
+		setExpandedRows(newExpanded);
+	};
+
+	const handleSort = (field: SortField) => {
+		if (sortField === field) {
+			setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+		} else {
+			setSortField(field);
+			setSortOrder("asc");
+		}
+	};
+
+	const getStatusColor = (status: string) => {
+		switch (status) {
+			case "Active":
+				return "bg-green-100 text-green-800";
+			case "Inactive":
+				return "bg-gray-100 text-gray-800";
+			case "Banned":
+				return "bg-red-100 text-red-800";
+			default:
+				return "bg-gray-100 text-gray-800";
+		}
+	};
+
+	const getStatusText = (status: string) => {
+		switch (status) {
+			case "Active":
+				return "Hoạt động";
+			case "Inactive":
+				return "Không hoạt động";
+			case "Banned":
+				return "Bị khóa";
+			default:
+				return "Không xác định";
+		}
+	};
+
+	const getStatusIcon = (status: string) => {
+		switch (status) {
+			case "Active":
+				return <CheckCircle className="w-4 h-4" />;
+			case "Inactive":
+				return <AlertCircle className="w-4 h-4" />;
+			case "Banned":
+				return <Ban className="w-4 h-4" />;
+			default:
+				return <AlertCircle className="w-4 h-4" />;
+		}
+	};
+
+	// Filter and sort
+	const filteredAndSortedSellers = sellers
+		.filter((seller) => {
+			const matchesSearch =
+				seller.fullName.toLowerCase().includes(search.toLowerCase()) ||
+				seller.email.toLowerCase().includes(search.toLowerCase()) ||
+				seller.id.toLowerCase().includes(search.toLowerCase()) ||
+				(seller.phone || "").includes(search);
+
+			const matchesStatus = filterStatus === "all" || seller.status === filterStatus;
+
+			return matchesSearch && matchesStatus;
+		})
+		.sort((a, b) => {
+			const stA = statsBySeller[a.id];
+			const stB = statsBySeller[b.id];
+			let aValue: any;
+			let bValue: any;
+
+			switch (sortField) {
+				case "fullName":
+					aValue = a.fullName;
+					bValue = b.fullName;
+					break;
+				case "rating":
+					aValue = stA?.rating ?? 0;
+					bValue = stB?.rating ?? 0;
+					break;
+				case "completedOrders":
+					aValue = stA?.completedOrders ?? 0;
+					bValue = stB?.completedOrders ?? 0;
+					break;
+				case "totalPayout":
+					aValue = stA?.totalPayout ?? 0;
+					bValue = stB?.totalPayout ?? 0;
+					break;
+				case "createdAt":
+					aValue = new Date(a.createdAt).getTime();
+					bValue = new Date(b.createdAt).getTime();
+					break;
+				default:
+					aValue = a.fullName;
+					bValue = b.fullName;
+			}
+
+			if (sortOrder === "asc") {
+				return aValue > bValue ? 1 : -1;
+			} else {
+				return aValue < bValue ? 1 : -1;
+			}
+		});
+
+	// Nếu đang hiển thị chi tiết seller
+	if (showSellerDetail) {
+		return <SellerDetail sellerId={selectedSellerId || undefined} onBack={handleBackFromDetail} />;
+	}
 
 	return (
-		<div className="p-4 md:p-6 space-y-6">
-			{/* Header + period selection */}
-			<div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-				<h2 className="text-xl font-semibold flex items-center gap-2">
-  Quản lý Seller
-  <button
-    onClick={() => setShowFormulaModal(true)}
-    className="w-5 h-5 flex items-center justify-center border border-gray-400 rounded-full text-gray-600 hover:bg-gray-100"
-    title="Xem công thức tính lương"
-  >
-    ?
-  </button>
-</h2>
+		<div className="space-y-6">
+			{/* Ban Modal */}
+			{showBanModal && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+					<div className="bg-white rounded-lg p-6 w-96">
+						<h3 className="text-lg font-semibold mb-4">Khóa Seller</h3>
+						<p className="text-gray-600 mb-4">Vui lòng nhập lý do khóa seller:</p>
+						<textarea
+							value={banReason}
+							onChange={(e) => setBanReason(e.target.value)}
+							placeholder="Nhập lý do khóa..."
+							className="w-full h-24 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+						/>
+						<div className="flex gap-3 mt-4">
+							<button
+								onClick={confirmBanSeller}
+								disabled={!banReason.trim()}
+								className="flex-1 bg-red-600 text-white py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-700"
+							>
+								Xác nhận khóa
+							</button>
+							<button
+								onClick={() => {
+									setShowBanModal(false);
+									setBanReason("");
+									setSellerToBan(null);
+								}}
+								className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400"
+							>
+								Hủy
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* Header */}
+			<div className="flex items-center justify-between">
+				<h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+					Quản lý Seller
+					<button
+						onClick={() => setShowFormulaModal(true)}
+						className="w-5 h-5 flex items-center justify-center border border-gray-400 rounded-full text-gray-600 hover:bg-gray-100 text-xs"
+						title="Xem công thức tính lương"
+					>
+						?
+					</button>
+				</h1>
 				<div className="flex items-center gap-2">
 					<div className="flex items-center gap-1 border rounded px-2 py-1">
 						<Calendar className="w-4 h-4 text-gray-500" />
@@ -374,50 +556,49 @@ export default function SellerManagement() {
 				</div>
 			</div>
 
-			{/* Dashboard cards */}
+			{/* Stats */}
 			<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-				<div className="border rounded p-4 flex items-center gap-3">
-					<Users className="w-10 h-10 text-blue-500" />
-					<div>
-						<div className="text-sm text-gray-500">Tổng seller (trang)</div>
-						<div className="text-xl font-semibold">{sellers.length}</div>
-					</div>
-				</div>
-				<div className="border rounded p-4 flex items-center gap-3">
-					<Package className="w-10 h-10 text-green-600" />
-					<div>
-						<div className="text-sm text-gray-500">Đơn Completed (tháng)</div>
-						<div className="text-xl font-semibold">{dashboard.totalCompletedOrders}</div>
-					</div>
-				</div>
-				<div className="border rounded p-4 flex items-center gap-3">
-					<TrendingUp className="w-10 h-10 text-orange-600" />
-					<div>
-						<div className="text-sm text-gray-500">Đơn đang thực hiện</div>
-						<div className="text-xl font-semibold">
-							{Object.values(statsBySeller).reduce((sum, s) => sum + s.inProgressOrders, 0)}
+				<div className="bg-white rounded-lg shadow p-4">
+					<div className="flex items-center justify-between">
+						<div>
+							<p className="text-sm text-gray-600">Tổng seller</p>
+							<p className="text-2xl font-bold text-gray-900">{totalSellers}</p>
 						</div>
+						<Users className="w-8 h-8 text-orange-500 opacity-20" />
 					</div>
 				</div>
-				<div className="border rounded p-4 flex items-center gap-3">
-					<DollarSign className="w-10 h-10 text-emerald-600" />
-					<div>
-						<div className="text-sm text-gray-500">Tổng payout ước tính</div>
-						<div className="text-xl font-semibold">{formatCurrencyVND(dashboard.totalPayout)}</div>
+				<div className="bg-white rounded-lg shadow p-4">
+					<div className="flex items-center justify-between">
+						<div>
+							<p className="text-sm text-gray-600">Đang hoạt động</p>
+							<p className="text-2xl font-bold text-green-600">
+								{sellers.filter((s) => s.status === "Active").length}
+							</p>
+						</div>
+						<CheckCircle className="w-8 h-8 text-green-500 opacity-20" />
 					</div>
 				</div>
-			</div>
-
-			{/* Average rating */}
-			<div className="border rounded p-4 flex items-center gap-2">
-				<TrendingUp className="w-5 h-5 text-purple-600" />
-				<div className="text-sm text-gray-600">
-					Đánh giá trung bình (trang):{" "}
-					{dashboard.avgRating ? (
-						<span className="font-medium">{dashboard.avgRating} / 5</span>
-					) : (
-						<span className="text-gray-400">Chưa có dữ liệu</span>
-					)}
+				<div className="bg-white rounded-lg shadow p-4">
+					<div className="flex items-center justify-between">
+						<div>
+							<p className="text-sm text-gray-600">Trung bình rating</p>
+							<p className="text-2xl font-bold text-yellow-600">
+								{dashboard.avgRating ? dashboard.avgRating.toFixed(1) : "0.0"}
+							</p>
+						</div>
+						<Star className="w-8 h-8 text-yellow-500 opacity-20" />
+					</div>
+				</div>
+				<div className="bg-white rounded-lg shadow p-4">
+					<div className="flex items-center justify-between">
+						<div>
+							<p className="text-sm text-gray-600">Tổng payout</p>
+							<p className="text-2xl font-bold text-blue-600">
+								{formatCurrencyVND(dashboard.totalPayout)}
+							</p>
+						</div>
+						<TrendingUp className="w-8 h-8 text-blue-500 opacity-20" />
+					</div>
 				</div>
 			</div>
 
@@ -483,198 +664,313 @@ export default function SellerManagement() {
 				</div>
 			</div>
 
-			{/* Search */}
-			<div className="flex items-center gap-2">
-				<div className="flex items-center border rounded px-3 py-2 w-full md:w-96">
-					<Search className="w-4 h-4 text-gray-500 mr-2" />
-					<input
-						value={search}
-						onChange={(e) => setSearch(e.target.value)}
-						placeholder="Tìm seller theo tên/email/điện thoại"
-						className="w-full outline-none"
-					/>
-				</div>
-			</div>
-
-			{/* Table */}
-			<div className="overflow-auto border rounded">
-				<table className="min-w-full text-sm">
-					<thead className="bg-gray-50 text-gray-600">
-						<tr>
-							<th className="text-left px-3 py-2">Hạng</th>
-							<th className="text-left px-3 py-2">Seller</th>
-							<th className="text-left px-3 py-2">Liên hệ</th>
-							<th className="text-right px-3 py-2">Đơn Completed</th>
-							<th className="text-right px-3 py-2">Đơn đang thực hiện</th>
-							<th className="text-right px-3 py-2">Giá trị Completed</th>
-							<th className="text-right px-3 py-2">P1: Lương cứng</th>
-							<th className="text-right px-3 py-2">P2: Thưởng (điểm)</th>
-							<th className="text-right px-3 py-2">P3: Commission</th>
-							<th className="text-right px-3 py-2">Tổng Payout</th>
-							<th className="text-center px-3 py-2">Rating</th>
-							<th className="text-center px-3 py-2">Hành động</th>
-						</tr>
-					</thead>
-					<tbody>
-						{(sellers
-							.filter((s) => {
-								const q = search.trim().toLowerCase();
-								if (!q) return true;
-								return (
-									s.fullName.toLowerCase().includes(q) ||
-									s.email.toLowerCase().includes(q) ||
-									(s.phone || "").toLowerCase().includes(q)
-								);
-							}) || []).map((s) => {
-							const st = statsBySeller[s.id];
-							return (
-								<tr key={s.id} className="border-t">
-									<td className="px-3 py-2 text-center">
-										{st?.rank ? (
-											<span className="inline-flex items-center gap-1">
-												{st.rank <= 3 ? (
-													<Trophy className={`w-4 h-4 ${
-														st.rank === 1 ? "text-yellow-500" :
-														st.rank === 2 ? "text-gray-400" :
-														"text-orange-600"
-													}`} />
-												) : null}
-												<span className="font-semibold">{st.rank}</span>
-											</span>
-										) : (
-											<span className="text-gray-400">—</span>
-										)}
-									</td>
-									<td className="px-3 py-2">
-										<div className="font-medium">{s.fullName || "(Không tên)"}</div>
-										<div className="text-xs text-gray-500">{s.id}</div>
-									</td>
-									<td className="px-3 py-2">
-										<div>{s.email}</div>
-										<div className="text-xs text-gray-500">{s.phone || "—"}</div>
-									</td>
-									<td className="px-3 py-2 text-right">{st?.completedOrders ?? 0}</td>
-									<td className="px-3 py-2 text-right">{st?.inProgressOrders ?? 0}</td>
-									<td className="px-3 py-2 text-right">{formatCurrencyVND(st?.totalCompletedValue ?? 0)}</td>
-									<td className="px-3 py-2 text-right">{formatCurrencyVND(st?.baseAdjusted ?? BASE_SALARY_VND)}</td>
-									<td className="px-3 py-2 text-right">
-										<div>{formatCurrencyVND(st?.bonusSalary ?? 0)}</div>
-										<div className="text-xs text-gray-500">({st?.bonusPoints ?? 0} điểm)</div>
-									</td>
-									<td className="px-3 py-2 text-right">{formatCurrencyVND(st?.commission ?? 0)}</td>
-									<td className="px-3 py-2 text-right font-semibold">{formatCurrencyVND(st?.totalPayout ?? 0)}</td>
-									<td className="px-3 py-2 text-center">
-										{typeof st?.rating === "number" ? (
-											<span className="inline-flex items-center gap-1 text-yellow-600">
-												<Star className="w-4 h-4 fill-yellow-500 text-yellow-500" />
-												{st.rating}
-											</span>
-										) : (
-											<span className="text-gray-400">—</span>
-										)}
-									</td>
-									<td className="px-3 py-2 text-center">
-										<button
-											onClick={() => openSellerOrders(s)}
-											className="inline-flex items-center gap-1 px-2 py-1 border rounded hover:bg-gray-50"
-										>
-											<Eye className="w-4 h-4" /> Xem đơn
-										</button>
-									</td>
-								</tr>
-							);
-						})}
-						{!loading && sellers.length === 0 && (
-							<tr>
-								<td className="px-3 py-6 text-center text-gray-500" colSpan={12}>
-									Không có seller nào
-								</td>
-							</tr>
-						)}
-					</tbody>
-				</table>
-			</div>
-
-			{/* Pagination */}
-			<div className="flex items-center justify-between">
-				<div className="text-sm text-gray-600">
-					Trang {currentPage}/{totalPages} • Tổng {totalSellers}
-				</div>
-				<div className="flex items-center gap-2">
-					<button
-						onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-						disabled={currentPage === 1}
-						className="border rounded px-2 py-1 disabled:opacity-50"
-					>
-						<ChevronLeft className="w-4 h-4" />
-					</button>
-					<button
-						onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-						disabled={currentPage === totalPages}
-						className="border rounded px-2 py-1 disabled:opacity-50"
-					>
-						<ChevronRight className="w-4 h-4" />
-					</button>
-				</div>
-			</div>
-
-			{/* Orders Modal */}
-			{openOrdersForSeller && (
-				<div className="fixed inset-0 bg-black/30 flex items-end md:items-center justify-center z-50">
-					<div className="bg-white w-full md:max-w-4xl rounded-t md:rounded shadow-lg max-h-[90vh] overflow-hidden">
-						<div className="p-4 border-b flex items-center justify-between">
-							<div>
-								<div className="font-semibold">Đơn hàng của {openOrdersForSeller.fullName}</div>
-								<div className="text-xs text-gray-500">
-									Tháng {selectedMonth + 1}/{selectedYear}
-								</div>
-							</div>
-							<button onClick={() => setOpenOrdersForSeller(null)} className="px-2 py-1 border rounded">
-								Đóng
-							</button>
-						</div>
-						<div className="p-4 space-y-3">
-							{modalLoading ? (
-								<div className="text-center text-gray-500">Đang tải...</div>
-							) : ordersForSeller.length === 0 ? (
-								<div className="text-center text-gray-500">Không có đơn hàng</div>
-							) : (
-								<div className="overflow-auto border rounded">
-									<table className="min-w-full text-sm">
-										<thead className="bg-gray-50">
-											<tr>
-												<th className="text-left px-3 py-2">Mã đơn</th>
-												<th className="text-left px-3 py-2">Trạng thái</th>
-												<th className="text-right px-3 py-2">Giá trị</th>
-												<th className="text-left px-3 py-2">Ngày tạo</th>
-												<th className="text-left px-3 py-2">Từ</th>
-												<th className="text-left px-3 py-2">Đến</th>
-											</tr>
-										</thead>
-										<tbody>
-											{ordersForSeller.map((o) => (
-												<tr key={o.id} className="border-t">
-													<td className="px-3 py-2">{o.code}</td>
-													<td className="px-3 py-2">{o.status}</td>
-													<td className="px-3 py-2 text-right">{formatCurrencyVND(o.price)}</td>
-													<td className="px-3 py-2">{new Date(o.createdAt).toLocaleString("vi-VN")}</td>
-													<td className="px-3 py-2">{o.pickupAddress}</td>
-													<td className="px-3 py-2">{o.deliveryAddress}</td>
-												</tr>
-											))}
-										</tbody>
-									</table>
-								</div>
-							)}
-
-							{/* Rating summary for seller */}
-							<div className="pt-2 text-sm text-gray-600">
-								Đánh giá trung bình: {typeof sellerRating[openOrdersForSeller.id] === "number" ? `${sellerRating[openOrdersForSeller.id]} / 5` : "—"}
-							</div>
+			{/* Filters */}
+			<div className="bg-white rounded-lg shadow p-6">
+				<div className="flex flex-col md:flex-row gap-4">
+					<div className="flex-1">
+						<div className="relative">
+							<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+							<input
+								type="text"
+								placeholder="Tìm kiếm theo tên, email, SĐT, ID..."
+								value={search}
+								onChange={(e) => setSearch(e.target.value)}
+								className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+							/>
 						</div>
 					</div>
+					<div className="flex gap-4">
+						<select
+							value={filterStatus}
+							onChange={(e) => setFilterStatus(e.target.value as any)}
+							className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+						>
+							<option value="all">Tất cả trạng thái</option>
+							<option value="Active">Hoạt động</option>
+							<option value="Inactive">Không hoạt động</option>
+							<option value="Banned">Bị khóa</option>
+						</select>
+					</div>
 				</div>
-			)}
+			</div>
+
+			{/* Sellers Table */}
+			<div className="bg-white rounded-lg shadow overflow-hidden">
+				<div className="overflow-x-auto">
+					<table className="w-full">
+						<thead className="bg-gray-50">
+							<tr>
+								<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-8"></th>
+								<th
+									className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+									onClick={() => handleSort("fullName")}
+								>
+									<div className="flex items-center gap-2">
+										Thông tin seller
+										<ArrowUpDown className="w-4 h-4" />
+									</div>
+								</th>
+								<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Liên hệ</th>
+								<th
+									className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+									onClick={() => handleSort("rating")}
+								>
+									<div className="flex items-center gap-2">
+										Rating
+										<ArrowUpDown className="w-4 h-4" />
+									</div>
+								</th>
+								<th
+									className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+									onClick={() => handleSort("completedOrders")}
+								>
+									<div className="flex items-center gap-2">
+										Đơn hàng
+										<ArrowUpDown className="w-4 h-4" />
+									</div>
+								</th>
+								<th
+									className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+									onClick={() => handleSort("totalPayout")}
+								>
+									<div className="flex items-center gap-2">
+										Payout
+										<ArrowUpDown className="w-4 h-4" />
+									</div>
+								</th>
+								<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
+								<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Thao tác</th>
+							</tr>
+						</thead>
+						<tbody className="bg-white divide-y divide-gray-200">
+							{loading ? (
+								<tr>
+									<td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+										Đang tải...
+									</td>
+								</tr>
+							) : filteredAndSortedSellers.length === 0 ? (
+								<tr>
+									<td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+										Không có seller nào
+									</td>
+								</tr>
+							) : (
+								filteredAndSortedSellers.map((seller) => {
+									const st = statsBySeller[seller.id];
+									return (
+										<React.Fragment key={seller.id}>
+											<tr className="hover:bg-gray-50">
+												<td className="px-6 py-4 whitespace-nowrap">
+													<button onClick={() => toggleExpandRow(seller.id)} className="p-1 hover:bg-gray-200 rounded">
+														{expandedRows.has(seller.id) ? (
+															<ChevronUp className="w-4 h-4" />
+														) : (
+															<ChevronDown className="w-4 h-4" />
+														)}
+													</button>
+												</td>
+												<td className="px-6 py-4 whitespace-nowrap">
+													<div className="flex items-center">
+														<div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
+															{seller.avatar ? (
+																<img src={seller.avatar} alt={seller.fullName} className="h-10 w-10 rounded-full" />
+															) : (
+																<User className="w-5 h-5 text-orange-600" />
+															)}
+														</div>
+														<div className="ml-4">
+															<div className="text-sm font-medium text-gray-900">{seller.fullName || "(Không tên)"}</div>
+															<div className="text-sm text-gray-500">ID: {seller.id}</div>
+															{st?.rank && (
+																<div className="text-xs text-gray-500 flex items-center gap-1">
+																	{st.rank <= 3 && (
+																		<Trophy className={`w-3 h-3 ${
+																			st.rank === 1 ? "text-yellow-500" :
+																			st.rank === 2 ? "text-gray-400" :
+																			"text-orange-600"
+																		}`} />
+																	)}
+																	Hạng {st.rank}
+																</div>
+															)}
+														</div>
+													</div>
+												</td>
+												<td className="px-6 py-4 whitespace-nowrap">
+													<div>
+														<div className="flex items-center text-sm text-gray-900">
+															<Mail className="w-4 h-4 mr-2 text-gray-400" />
+															{seller.email}
+														</div>
+														<div className="flex items-center text-sm text-gray-500">
+															<Phone className="w-4 h-4 mr-2 text-gray-400" />
+															{seller.phone || "—"}
+														</div>
+													</div>
+												</td>
+												<td className="px-6 py-4 whitespace-nowrap">
+													<div className="flex items-center gap-1">
+														<Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+														<span className="text-sm font-semibold text-gray-900">
+															{typeof st?.rating === "number" ? st.rating.toFixed(1) : "—"}
+														</span>
+													</div>
+												</td>
+												<td className="px-6 py-4 whitespace-nowrap">
+													<div className="text-sm text-gray-900">
+														{st?.completedOrders ?? 0} hoàn thành
+													</div>
+													<div className="text-xs text-gray-500">
+														{st?.inProgressOrders ?? 0} đang thực hiện
+													</div>
+												</td>
+												<td className="px-6 py-4 whitespace-nowrap">
+													<div className="text-sm font-medium text-gray-900">
+														{formatCurrencyVND(st?.totalPayout ?? 0)}
+													</div>
+													<div className="text-xs text-gray-500">
+														P1: {formatCurrencyVND(st?.baseAdjusted ?? 0)} • P2: {st?.bonusPoints ?? 0}đ • P3: {formatCurrencyVND(st?.commission ?? 0)}
+													</div>
+												</td>
+												<td className="px-6 py-4 whitespace-nowrap">
+													<span
+														className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
+															seller.status
+														)}`}
+													>
+														{getStatusIcon(seller.status)}
+														<span className="ml-1">{getStatusText(seller.status)}</span>
+													</span>
+													{seller.banReason && (
+														<div className="text-xs text-red-600 mt-1 max-w-xs truncate" title={seller.banReason}>
+															{seller.banReason}
+														</div>
+													)}
+												</td>
+												<td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+													<div className="flex space-x-2">
+														<button
+															onClick={() => handleViewSeller(seller.id)}
+															className="text-blue-600 hover:text-blue-900 p-1"
+															title="Xem chi tiết"
+														>
+															<Eye className="w-4 h-4" />
+														</button>
+														
+														{seller.status === "Banned" ? (
+															<button
+																onClick={() => handleUnbanSeller(seller.id)}
+																className="text-green-600 hover:text-green-900 p-1"
+																title="Mở khóa"
+															>
+																<CheckCircle className="w-4 h-4" />
+															</button>
+														) : (
+															<button
+																onClick={() => handleBanSeller(seller.id)}
+																className="text-red-600 hover:text-red-900 p-1"
+																title="Khóa tài khoản"
+															>
+																<Ban className="w-4 h-4" />
+															</button>
+														)}
+													</div>
+												</td>
+											</tr>
+											{expandedRows.has(seller.id) && (
+												<tr className="bg-gray-50">
+													<td colSpan={8} className="px-6 py-4">
+														<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+															{/* Thống kê */}
+															<div>
+																<h4 className="font-semibold text-gray-900 mb-3">Thống kê</h4>
+																<div className="space-y-2 text-sm">
+																	<div className="flex justify-between">
+																		<span className="text-gray-600">Đơn hoàn thành:</span>
+																		<span className="font-medium text-gray-900">{st?.completedOrders ?? 0}</span>
+																	</div>
+																	<div className="flex justify-between">
+																		<span className="text-gray-600">Đơn đang thực hiện:</span>
+																		<span className="font-medium text-gray-900">{st?.inProgressOrders ?? 0}</span>
+																	</div>
+																	<div className="flex justify-between">
+																		<span className="text-gray-600">Giá trị đơn:</span>
+																		<span className="font-medium text-gray-900">{formatCurrencyVND(st?.totalCompletedValue ?? 0)}</span>
+																	</div>
+																</div>
+															</div>
+
+															{/* Tài chính */}
+															<div>
+																<h4 className="font-semibold text-gray-900 mb-3">Tài chính</h4>
+																<div className="space-y-2 text-sm">
+																	<div className="flex justify-between">
+																		<span className="text-gray-600">P1 - Lương cứng:</span>
+																		<span className="font-medium text-gray-900">{formatCurrencyVND(st?.baseAdjusted ?? 0)}</span>
+																	</div>
+																	<div className="flex justify-between">
+																		<span className="text-gray-600">P2 - Thưởng:</span>
+																		<span className="font-medium text-gray-900">{st?.bonusPoints ?? 0} điểm = {formatCurrencyVND(st?.bonusSalary ?? 0)}</span>
+																	</div>
+																	<div className="flex justify-between">
+																		<span className="text-gray-600">P3 - Commission:</span>
+																		<span className="font-medium text-gray-900">{formatCurrencyVND(st?.commission ?? 0)}</span>
+																	</div>
+																	<div className="flex justify-between">
+																		<span className="text-gray-900 font-semibold">Tổng Payout:</span>
+																		<span className="font-bold text-blue-600">{formatCurrencyVND(st?.totalPayout ?? 0)}</span>
+																	</div>
+																</div>
+															</div>
+														</div>
+													</td>
+												</tr>
+											)}
+										</React.Fragment>
+									);
+								})
+							)}
+						</tbody>
+					</table>
+				</div>
+
+				{/* Pagination */}
+				<div className="bg-white px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+					<div className="text-sm text-gray-700">
+						Hiển thị {((currentPage - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, totalSellers)} của{" "}
+						{totalSellers} seller
+					</div>
+					<div className="flex gap-2">
+						<button
+							onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+							disabled={currentPage === 1}
+							className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+						>
+							Trước
+						</button>
+						{Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+							<button
+								key={page}
+								onClick={() => setCurrentPage(page)}
+								className={`px-3 py-1 rounded-lg ${
+									currentPage === page ? "bg-orange-500 text-white" : "border border-gray-300 hover:bg-gray-50"
+								}`}
+							>
+								{page}
+							</button>
+						))}
+						<button
+							onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+							disabled={currentPage === totalPages}
+							className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+						>
+							Sau
+						</button>
+					</div>
+				</div>
+			</div>
+
 			{showFormulaModal && (
   <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
     <div className="bg-white rounded-lg shadow-lg max-w-lg w-full p-6 space-y-4">
