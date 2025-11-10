@@ -559,7 +559,7 @@ export const adminApi = {
       params: { page, limit },
       headers: { Authorization: `Bearer ${getAuthToken()}` },
     });
-
+    console.log(data);
     return {
       orders: data.data.map(normalizeOrder),
       total: data.total,

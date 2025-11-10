@@ -52,6 +52,8 @@ export default function OrderManagement() {
     fetchOrders();
   }, [currentPage]);
 
+    console.log(orders);
+
   // ⚙️ Hàm xử lý hành động
   const handleViewOrder = (orderId: string) => {
     // Giả sử có route chi tiết đơn hàng
@@ -215,7 +217,6 @@ export default function OrderManagement() {
                 <td className="px-4 py-2 truncate max-w-[140px]">{order.deliveryAddress || "Không xác định"}</td>
                 <td className="px-4 py-2">
                   <div>{order.createdAt}</div>
-                  <div className="text-gray-500 text-xs">Giao: {order.deliveryDate || "Chưa xác định"}</div>
                 </td>
                 <td className="px-4 py-2 font-medium text-gray-900">
                   ₫{order.price.toLocaleString()}
@@ -233,20 +234,6 @@ export default function OrderManagement() {
                       title="Xem chi tiết"
                     >
                       <Eye className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleEditOrder(order.id)}
-                      className="text-orange-600 hover:text-orange-900"
-                      title="Chỉnh sửa"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteOrder(order.id)}
-                      className="text-red-600 hover:text-red-900"
-                      title="Xóa"
-                    >
-                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </td>
