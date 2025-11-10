@@ -282,4 +282,24 @@ export const adminApi = {
       totalPages: data.totalPages,
     };
   },
+
+  /**
+   * Lấy chi tiết đơn hàng đầy đủ (cho admin)
+   * API: GET /api/admin/orders/:id
+   */
+  async getOrderDetail(orderId: string) {
+    try {
+      const { data } = await api.get(`/admin/orders/${orderId}`, {
+        headers: { Authorization: `Bearer ${getAuthToken()}` },
+      });
+      console.log("📦 API Response:", data);
+      if (data.success && data.data) {
+        return data.data;
+      }
+      return data.data || data;
+    } catch (error: any) {
+      console.error("❌ API Error:", error.response?.data || error.message);
+      throw error;
+    }
+  },
 };

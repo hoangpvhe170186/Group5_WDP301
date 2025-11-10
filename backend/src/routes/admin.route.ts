@@ -9,7 +9,8 @@ import {
   getRevenueStats,
   getOrderStatusStats,
   getDashboardEnhanced,
-  getDriverPerformance
+  getDriverPerformance,
+  getAdminOrderDetail
 } from "../controllers/admin.controller";
 import { requireAuth } from "../middleware/requireAuth";
 
@@ -23,6 +24,7 @@ router.get("/dashboard", getDashboardOverview);
 router.get("/revenue", getRevenueStats);
 
 router.get("/orders/pagination", getPaginationAllOrders);
+router.get("/orders/:id", getAdminOrderDetail);
 
 router.get("/customers/pagination", getPaginationCustomers);
 
