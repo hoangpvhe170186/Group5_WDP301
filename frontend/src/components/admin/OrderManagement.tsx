@@ -17,7 +17,7 @@ export default function OrderManagement() {
   // 🧠 State
   const [orders, setOrders] = useState<OrderType[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"all" | "pending" | "processing" | "shipping" | "delivered" | "cancelled">("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalOrders, setTotalOrders] = useState(0);
@@ -134,7 +134,21 @@ export default function OrderManagement() {
     const matchesSearch =
       order.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (order.customer?.full_name || "").toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterStatus === "all" || order.status === filterStatus;
+    
+    if (filterStatus === "all") return matchesSearch;
+    
+    const orderStatus = (order.status || "").toString().toUpperCase();
+    const statusMap: { [key: string]: string[] } = {
+      "pending": ["PENDING"],
+      "processing": ["CONFIRMED", "AVAILABLE", "ASSIGNED", "ACCEPTED", "ARRIVED"],
+      "shipping": ["ON_THE_WAY", "ARRIVED"],
+      "delivered": ["DELIVERED", "COMPLETED"],
+      "cancelled": ["CANCELLED", "DECLINED"],
+    };
+    
+    const matchingStatuses = statusMap[filterStatus] || [];
+    const matchesFilter = matchingStatuses.includes(orderStatus);
+    
     return matchesSearch && matchesFilter;
   });
 
@@ -174,9 +188,9 @@ export default function OrderManagement() {
             />
           </div>
           <div className="flex gap-2">
-            <select
+          <select
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as any)}
+              onChange={(e) => setFilterStatus(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
             >
               <option value="all">Tất cả</option>

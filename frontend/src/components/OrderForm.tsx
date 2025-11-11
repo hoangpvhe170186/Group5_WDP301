@@ -394,30 +394,30 @@ export default function OrderForm({ onAddressChange, onEstimate }: Readonly<Orde
 
         <hr className="my-3" />
 
-        <h3 className="font-bold text-gray-800 text-lg">Lịch giao hàng</h3>
-        {scheduleType === "now" ? (
-          <p>
-            Giao ngay - dự kiến{" "}
-            <strong>
-              {new Date(Date.now() + 2 * 60 * 60 * 1000).toLocaleString("vi-VN", {
-                dateStyle: "short",
-                timeStyle: "short",
-              })}
-            </strong>
-          </p>
-        ) : deliveryTime ? (
-          <p>
-            Giao vào lúc{" "}
-            <strong>
-              {new Date(deliveryTime).toLocaleString("vi-VN", {
-                dateStyle: "short",
-                timeStyle: "short",
-              })}
-            </strong>
-          </p>
-        ) : (
-          <p className="text-gray-500">Chưa chọn lịch giao hàng.</p>
-        )}
+            <h3 className="font-bold text-gray-800 text-lg">Lịch giao hàng</h3>
+            {scheduleType === "now" ? (
+              <p>
+                Giao ngay - dự kiến{" "}
+                <strong>
+                  {new Date(Date.now() + 2 * 60 * 60 * 1000).toLocaleString("vi-VN", {
+                    dateStyle: "short",
+                    timeStyle: "short",
+                  })}
+                </strong>
+              </p>
+            ) : deliveryTime ? (
+              <p>
+                Giao vào lúc{" "}
+                <strong>
+                  {new Date(deliveryTime).toLocaleString("vi-VN", {
+                    dateStyle: "short",
+                    timeStyle: "short",
+                  })}
+                </strong>
+              </p>
+            ) : (
+              <p className="text-gray-500">Chưa chọn lịch giao hàng.</p>
+            )}
 
       </div>
       <form onSubmit={handleSubmit} className="space-y-5 flex flex-col flex-1">
