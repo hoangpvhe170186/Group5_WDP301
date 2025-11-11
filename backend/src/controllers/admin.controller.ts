@@ -839,7 +839,6 @@ export const getAdminOrderDetail = async (req: Request, res: Response) => {
     const order = await Order.findById(id)
       .populate("customer_id", "full_name email phone avatar")
       .populate("seller_id", "full_name email phone avatar")
-      .populate("driver_id", "full_name email phone avatar")
       .populate("carrier_id", "full_name email phone avatar")
       .populate("assignedCarrier", "full_name email phone avatar")
       .populate("acceptedBy", "full_name email phone avatar")
