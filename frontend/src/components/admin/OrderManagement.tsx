@@ -3,11 +3,7 @@
 import { useState, useEffect } from "react";
 import {
   Search,
-  Filter,
   Eye,
-  Edit,
-  Trash2,
-  Download,
   Package,
   Truck,
   CheckCircle,
@@ -15,7 +11,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { adminApi, type Order as OrderType } from "@/services/admin.service";
-import { useNavigate } from "react-router-dom";
+import OrderDetailModal from "./OrderDetailModal";
 
 export default function OrderManagement() {
   // 🧠 State
@@ -27,8 +23,9 @@ export default function OrderManagement() {
   const [totalOrders, setTotalOrders] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const limit = 10; // Số lượng đơn hàng mỗi trang
-  const navigate = useNavigate();
 
   // 🚀 Fetch dữ liệu đơn hàng từ API
   useEffect(() => {
@@ -56,29 +53,13 @@ export default function OrderManagement() {
 
   // ⚙️ Hàm xử lý hành động
   const handleViewOrder = (orderId: string) => {
-    // Giả sử có route chi tiết đơn hàng
-    navigate(`/admin/orders/${orderId}`);
+    setSelectedOrderId(orderId);
+    setIsModalOpen(true);
   };
 
-  const handleEditOrder = (orderId: string) => {
-    // Giả sử có route chỉnh sửa đơn hàng
-    navigate(`/admin/orders/edit/${orderId}`);
-  };
-
-  const handleDeleteOrder = async (orderId: string) => {
-    if (window.confirm("Bạn có chắc muốn xóa đơn hàng này?")) {
-      try {
-        // TODO: Thêm API xóa đơn hàng trong adminApi nếu cần
-        // await adminApi.deleteOrder(orderId);
-        setOrders(orders.filter((order) => order.id !== orderId));
-        if (filteredOrders.length === 1 && currentPage > 1) {
-          setCurrentPage(currentPage - 1);
-        }
-      } catch (err: any) {
-        setError("Lỗi khi xóa đơn hàng");
-        console.error(err);
-      }
-    }
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedOrderId(null);
   };
 
   // ⚙️ Hàm render icon, màu và text cho trạng thái
@@ -124,10 +105,10 @@ export default function OrderManagement() {
         return "Đang xử lý";
       case "Shipping":
         return "Đang giao";
-      case "Delivered":
+      case "COMPLETED":
         return "Đã giao";
       case "Cancelled":
-        return "Đã hủy";
+        return "Đã hủy"   
       default:
         return "Không xác định";
     }
@@ -137,7 +118,7 @@ export default function OrderManagement() {
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
       order.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (order.customer?.fullName || "").toLowerCase().includes(searchTerm.toLowerCase());
+      (order.customer?.full_name || "").toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterStatus === "all" || order.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
@@ -230,11 +211,13 @@ export default function OrderManagement() {
                   <div className="flex justify-center gap-2">
                     <button
                       onClick={() => handleViewOrder(order.id)}
-                      className="text-blue-600 hover:text-blue-900"
+                      className="flex items-center gap-1 text-blue-600 hover:text-blue-900 font-medium"
                       title="Xem chi tiết"
                     >
                       <Eye className="w-4 h-4" />
+                      Xem chi tiết
                     </button>
+                    
                   </div>
                 </td>
               </tr>
@@ -268,6 +251,14 @@ export default function OrderManagement() {
           </button>
         </div>
       </div>
+
+      {/* Order Detail Modal */}
+      {isModalOpen && selectedOrderId && (
+        <OrderDetailModal
+          orderId={selectedOrderId}
+          onClose={handleCloseModal}
+        />
+      )}
     </div>
   );
 }
