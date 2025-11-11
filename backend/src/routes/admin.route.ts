@@ -16,6 +16,7 @@ import {
   createUser,
   createCarrier,
   createVehicle,
+  getAdminOrderDetail
 } from "../controllers/admin.controller";
 import { requireAuth } from "../middleware/requireAuth";
 
@@ -39,6 +40,7 @@ router.post("/carriers", createCarrier);
 router.post("/vehicles", createVehicle);
 
 router.get("/orders/pagination", getPaginationAllOrders);
+router.get("/orders/:id", getAdminOrderDetail);
 
 router.get("/drivers/pagination", getPaginationDrivers);
 router.get("/sellers/pagination", getPaginationSellers);

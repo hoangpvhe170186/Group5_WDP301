@@ -4,6 +4,10 @@ import User from "../models/User";
 import Order from "../models/Order";
 import bcrypt from "bcryptjs";
 import Vehicle from "../models/Vehicle";
+import OrderItem from "../models/OrderItem";
+import OrderTracking from "../models/OrderTracking";
+import OrderStatusLog from "../models/OrderStatusLog";
+import OrderMedia from "../models/OrderMedia";
 
 export const createUser = async (req: Request, res: Response) => {
   try {
@@ -819,6 +823,73 @@ export const getCarrierDetail = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: "Lỗi server khi lấy chi tiết carrier",
+    });
+  }
+};
+
+/**
+ * 📦 Lấy chi tiết đơn hàng đầy đủ cho admin
+ * API: GET /api/admin/orders/:id
+ */
+export const getAdminOrderDetail = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // Lấy đơn hàng với tất cả các populate
+    const order = await Order.findById(id)
+      .populate("customer_id", "full_name email phone avatar")
+      .populate("seller_id", "full_name email phone avatar")
+      .populate("driver_id", "full_name email phone avatar")
+      .populate("carrier_id", "full_name email phone avatar")
+      .populate("assignedCarrier", "full_name email phone avatar")
+      .populate("acceptedBy", "full_name email phone avatar")
+      .populate("package_id")
+      .populate("vehicle_id")
+      .populate("extra_fees")
+      .lean();
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy đơn hàng",
+      });
+    }
+
+    // Lấy các dữ liệu liên quan
+    const [items, trackings, statusLogs, media] = await Promise.all([
+      OrderItem.find({ order_id: id }).lean(),
+      OrderTracking.find({ order_id: id })
+        .populate("carrier_id", "full_name email phone")
+        .sort({ createdAt: -1 })
+        .lean(),
+      OrderStatusLog.find({ order_id: id })
+        .populate("updated_by", "full_name email")
+        .sort({ createdAt: -1 })
+        .lean(),
+      OrderMedia.find({ order_id: id })
+        .populate("uploaded_by", "full_name email")
+        .sort({ createdAt: -1 })
+        .lean(),
+    ]);
+
+    // Kết hợp tất cả dữ liệu
+    const orderDetail = {
+      ...order,
+      items,
+      trackings,
+      statusLogs,
+      media,
+    };
+
+    res.status(200).json({
+      success: true,
+      data: orderDetail,
+    });
+  } catch (error) {
+    console.error("❌ Lỗi khi lấy chi tiết đơn hàng:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server khi lấy chi tiết đơn hàng",
     });
   }
 };
