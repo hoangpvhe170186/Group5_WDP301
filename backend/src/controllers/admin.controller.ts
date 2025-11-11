@@ -379,7 +379,9 @@ export const getPaginationCustomers = async (req: Request, res: Response) => {
 
     const [customers, total] = await Promise.all([
       User.find({ role: "Customer" })
-        .select("_id full_name email phone status")
+        .select(
+          "_id full_name email phone status role banReason avatar created_at updated_at"
+        )
         .skip(skip)
         .limit(limit),
       User.countDocuments({ role: "Customer" }),
@@ -397,6 +399,51 @@ export const getPaginationCustomers = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: "Lỗi server khi lấy danh sách customer",
+    });
+  }
+};
+
+export const getCustomerOrders = async (req: Request, res: Response) => {
+  try {
+    const { customerId } = req.params;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 5;
+    const skip = (page - 1) * limit;
+
+    if (!mongoose.Types.ObjectId.isValid(customerId)) {
+      return res.status(400).json({
+        success: false,
+        message: "customerId không hợp lệ",
+      });
+    }
+
+    const query = { customer_id: new mongoose.Types.ObjectId(customerId) };
+
+    const [orders, total] = await Promise.all([
+      Order.find(query)
+        .select(
+          "orderCode status total_price pickup_address delivery_address createdAt scheduled_time seller_id carrier_id"
+        )
+        .populate("seller_id", "full_name email phone")
+        .populate("carrier_id", "full_name email phone")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Order.countDocuments(query),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: orders,
+      total,
+      currentPage: page,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    });
+  } catch (error) {
+    console.error("Error getting customer orders:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi server khi lấy đơn hàng khách hàng",
     });
   }
 };

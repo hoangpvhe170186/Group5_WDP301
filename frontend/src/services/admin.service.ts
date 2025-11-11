@@ -159,8 +159,16 @@ const normalizeUser = (u: any): User => ({
   role: u.role || "Customer",
   status: u.status || "Active",
   banReason: u.banReason || "",
-  createdAt: u.createdAt ? new Date(u.createdAt).toLocaleString("vi-VN") : "",
-  updatedAt: u.updatedAt ? new Date(u.updatedAt).toLocaleString("vi-VN") : "",
+  createdAt: u.createdAt
+    ? new Date(u.createdAt).toLocaleString("vi-VN")
+    : u.created_at
+    ? new Date(u.created_at).toLocaleString("vi-VN")
+    : "",
+  updatedAt: u.updatedAt
+    ? new Date(u.updatedAt).toLocaleString("vi-VN")
+    : u.updated_at
+    ? new Date(u.updated_at).toLocaleString("vi-VN")
+    : "",
 });
 
 /**
@@ -194,7 +202,11 @@ const normalizeOrder = (o: any): Order => ({
   seller: o.seller_id || o.seller || null,
   customer: o.customer_id || o.customer || null,
   carrier: o.carrier_id || o.carrier || null,
-  createdAt: o.createdAt ? new Date(o.createdAt).toLocaleString("vi-VN") : "",
+  createdAt: o.createdAt
+    ? new Date(o.createdAt).toLocaleString("vi-VN")
+    : o.created_at
+    ? new Date(o.created_at).toLocaleString("vi-VN")
+    : "",
   pickupAddress: o.pickup_address || o.pickupAddress || "",
   deliveryAddress: o.delivery_address || o.deliveryAddress || "",
 });
@@ -424,6 +436,24 @@ export const adminApi = {
         totalPages: 1,
       };
     }
+  },
+
+  /**
+   * 📦 Lấy danh sách đơn hàng của khách hàng
+   * API: GET /api/admin/customers/:customerId/orders
+   */
+  async getCustomerOrders(customerId: string, page = 1, limit = 5) {
+    const { data } = await api.get(`/admin/customers/${customerId}/orders`, {
+      params: { page, limit },
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+
+    return {
+      orders: data.data?.map(normalizeOrder) || [],
+      total: data.total || 0,
+      currentPage: data.currentPage || page,
+      totalPages: data.totalPages || 1,
+    };
   },
 
   /**

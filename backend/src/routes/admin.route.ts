@@ -16,7 +16,8 @@ import {
   createUser,
   createCarrier,
   createVehicle,
-  getAdminOrderDetail
+  getAdminOrderDetail,
+  getCustomerOrders
 } from "../controllers/admin.controller";
 import { requireAuth } from "../middleware/requireAuth";
 
@@ -45,6 +46,7 @@ router.get("/orders/:id", getAdminOrderDetail);
 router.get("/drivers/pagination", getPaginationDrivers);
 router.get("/sellers/pagination", getPaginationSellers);
 router.get("/customers/pagination", getPaginationCustomers);
+router.get("/customers/:customerId/orders", getCustomerOrders);
 router.put("/customers/:id/status", updateStatusCustomer);
 
 export default router;
