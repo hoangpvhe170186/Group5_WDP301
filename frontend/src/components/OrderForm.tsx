@@ -392,7 +392,10 @@ export default function OrderForm({ onAddressChange, onEstimate }: Readonly<Orde
           <p className="text-gray-500"></p>
         )}
 
-        <hr className="my-3" />
+        {/* Chỉ hiển thị Lịch giao hàng khi đã có thông tin gói dịch vụ (đã xem giá) */}
+        {(passedPackage || passedTotalFinal || form.total_price) && (
+          <>
+            <hr className="my-3" />
 
             <h3 className="font-bold text-gray-800 text-lg">Lịch giao hàng</h3>
             {scheduleType === "now" ? (
@@ -418,6 +421,8 @@ export default function OrderForm({ onAddressChange, onEstimate }: Readonly<Orde
             ) : (
               <p className="text-gray-500">Chưa chọn lịch giao hàng.</p>
             )}
+          </>
+        )}
 
       </div>
       <form onSubmit={handleSubmit} className="space-y-5 flex flex-col flex-1">
