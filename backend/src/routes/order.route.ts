@@ -13,8 +13,7 @@ import {
   getOrderItemsByOrderId,
   updateOrderPackage,
   updateOrderExtraFees,
-  addOrderImages,
-  getOrdersByCarrier
+  addOrderImages
 } from "../controllers/order.controller";
 
 const router = Router();
@@ -31,6 +30,5 @@ router.get("/:id", getOrderById);
 router.put("/:id", updateOrderStatus);
 router.patch("/:id/cancel", requireAuth, cancelOrder); // hủy đơn hàng
 router.delete("/:id", deleteOrder); //  đúng cú pháp
-router.get("/carrier/:carrierId", getOrdersByCarrier);
 router.post("/:id/images", requireAuth, addOrderImages);
 export default router;

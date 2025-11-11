@@ -607,16 +607,3 @@ export const updateOrderExtraFees = async (req, res) => {
     });
   }
 };
-export const getOrdersByCarrier = async (req: Request, res: Response) => {
-  try {
-    const { carrierId } = req.params;
-    const orders = await Order.find({ 
-      carrier_id: carrierId 
-    }).sort({ createdAt: -1 });
-    
-    res.json({ success: true, orders });
-  } catch (error) {
-    console.error("Error getting carrier orders:", error);
-    res.status(500).json({ success: false, message: "Lỗi server" });
-  }
-};

@@ -1,4 +1,4 @@
-// ✅ FULL FILE carrier.service.ts - ĐÃ TỐI ƯU HÓA
+// ✅ FULL FILE carrier.service.ts
 import api from "@/lib/axios";
 import type { CarrierProfile, JobItem, JobStatus } from "@/types/carrier";
 
@@ -7,6 +7,16 @@ export type TrackingItem = {
   status: string;
   note?: string;
   createdAt: string;
+};
+
+const getAuthToken = (): string => {
+  if (typeof window === "undefined") return "";
+  return (
+    localStorage.getItem("auth_token") ||
+    localStorage.getItem("token") ||
+    sessionStorage.getItem("auth_token") ||
+    ""
+  );
 };
 
 const normalizeStatus = (
@@ -45,17 +55,24 @@ const toNum = (v: any) =>
 
 export const carrierApi = {
   async getProfile(): Promise<CarrierProfile> {
-    const { data } = await api.get("/carrier/profile");
+    const { data } = await api.get("/carrier/profile", {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+
     return data;
   },
 
   async updateProfile(payload: Partial<CarrierProfile>): Promise<CarrierProfile> {
-    const { data } = await api.put("/carrier/profile", payload);
+    const { data } = await api.put("/carrier/profile", payload, {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
     return data;
   },
 
   async listOrders(): Promise<{ orders: JobItem[] }> {
-    const { data } = await api.get("/carrier/orders");
+    const { data } = await api.get("/carrier/orders", {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
 
     const rawOrders = Array.isArray(data) ? data : data?.orders || [];
 
@@ -78,6 +95,7 @@ export const carrierApi = {
 
   async listHistory(): Promise<JobItem[]> {
     const { data } = await api.get("/carrier/orders", {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
       params: { include: "all" },
     });
 
@@ -103,24 +121,30 @@ export const carrierApi = {
   },
 
   async getDebt(orderId: string): Promise<{ status: string; commissionAmount: number; orderCode: string }> {
-    const { data } = await api.get(`/carrier/orders/${orderId}/debt`);
+    const { data } = await api.get(`/carrier/orders/${orderId}/debt`, {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
     return data?.debt ?? { status: "PENDING", commissionAmount: 0, orderCode: "" };
   },
-
   async createCommissionPayment(orderId: string): Promise<{ paymentId: string; amount: number; description: string; qrCode?: string | null; payosLink?: string | null; }> {
-    const { data } = await api.post(`/carrier/orders/${orderId}/payment/create`, {});
+    const { data } = await api.post(`/carrier/orders/${orderId}/payment/create`, {}, {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
     return data;
   },
 
   async getCommissionPayments(orderId: string): Promise<Array<{ id: string; amount: number; status: string; description: string; createdAt: string; paidAt?: string }>> {
     const { data } = await api.get(`/carrier/payments`, {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
       params: { orderId },
     });
     return data?.payments ?? [];
   },
 
   async jobDetail(orderId: string): Promise<any> {
-    const { data } = await api.get(`/carrier/orders/${orderId}`);
+    const { data } = await api.get(`/carrier/orders/${orderId}`, {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
 
     const goods = (data.goods || []).map((g: any) => ({
       id: String(g.id ?? g._id),
@@ -150,45 +174,61 @@ export const carrierApi = {
       trackings,
     };
   },
-
   async claimOrder(orderId: string) {
     const { data } = await api.post(`/carrier/orders/${orderId}/claim`, {});
     return data;
   },
 
   async acceptAssignedOrder(orderId: string) {
-    const { data } = await api.post(`/carrier/orders/${orderId}/accept-assigned`, {});
+    const { data } = await api.post(`/carrier/orders/${orderId}/accept-assigned`, {}, {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
     return data;
   },
 
   async declineAssignedOrder(orderId: string) {
-    const { data } = await api.post(`/carrier/orders/${orderId}/decline-assigned`, {});
+    const { data } = await api.post(`/carrier/orders/${orderId}/decline-assigned`, {}, {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
     return data;
   },
+
 
   async acceptJob(orderId: string) {
-    const { data } = await api.post(`/carrier/claim/${orderId}`, {});
+    const { data } = await api.post(
+      `/carrier/claim/${orderId}`,
+      {},
+      { headers: { Authorization: `Bearer ${getAuthToken()}` } }
+    );
     return data;
   },
 
+  // 🟩 Carrier từ chối đơn được assign
   async declineJob(orderId: string, reason?: string) {
-    const { data } = await api.post(`/carrier/decline/${orderId}`, { reason });
+    const { data } = await api.post(
+      `/carrier/decline/${orderId}`,
+      { reason },
+      { headers: { Authorization: `Bearer ${getAuthToken()}` } }
+    );
     return data;
   },
 
   async listEvidence(orderId: string, phase?: "BEFORE" | "AFTER"): Promise<Array<{ id: string; url: string; type: "IMAGE" | "VIDEO"; phase: "BEFORE" | "AFTER"; uploadedAt: string; }>> {
     try {
       const { data } = await api.get(`/carrier/orders/${orderId}/evidence`, {
+        headers: { Authorization: `Bearer ${getAuthToken()}` },
         params: phase ? { phase } : {},
       });
       return data?.items ?? [];
     } catch (e: any) {
       if (e?.response?.status === 404) {
+        // trước đây do thiếu route → giờ vẫn an toàn
         return [];
       }
       throw e;
     }
-  },
+  }
+  ,
 
   async uploadEvidence({
     orderId,
@@ -209,6 +249,7 @@ export const carrierApi = {
       {
         headers: {
           "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${getAuthToken()}`,
         },
       }
     );
@@ -217,14 +258,19 @@ export const carrierApi = {
   },
 
   async confirmContract(orderId: string) {
-    const { data } = await api.post(`/carrier/orders/${orderId}/confirm-contract`, {});
+    const { data } = await api.post(
+      `/carrier/orders/${orderId}/confirm-contract`,
+      {},
+      { headers: { Authorization: `Bearer ${getAuthToken()}` } }
+    );
     return data;
   },
 
   async updateProgress(orderId: string, status: JobStatus, note?: string) {
     const { data } = await api.post(
       `/carrier/orders/${orderId}/progress`,
-      { status, note }
+      { status, note },
+      { headers: { Authorization: `Bearer ${getAuthToken()}` } }
     );
     return data;
   },
@@ -232,7 +278,8 @@ export const carrierApi = {
   async confirmDelivery(orderId: string, signatureUrl?: string) {
     const { data } = await api.post(
       `/carrier/orders/${orderId}/confirm-delivery`,
-      { signatureUrl }
+      { signatureUrl },
+      { headers: { Authorization: `Bearer ${getAuthToken()}` } }
     );
     return data;
   },
@@ -240,13 +287,20 @@ export const carrierApi = {
   async addTracking(orderId: string, status: string, note?: string) {
     const { data } = await api.post(
       `/order-tracking/${orderId}`,
-      { status, note }
+      { status, note },
+      {
+        headers: {
+          Authorization: `Bearer ${getAuthToken()}`,
+        },
+      }
     );
     return data;
   },
 
   async getTrackings(orderId: string): Promise<TrackingItem[]> {
-    const { data } = await api.get(`/order-tracking/${orderId}`);
+    const { data } = await api.get(`/order-tracking/${orderId}`, {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
     const list = data?.trackings || [];
     return list.map((t: any) => ({
       id: String(t._id),
@@ -263,12 +317,15 @@ export const carrierApi = {
     const { data } = await api.post("/upload/avatar", form, {
       headers: {
         "Content-Type": "multipart/form-data",
+        Authorization: `Bearer ${getAuthToken()}`,
       },
     });
 
     if (data?.url) return data.url;
     throw new Error("Upload lại");
   },
+
+
 
   async reportIncident({
     orderId,
@@ -285,13 +342,13 @@ export const carrierApi = {
     form.append("type", type);
     form.append("description", description);
     (photos || []).forEach((p) => form.append("photos", p));
-    
     const { data } = await api.post(
       `/carrier/orders/${orderId}/incidents`,
       form,
       {
         headers: {
           "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${getAuthToken()}`,
         },
       }
     );

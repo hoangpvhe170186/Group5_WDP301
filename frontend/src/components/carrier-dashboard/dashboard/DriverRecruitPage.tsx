@@ -2,47 +2,6 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "@/config/api";
 
-function HomeHeader() {
-  return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm">
-      <div className="max-w-7xl mx-auto px-6 py-4">
-        <div className="flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
-              <svg 
-                className="w-6 h-6 text-white" 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M13 10V3L4 14h7v7l9-11h-7z" 
-                />
-              </svg>
-            </div>
-            <span className="text-xl font-bold text-gray-900">Home Express</span>
-          </Link>
-          
-          <nav className="hidden md:flex items-center gap-6">
-            <Link to="/" className="text-gray-600 hover:text-orange-500 transition-colors">
-              Trang chủ
-            </Link>
-            <Link to="/ve-chung-toi" className="text-gray-600 hover:text-orange-500 transition-colors">
-              Về chúng tôi
-            </Link>
-            <Link to="/lien-he" className="text-gray-600 hover:text-orange-500 transition-colors">
-              Liên hệ
-            </Link>
-          </nav>
-        </div>
-      </div>
-    </header>
-  );
-}
-
 type InterviewForm = {
   full_name: string;
   phone: string;
@@ -144,54 +103,25 @@ export default function DriverInterviewPage() {
   }
 
   async function onSubmit(e: React.FormEvent) {
-  e.preventDefault();
-  if (!form.accept_rules)
-    return alert("Bạn cần đồng ý với Quy định & Điều khoản.");
-  try {
-    setSubmitting(true);
-    
-    // THỬ CÁC ENDPOINT KHÁC NHAU
-    const endpoints = [
-      "/api/driver-interviews/apply",
-      "/api/driver-interviews",
-      "/api/driver-interview/apply",
-      "/api/driver/apply",
-      "/api/interview/apply"
-    ];
-    
-    let lastError = null;
-    
-    for (const endpoint of endpoints) {
-      try {
-        console.log(`🔄 Thử endpoint: ${endpoint}`);
-        await api.post(endpoint, form);
-        console.log(`✅ Thành công với endpoint: ${endpoint}`);
-        setOk(true);
-        return;
-      } catch (err: any) {
-        lastError = err;
-        console.log(`❌ Thất bại với endpoint: ${endpoint}`, err.response?.status);
-        if (err.response?.status !== 404) {
-          // Nếu lỗi khác 404, throw luôn
-          throw err;
-        }
-      }
+    e.preventDefault();
+    if (!form.accept_rules)
+      return alert("Bạn cần đồng ý với Quy định & Điều khoản.");
+    try {
+      setSubmitting(true);
+      await api.post("/api/driver-interviews/apply", form);
+      setOk(true);
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Gửi đăng ký thất bại. Vui lòng thử lại.";
+      console.error(err);
+      alert(msg);
+    } finally {
+      setSubmitting(false);
     }
-    
-    // Nếu tất cả endpoint đều 404
-    throw lastError;
-    
-  } catch (err: any) {
-    const msg =
-      err?.response?.data?.message ||
-      err?.message ||
-      "Gửi đăng ký thất bại. Vui lòng thử lại.";
-    console.error("❌ Lỗi đăng ký:", err);
-    alert(msg);
-  } finally {
-    setSubmitting(false);
   }
-}
+
   if (ok) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">

@@ -1,3 +1,4 @@
+// src/routes/admin.routes.ts
 import express from "express";
 import {
   getDashboardOverview,
@@ -8,36 +9,32 @@ import {
   getRevenueStats,
   getOrderStatusStats,
   getDashboardEnhanced,
-  getDriverPerformance,
-  getAdminOrderDetail
+  getDriverPerformance
 } from "../controllers/admin.controller";
 import { requireAuth } from "../middleware/requireAuth";
 
 const router = express.Router();
 
+// 🔐 Middleware xác thực cho tất cả route admin
 router.use(requireAuth);
 
 router.get("/dashboard", getDashboardOverview);
-router.get("/dashboard/enhanced", getDashboardEnhanced);
+
 router.get("/revenue", getRevenueStats);
+
+router.get("/orders/pagination", getPaginationAllOrders);
+
+router.get("/customers/pagination", getPaginationCustomers);
+
+router.get("/carriers/pagination", getPaginationDrivers);
+
+
+router.get("/sellers/pagination", getPaginationSellers);
+
 router.get("/orders/status", getOrderStatusStats);
 
-router.get("/orders/pagination", getPaginationAllOrders);
-router.get("/orders/:id", getAdminOrderDetail);
+router.get("/dashboard/enhanced", getDashboardEnhanced);
 
-router.get("/carriers/pagination", getPaginationCarriers);
 router.get("/carriers/performance", getDriverPerformance);
-router.get("/carriers/:carrierId", getCarrierDetail);
-router.get("/carriers/:carrierId/orders", getCarrierOrders);
-router.post("/carriers", createCarrier);
-
-router.post("/vehicles", createVehicle);
-
-router.get("/orders/pagination", getPaginationAllOrders);
-
-router.get("/drivers/pagination", getPaginationDrivers);
-router.get("/sellers/pagination", getPaginationSellers);
-router.get("/customers/pagination", getPaginationCustomers);
-router.put("/customers/:id/status", updateStatusCustomer);
 
 export default router;

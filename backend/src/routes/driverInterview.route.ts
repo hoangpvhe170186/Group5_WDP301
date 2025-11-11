@@ -1,10 +1,10 @@
 import { Router } from "express";
-import { applyInterview, listInterviews, updateStatus } from "../controllers/driverInterview.controller";
+import * as ctrl from "../controllers/driverInterview.controller";
 
-const router = Router();
+const r = Router();
 
-router.post("/apply", applyInterview);
-router.get("/", listInterviews);
-router.patch("/:id/status", updateStatus);
+r.post("/apply", ctrl.applyInterview);
+r.get("/list", ctrl.listInterviews);
+r.patch("/:id/status", ctrl.updateStatus);
 
-export default router;
+export default r;
