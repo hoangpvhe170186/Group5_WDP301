@@ -18,8 +18,7 @@ import { adminApi } from "../services/admin.service";
 // Import các component quản lý
 import OrderManagement from "../components/admin/OrderManagement";
 import CustomerManagement from "../components/admin/CustomerManagement";
-import ComplaintManagement from "../components/admin/ComplaintManagement";
-import QualityManagement from "../components/admin/QualityManagement";
+import FeedbackManagement from "../components/admin/FeedbackManagement";
 import DriverManagement from "../components/admin/DriverManagement";
 import SellerManagement from "../components/admin/SellerManagement";
 import AdminNotifications from "../components/admin/AdminNotifications"; // Thêm import notifications
@@ -30,8 +29,7 @@ type AdminSection =
   | "carriers" 
   | "sellers"
   | "users" 
-  | "complaints" 
-  | "quality" 
+  | "feedback" 
   | "finance" 
   | "vehicles";
 
@@ -45,8 +43,7 @@ export default function AdminDashboard() {
     { id: "orders" as AdminSection, label: "Quản lý đơn hàng", icon: Package },
     { id: "users" as AdminSection, label: "Quản lý khách hàng", icon: Users },
     { id: "carriers" as AdminSection, label: "Quản lý tài xế", icon: Users },
-    { id: "complaints" as AdminSection, label: "Xử lý sự cố", icon: MessageSquare },
-    { id: "quality" as AdminSection, label: "Quản lý chất lượng", icon: Star },
+    { id: "feedback" as AdminSection, label: "Quản lý phản hồi", icon: MessageSquare },
     { id: "sellers" as AdminSection, label: "Quản lý nhân viên", icon: Star }
   ];
 
@@ -65,10 +62,8 @@ export default function AdminDashboard() {
         return <CustomerManagement />;
       case "carriers":
         return <DriverManagement/>;
-      case "complaints":
-        return <ComplaintManagement />;
-      case "quality":
-        return <QualityManagement />;
+      case "feedback":
+        return <FeedbackManagement />;
       case "sellers":
         return <SellerManagement />;
       default:

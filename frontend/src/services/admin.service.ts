@@ -99,6 +99,57 @@ export interface Vehicle {
   updated_at: string;
 }
 
+export interface FeedbackOverview {
+  feedbackSummary: {
+    total: number;
+    avgRating: number;
+    positive: number;
+    negative: number;
+    distribution: Record<string, number>;
+  };
+  incidentSummary: {
+    total: number;
+    status: Record<string, number>;
+  };
+  recentFeedbacks: Array<FeedbackReview>;
+  recentIncidents: Array<IncidentReport>;
+}
+
+export interface FeedbackReview {
+  id: string;
+  rating: number;
+  comment: string;
+  category: string;
+  status: "New" | "InProgress" | "Resolved";
+  priority: "Low" | "Medium" | "High";
+  orderCode?: string;
+  orderId?: string | null;
+  customer?: {
+    id: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+  } | null;
+  createdAt: string;
+}
+
+export interface IncidentReport {
+  id: string;
+  type: string;
+  description: string;
+  status: "Pending" | "Resolved" | "Rejected";
+  resolution?: string;
+  orderCode?: string;
+  orderId?: string | null;
+  reporter?: {
+    id: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+  } | null;
+  createdAt: string;
+}
+
 /**
  * 📊 Kiểu dữ liệu thống kê dashboard
  */
@@ -436,6 +487,57 @@ export const adminApi = {
         totalPages: 1,
       };
     }
+  },
+
+  /**
+   * 📋 Tổng quan feedback (đánh giá + sự cố)
+   */
+  async getFeedbackOverview(): Promise<FeedbackOverview> {
+    const { data } = await api.get("/admin/feedback/overview", {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+    return data.data;
+  },
+
+  async getFeedbackList(params: {
+    type: "reviews" | "incidents";
+    page?: number;
+    limit?: number;
+    status?: string;
+    search?: string;
+  }) {
+    const { type, page = 1, limit = 10, status = "all", search } = params;
+    const { data } = await api.get("/admin/feedback", {
+      params: { type, page, limit, status, search },
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+    return data.data as {
+      type: "reviews" | "incidents";
+      items: (FeedbackReview | IncidentReport)[];
+      total: number;
+      currentPage: number;
+      totalPages: number;
+    };
+  },
+
+  async updateFeedbackReview(
+    id: string,
+    payload: { status?: "New" | "InProgress" | "Resolved"; priority?: "Low" | "Medium" | "High"; notes?: string }
+  ) {
+    const { data } = await api.patch(`/admin/feedback/reviews/${id}`, payload, {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+    return data.data as FeedbackReview;
+  },
+
+  async updateIncidentStatus(
+    id: string,
+    payload: { status?: "Pending" | "Resolved" | "Rejected"; resolution?: string }
+  ) {
+    const { data } = await api.patch(`/admin/feedback/incidents/${id}`, payload, {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+    return data.data as IncidentReport;
   },
 
   /**
