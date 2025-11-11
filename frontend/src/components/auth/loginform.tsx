@@ -41,6 +41,17 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const redirectToLockedPage = (user: any) => {
+    const payload = {
+      email: user?.email,
+      fullName: user?.fullName || user?.full_name || user?.name || "",
+      reason: user?.banReason || "",
+    };
+
+    sessionStorage.setItem("locked_user_info", JSON.stringify(payload));
+    navigate("/auth/account-locked", { state: payload });
+  };
+
   // ===================================================
   // 🔹 Xử lý đăng nhập thông thường (email + password)
   // ===================================================
@@ -66,12 +77,17 @@ export default function LoginPage() {
         return;
       }
 
+      if (user.status === "Banned") {
+        redirectToLockedPage(user);
+        return;
+      }
+
       localStorage.setItem("auth_token", token);
       localStorage.setItem("user", JSON.stringify(user));
       sessionStorage.setItem("auth_email", user.email);
       localStorage.setItem("user_role", user.role);
       localStorage.setItem("user_id", user._id);
-      localStorage.setItem("fullName", user.fullName || user.name || "");
+      localStorage.setItem("fullName", user.fullName || user.full_name || user.name || "");
       localStorage.setItem("username", user.username || user.email || "");
 
       if (user.role?.toLowerCase() === "seller") {
@@ -137,12 +153,17 @@ export default function LoginPage() {
         return;
       }
 
+      if (user.status === "Banned") {
+        redirectToLockedPage(user);
+        return;
+      }
+
       // ✅ Lưu token và role vào localStorage
       localStorage.setItem("auth_token", token);
       localStorage.setItem("user", JSON.stringify(user));
       localStorage.setItem("user_role", user.role);
       localStorage.setItem("user_id", user._id);
-      localStorage.setItem("fullName", user.fullName || user.name || "");
+      localStorage.setItem("fullName", user.fullName || user.full_name || user.name || "");
       localStorage.setItem("username", user.username || user.email || "");
 
       if (user.role?.toLowerCase() === "seller") {

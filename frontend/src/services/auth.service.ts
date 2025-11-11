@@ -34,9 +34,11 @@ export interface UserData {
   email: string;
   role: string;
   status: string;
-    fullName?: string;
+  fullName?: string;
+  full_name?: string;
   username?: string;
   name?: string;
+  banReason?: string;
 }
 
 // Kiểu response chuẩn từ backend

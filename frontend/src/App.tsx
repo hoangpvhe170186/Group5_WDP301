@@ -8,6 +8,7 @@ import LoginPage from "./components/auth/loginform";
 import RegisterPage from "./components/auth/registerform";
 import VerifyOtpPage from "./components/auth/verify-otp";
 import ForgotPasswordPage from "./components/auth/forgot-password";
+import AccountLockedPage from "./components/auth/account-locked";
 import VehiclePricingPage from "./pages/VehiclePricingPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -56,6 +57,7 @@ export default function App() {
           <Route path="register" element={<RegisterPage />} />
           <Route path="verify-otp" element={<VerifyOtpPage />} />
           <Route path="forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="account-locked" element={<AccountLockedPage />} />
         </Route>
         
         {/* ✅ Route chat độc lập (giữ lại để seller có thể share link) */}
