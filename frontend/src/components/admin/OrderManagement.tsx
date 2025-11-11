@@ -62,54 +62,71 @@ export default function OrderManagement() {
 
   // ⚙️ Hàm render icon, màu và text cho trạng thái
   const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "pending":
-        return <Clock className="w-4 h-4" />;
-      case "processing":
-        return <Package className="w-4 h-4" />;
-      case "shipping":
-        return <Truck className="w-4 h-4" />;
-      case "delivered":
-        return <CheckCircle className="w-4 h-4" />;
-      case "cancelled":
-        return <AlertCircle className="w-4 h-4" />;
-      default:
-        return <Clock className="w-4 h-4" />;
-    }
+    const s = (status || "").toString().toUpperCase();
+    const iconMap: { [key: string]: JSX.Element } = {
+      PENDING: <Clock className="w-4 h-4" />,
+      CONFIRMED: <CheckCircle className="w-4 h-4" />,
+      AVAILABLE: <Package className="w-4 h-4" />,
+      ASSIGNED: <Package className="w-4 h-4" />,
+      ACCEPTED: <CheckCircle className="w-4 h-4" />,
+      ON_THE_WAY: <Truck className="w-4 h-4" />,
+      ARRIVED: <Truck className="w-4 h-4" />,
+      DELIVERED: <CheckCircle className="w-4 h-4" />,
+      COMPLETED: <CheckCircle className="w-4 h-4" />,
+      DECLINED: <AlertCircle className="w-4 h-4" />,
+      CANCELLED: <AlertCircle className="w-4 h-4" />,
+      INCIDENT: <AlertCircle className="w-4 h-4" />,
+      PAUSED: <Clock className="w-4 h-4" />,
+      PROCESSING: <Package className="w-4 h-4" />,
+      SHIPPING: <Truck className="w-4 h-4" />,
+    };
+    return iconMap[s] || <Clock className="w-4 h-4" />;
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "Processing":
-        return "bg-blue-100 text-blue-800";
-      case "Shipping":
-        return "bg-purple-100 text-purple-800";
-      case "Delivered":
-        return "bg-green-100 text-green-800";
-      case "Cancelled":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
+    const s = (status || "").toString().toUpperCase();
+    const colors: { [key: string]: string } = {
+      PENDING: "bg-yellow-100 text-yellow-800",
+      CONFIRMED: "bg-blue-100 text-blue-800",
+      AVAILABLE: "bg-cyan-100 text-cyan-800",
+      ASSIGNED: "bg-purple-100 text-purple-800",
+      ACCEPTED: "bg-green-100 text-green-800",
+      ON_THE_WAY: "bg-indigo-100 text-indigo-800",
+      ARRIVED: "bg-cyan-100 text-cyan-800",
+      DELIVERED: "bg-emerald-100 text-emerald-800",
+      COMPLETED: "bg-green-100 text-green-800",
+      DECLINED: "bg-red-100 text-red-800",
+      CANCELLED: "bg-gray-300 text-gray-700",
+      INCIDENT: "bg-orange-100 text-orange-800",
+      PAUSED: "bg-slate-200 text-slate-800",
+      NOTE: "bg-gray-100 text-gray-800",
+      PROCESSING: "bg-blue-100 text-blue-800",
+      SHIPPING: "bg-purple-100 text-purple-800",
+    };
+    return colors[s] || "bg-gray-100 text-gray-800";
   };
 
   const getStatusText = (status: string) => {
-    switch (status) {
-      case "Pending":
-        return "Chờ xử lý";
-      case "Processing":
-        return "Đang xử lý";
-      case "Shipping":
-        return "Đang giao";
-      case "COMPLETED":
-        return "Đã giao";
-      case "Cancelled":
-        return "Đã hủy"   
-      default:
-        return "Không xác định";
-    }
+    const s = (status || "").toString().toUpperCase();
+    const statusMap: { [key: string]: string } = {
+      PENDING: "Chờ xử lý",
+      CONFIRMED: "Đã xác nhận",
+      AVAILABLE: "Có sẵn",
+      ASSIGNED: "Đã phân công",
+      ACCEPTED: "Đã chấp nhận",
+      ON_THE_WAY: "Đang vận chuyển",
+      ARRIVED: "Đã đến nơi",
+      DELIVERED: "Đã giao",
+      COMPLETED: "Hoàn thành",
+      DECLINED: "Từ chối",
+      CANCELLED: "Đã hủy",
+      INCIDENT: "Sự cố",
+      PAUSED: "Tạm dừng",
+      NOTE: "Ghi chú",
+      PROCESSING: "Đang xử lý",
+      SHIPPING: "Đang giao",
+    };
+    return statusMap[s] || status || "Không xác định";
   };
 
   // 🔍 Lọc dữ liệu theo tìm kiếm & trạng thái
