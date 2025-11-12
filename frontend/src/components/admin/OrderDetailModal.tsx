@@ -26,8 +26,8 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ orderId, onClose })
         console.log("✅ Dữ liệu đơn hàng nhận được:", orderData);
         setOrder(orderData);
       } catch (err: any) {
-        console.error("❌ Lỗi khi tải chi tiết đơn hàng:", err);
-        console.error("❌ Chi tiết lỗi:", err.response?.data || err.message);
+        console.error(" Lỗi khi tải chi tiết đơn hàng:", err);
+        console.error(" Chi tiết lỗi:", err.response?.data || err.message);
         setError(err.response?.data?.message || err.message || "Không thể tải chi tiết đơn hàng");
       } finally {
         setLoading(false);

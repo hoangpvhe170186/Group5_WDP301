@@ -1,5 +1,6 @@
 "use client";
 import { Menu, User, LogOut } from "lucide-react";
+import { clearAuthData } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 
 interface DashboardHeaderProps {
@@ -8,12 +9,7 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
   const handleLogout = () => {
-    // Xóa token đăng nhập
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("token");
-    sessionStorage.removeItem("auth_token");
-
-    // Điều hướng về trang đăng nhập
+    clearAuthData();
     window.location.href = "/auth/login";
   };
 

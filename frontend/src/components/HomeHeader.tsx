@@ -1,4 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
+import { clearAuthData } from "@/lib/auth";
 import { useEffect, useRef, useState } from "react";
 
 // ✅ Bước 1: Định nghĩa một kiểu dữ liệu (interface) cho User
@@ -158,8 +159,7 @@ export default function HomeHeader() {
 
   // ✅ Hàm đăng xuất
   const onLogout = () => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("auth_token");
+    clearAuthData();
     setUser(null);
     navigate("/");
   };
