@@ -3,14 +3,12 @@ import { PackageIcon, AlertOctagonIcon, HistoryIcon, SettingsIcon } from './Icon
 import SupportInbox from "./SupportInbox";
 import SellerNotifications from "./SellerNotifications";
 import { LogOut } from 'lucide-react';
+import { clearAuthData } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 
 const Navbar = ({ currentPage, setPage }) => {
     const handleLogout = () => {
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("token");
-    sessionStorage.removeItem("auth_token");
-
+    clearAuthData();
     window.location.href = "/auth/login";
   };
   const navItems = [
