@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
-import { Eye, Truck, CheckCircle, Search, MessageCircle, Package, CheckSquare, X, Camera } from "lucide-react";
+import { Eye, Truck, CheckCircle, Search, MessageCircle, Package, CheckSquare, X, Camera,XCircle } from "lucide-react";
 import OrderDetailModal from "./OrderDetailModal";
 import OrderActionModal from "./OrderActionModal";
 import SellerChat from "./SellerChat";
@@ -166,6 +166,33 @@ const OrderManagementScreen = () => {
     } catch (error) {
       console.error("❌ Lỗi khi xác nhận đơn:", error);
       setMessage("🚨 Lỗi máy chủ khi xác nhận đơn!");
+    }
+  };
+
+  const handleCancelOrder = async (orderId: string) => {
+    try {
+      const token = localStorage.getItem("auth_token");
+      if (!token) return alert("Bạn cần đăng nhập!");
+
+      const res = await axios.post(
+        `http://localhost:4000/api/users/orders/${orderId}/cancel`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      if (res.data.success) {
+        setMessage("✅ Đơn hàng đã được hủy!");
+        await fetchOrders();
+        setTimeout(() => setMessage(""), 3000);
+      } else {
+        setMessage("⚠️ Không thể hủy đơn!");
+      }
+    } catch (error) {
+      console.error("❌ Lỗi khi xác nhận đơn:", error);
+      setMessage("🚨 Lỗi máy chủ khi hủy đơn!");
     }
   };
 
@@ -445,6 +472,15 @@ const OrderManagementScreen = () => {
                         title="Xác nhận đơn"
                       >
                         <CheckCircle className="w-5 h-5 cursor-pointer" />
+                      </button>
+                    )}
+                    {order.status === "Pending" && (
+                      <button
+                        onClick={() => handleCancelOrder(order._id)}
+                        className="text-green-600 hover:text-green-900"
+                        title="Xác nhận đơn"
+                      >
+                        <XCircle className="w-5 h-5 cursor-pointer" />
                       </button>
                     )}
 
