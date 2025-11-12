@@ -21,7 +21,8 @@ import {
   getAllIncidents,
   resolveIncident,
   getCompletedAndCancelledOrders,
-  claimSellerOrder
+  claimSellerOrder,
+  cancelOrder
 } from "../controllers/user.controller";
 
 import { requireAuth } from "../middleware/requireAuth";
@@ -67,6 +68,7 @@ router.delete("/:id", deleteUser);
 router.post("/orders/:id/assign", assignOrder);
 router.get("/carriers/schedule", getDriverSchedule);
 router.post("/orders/:id/confirm", confirmOrder);
+router.post("/orders/:id/cancel", cancelOrder);
 router.get("/feedback/order/:order_id", getFeedbackByOrderId);
 router.post("/feedbacks", RatingOrders);
 router.post("/incidents/report", reportIncident);

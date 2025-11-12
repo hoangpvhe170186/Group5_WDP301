@@ -161,7 +161,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ orderId, onClose })
     { id: "tracking", label: "📍 Tracking", count: order.trackings?.length || 0 },
     { id: "statusLogs", label: "📝 Lịch sử trạng thái", count: order.statusLogs?.length || 0 },
     { id: "extraFees", label: "💰 Phụ phí", count: order.extra_fees?.length || 0 },
-    { id: "audit", label: "📊 Audit Logs", count: order.auditLogs?.length || 0 },
+    { id: "audit", label: "📊 nhật ký kiểm tra", count: order.auditLogs?.length || 0 },
   ];
 
   return (
@@ -169,12 +169,13 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ orderId, onClose })
       className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
-      <div 
-        className="bg-white w-full max-w-6xl rounded-2xl shadow-xl max-h-[90vh] overflow-hidden flex flex-col"
+       <div 
+        className="bg-white w-full max-w-6xl rounded-2xl shadow-xl max-h-[90vh] flex flex-col"
+        style={{ overflow: 'visible' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-orange-500 to-red-600 text-white p-6 flex justify-between items-center">
+        <div className="bg-gradient-to-r from-orange-500 to-red-600 text-white p-6 flex justify-between items-center flex-shrink-0">
           <div>
             <h2 className="text-2xl font-bold">
               Đơn hàng #{order.orderCode || order.code || "N/A"}
@@ -192,26 +193,66 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ orderId, onClose })
         </div>
 
         {/* Tabs */}
-        <div className="border-b bg-white overflow-x-auto">
-          <div className="flex space-x-1 px-6 min-w-max">
+        <div 
+          className="border-b bg-gradient-to-r from-gray-50 to-white overflow-x-auto shadow-sm sticky top-0 z-[100] flex-shrink-0"
+          style={{
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            position: 'sticky',
+            top: 0,
+            visibility: 'visible !important',
+            display: 'block !important',
+            opacity: '1 !important',
+            height: 'auto',
+            minHeight: '60px',
+            backgroundColor: 'rgb(249 250 251)',
+          }}
+        >
+          <style>{`
+            div[class*="overflow-x-auto"]::-webkit-scrollbar {
+              display: none;
+            }
+          `}</style>
+          <div className="flex space-x-1 px-4 min-w-max" style={{ minHeight: '60px' }}>
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
+                className={`relative px-6 py-4 font-semibold text-sm rounded-t-xl transition-all duration-200 whitespace-nowrap ${
                   activeTab === tab.id
-                    ? "border-orange-500 text-orange-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
+                    ? "bg-white text-orange-600 shadow-lg border-t-2 border-l-2 border-r-2 border-orange-500 -mb-px"
+                    : "text-gray-600 hover:text-orange-600 hover:bg-gray-50 border-t-2 border-l-2 border-r-2 border-transparent"
                 }`}
+                style={{ 
+                  position: 'relative',
+                  zIndex: activeTab === tab.id ? 101 : 100,
+                  visibility: 'visible',
+                  display: 'inline-flex',
+                }}
               >
-                {tab.label} {tab.count !== null && tab.count > 0 && `(${tab.count})`}
+                <span className="flex items-center gap-2">
+                  <span className="text-base">{tab.label.split(' ')[0]}</span>
+                  <span className="font-medium">{tab.label.split(' ').slice(1).join(' ')}</span>
+                  {tab.count !== null && tab.count > 0 && (
+                    <span className={`ml-1.5 px-2.5 py-1 rounded-full text-xs font-bold min-w-[24px] text-center ${
+                      activeTab === tab.id 
+                        ? "bg-orange-100 text-orange-700 shadow-sm" 
+                        : "bg-gray-200 text-gray-600"
+                    }`}>
+                      {tab.count}
+                    </span>
+                  )}
+                </span>
+                {activeTab === tab.id && (
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-400 to-orange-600 rounded-t-full" style={{ zIndex: 102 }}></div>
+                )}
               </button>
             ))}
           </div>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-6 relative z-10 min-h-0" style={{ overflowY: 'auto', overflowX: 'hidden' }}>
           {activeTab === "info" && (
             <div className="space-y-6">
               {/* Trạng thái & Thanh toán & Số điện thoại */}
@@ -241,15 +282,26 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ orderId, onClose })
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-5">
                   <h3 className="font-semibold text-blue-800 text-lg mb-4 flex items-center gap-2">
                     <Package className="w-5 h-5" />
-                    Gói dịch vụ
+                    {order.package_id.name ? `Gói dịch vụ: ${order.package_id.name}` : "Gói dịch vụ"}
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {order.package_id.vehicle && (
+                  {order.package_id.vehicle && (
                       <div className="flex items-center gap-3">
                         <Truck className="w-8 h-8 text-blue-600" />
                         <div>
                           <p className="text-sm text-blue-600 font-medium">Phương tiện</p>
-                          <p className="text-blue-800 font-semibold">{safeString(order.package_id.vehicle)}</p>
+                          <p className="text-blue-800 font-semibold">
+                            {(() => {
+                              const vehicle = order.package_id.vehicle;
+                              if (typeof vehicle === 'string') {
+                                return vehicle;
+                              }
+                              if (typeof vehicle === 'object' && vehicle !== null) {
+                                return vehicle.name || vehicle.type || vehicle.vehicle_type || vehicle.label || "—";
+                              }
+                              return String(vehicle || "—");
+                            })()}
+                          </p>
                         </div>
                       </div>
                     )}
@@ -266,7 +318,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ orderId, onClose })
                       <div className="flex items-center gap-3">
                         <Building className="w-8 h-8 text-purple-600" />
                         <div>
-                          <p className="text-sm text-purple-600 font-medium">Tầng tối đa</p>
+                          <p className="text-sm text-purple-600 font-medium">Tầng</p>
                           <p className="text-purple-800 font-semibold">{safeString(order.package_id.max_floor)}</p>
                         </div>
                       </div>
@@ -328,14 +380,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ orderId, onClose })
                       {safeNumber(order.total_price || order.price).toLocaleString()}₫
                     </p>
                   </div>
-                  {order.base_price && (
-                    <div>
-                      <p className="text-sm text-gray-600">Giá cơ bản</p>
-                      <p className="text-lg font-semibold text-blue-600">
-                        {safeNumber(order.base_price).toLocaleString()}₫
-                      </p>
-                    </div>
-                  )}
+                  
                   {order.extra_fees && order.extra_fees.length > 0 && (
                     <div>
                       <p className="text-sm text-gray-600">Tổng phụ phí</p>
@@ -409,6 +454,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ orderId, onClose })
                         {order.carrier_id.phone}
                       </p>
                     )}
+                    
                     {order.acceptedBy?.full_name && (
                       <p className="text-sm text-gray-500 mt-1">
                         Chấp nhận bởi: {order.acceptedBy.full_name}
@@ -729,7 +775,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ orderId, onClose })
           )}
 
           
-          {activeTab === "audit" && (
+{activeTab === "audit" && (
             <div>
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Audit Logs</h3>
               {order.auditLogs && order.auditLogs.length > 0 ? (
@@ -739,7 +785,9 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ orderId, onClose })
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="font-semibold text-gray-800">{log.action || "Hành động"}</p>
-                          <p className="text-sm text-gray-600 mt-1">Bởi: {log.by || "Hệ thống"}</p>
+                          <p className="text-sm text-gray-600 mt-1">
+                            Bởi: {log.by?.full_name || log.by_user?.full_name || log.updated_by?.full_name || (typeof log.by === 'string' ? log.by : "Hệ thống")}
+                          </p>
                           {log.note && (
                             <p className="text-sm text-gray-700 mt-2">{log.note}</p>
                           )}
@@ -756,7 +804,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ orderId, onClose })
               ) : (
                 <div className="text-center py-8 text-gray-500">
                   <FileText className="w-12 h-12 mx-auto text-gray-400 mb-3" />
-                  <p>Chưa có audit logs</p>
+                  <p>Chưa có nhật ký kiểm tra</p>
                 </div>
               )}
             </div>

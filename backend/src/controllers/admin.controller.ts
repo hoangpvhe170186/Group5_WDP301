@@ -1264,6 +1264,18 @@ export const getAdminOrderDetail = async (req: Request, res: Response) => {
         .lean(),
     ]);
 
+    // Populate auditLogs 中的 by 字段
+    if (order.auditLogs && order.auditLogs.length > 0) {
+      const userIds = [...new Set(order.auditLogs.map((log: any) => log.by).filter(Boolean))];
+      const users = await User.find({ _id: { $in: userIds } }).select("full_name email").lean();
+      const userMap = new Map(users.map((u: any) => [u._id.toString(), u]));
+      
+      order.auditLogs = order.auditLogs.map((log: any) => ({
+        ...log,
+        by: userMap.get(log.by?.toString()) || log.by,
+      }));
+    }
+
     // Kết hợp tất cả dữ liệu
     const orderDetail = {
       ...order,

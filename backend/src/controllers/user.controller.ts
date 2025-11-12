@@ -356,7 +356,43 @@ export const confirmOrder = async (req: Request, res: Response) => {
   }
 };
 
+export const cancelOrder = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = (req as any).user?._id || (req as any).user?.id;
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng" });
+    }
 
+    if (order.status !== "Pending") {
+      return res.status(400).json({ success: false, message: "Chỉ đơn ở trạng thái Pending mới được xác nhận" });
+    }
+
+    order.status = "CANCELLED";
+    await order.save();
+
+    // ✅ Tạo OrderStatusLog để ghi lại thời điểm chuyển sang CONFIRMED
+    await OrderStatusLog.create({
+      order_id: order._id,
+      updated_by: userId ? new mongoose.Types.ObjectId(userId) : undefined,
+      status: "CANCELLED", // OrderStatusLog dùng "Confirmed" (chữ C hoa, còn lại thường)
+      note: "Đơn hàng đã được xác nhận từ Pending"
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "✅ Đơn hàng đã được xác nhận (Pending → Confirmed)",
+      data: order
+    });
+  } catch (err) {
+    console.error("❌ Lỗi khi xác nhận đơn:", err);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server khi xác nhận đơn"
+    });
+  }
+};
 
 // 🟧 Seller nhận đơn: chỉ nhận đơn đang Pending và chưa có seller_id
 export const claimSellerOrder = async (req: Request, res: Response) => {
