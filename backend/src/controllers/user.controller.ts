@@ -549,12 +549,40 @@ export const resolveIncident = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Lỗi khi cập nhật khiếu nại" });
   }
 };
-export const getCompletedAndCancelledOrders = async (req: Request, res: Response) => {
+export const getCompletedAndCancelledOrders = async (req: any, res: Response) => {
   try {
+    const sellerId = req.user?._id; // lấy id người đang đăng nhập
+
+    if (!sellerId) {
+      return res.status(401).json({ message: "Unauthorized: Missing seller ID" });
+    }
+
     const orders = await Order.find({
+      seller_id: sellerId, // ✅ lọc theo seller hiện tại
       status: { $in: ["COMPLETED", "CANCELLED"] },
     })
-      .populate("customer_id seller_id carrier_id carrier_id")
+      .populate("customer_id seller_id carrier_id vehicle_id")
+      .sort({ createdAt: -1 });
+
+    res.json(orders);
+  } catch (err) {
+    console.error("❌ Lỗi tải lịch sử đơn:", err);
+    res.status(500).json({ message: "Lỗi server khi lấy lịch sử đơn" });
+  }
+};
+export const getOrderBySeller = async (req: any, res: Response) => {
+  try {
+    const sellerId = req.user?._id; // lấy id người đang đăng nhập
+
+    if (!sellerId) {
+      return res.status(401).json({ message: "Unauthorized: Missing seller ID" });
+    }
+
+    const orders = await Order.find({
+      seller_id: sellerId, // ✅ lọc theo seller hiện tại
+      status: { $nin: ["COMPLETED", "CANCELLED"] },
+    })
+      .populate("customer_id seller_id carrier_id vehicle_id")
       .sort({ createdAt: -1 });
 
     res.json(orders);

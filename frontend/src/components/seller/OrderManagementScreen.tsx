@@ -29,6 +29,7 @@ type OrderLite = {
 
 const OrderManagementScreen = () => {
   const [orders, setOrders] = useState<OrderLite[]>([]);
+  const [sellerOrders, setSellerOrders] = useState<OrderLite[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
@@ -95,9 +96,21 @@ const OrderManagementScreen = () => {
       setLoading(false);
     }
   };
+  const fetchSellerOrders = async () => {
+  try {
+    const token = localStorage.getItem("auth_token");
+    const res = await axios.get("http://localhost:4000/api/users/orders/seller", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setSellerOrders(res.data || []);
+  } catch (err) {
+    console.error("❌ Lỗi khi tải đơn seller:", err);
+  }
+};
 
   useEffect(() => {
     fetchOrders();
+    fetchSellerOrders();
   }, []);
 
   useEffect(() => {
@@ -198,7 +211,7 @@ const OrderManagementScreen = () => {
 
   // 🎯 Lọc đơn hàng theo từ khóa + trạng thái
   const filteredOrders = useMemo(() => {
-    return orders.filter((o: OrderLite) => {
+    return sellerOrders.filter((o: OrderLite) => {
       const matchSearch =
         o.orderCode?.toLowerCase().includes(search.toLowerCase()) ||
         o.pickup_address?.toLowerCase().includes(search.toLowerCase()) ||
@@ -206,7 +219,7 @@ const OrderManagementScreen = () => {
       const matchStatus = statusFilter === "All" || o.status === statusFilter;
       return matchSearch && matchStatus;
     });
-  }, [orders, search, statusFilter]);
+  }, [sellerOrders, search, statusFilter]);
 
   // 🧮 Tính phân trang
   const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
