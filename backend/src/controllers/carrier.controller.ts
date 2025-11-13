@@ -431,6 +431,7 @@ export const confirmDelivery = async (req: any, res: Response, next: NextFunctio
     assertUpdatable(order);
 
     order.status = "COMPLETED";
+    order.isPaid = true; // ✅ Tự động đánh dấu đã thanh toán khi hoàn thành
     if (signatureUrl) (order as any).signatureUrl = signatureUrl;
 
     order.auditLogs = order.auditLogs || [];
