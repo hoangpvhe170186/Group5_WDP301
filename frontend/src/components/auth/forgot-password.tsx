@@ -158,7 +158,7 @@ export default function ForgotPasswordPage() {
               <svg viewBox="0 0 24 24" className="w-10 h-10 text-orange-500" fill="currentColor" aria-hidden="true">
                 <path d="M13 2L3 14h8l-2 8 10-12h-8l2-8z" />
               </svg>
-              <span className="text-3xl font-bold text-orange-500">LALAMOVE</span>
+              <span className="text-3xl font-bold text-orange-500">Home Express</span>
             </div>
           </div>
 

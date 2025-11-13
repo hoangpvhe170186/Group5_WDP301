@@ -47,7 +47,6 @@ type InterviewForm = {
   full_name: string;
   phone: string;
   email: string;
-  city: string;
   vehicle_type: string;
   preferred_day: string;
   time_slot: string;
@@ -63,7 +62,6 @@ export default function DriverInterviewPage() {
     full_name: "",
     phone: "",
     email: "",
-    city: "",
     vehicle_type: "",
     preferred_day: "",
     time_slot: "",
@@ -387,18 +385,6 @@ export default function DriverInterviewPage() {
                   name: "email",
                   type: "email",
                   required: true,
-                },
-                {
-                  label: "Khu vực phỏng vấn",
-                  name: "city",
-                  type: "select",
-                  required: true,
-                  options: [
-                    { value: "", label: "-- Chọn khu vực --" },
-                    { value: "hcm", label: "TP. Hồ Chí Minh" },
-                    { value: "hn", label: "Hà Nội" },
-                    { value: "dn", label: "Đà Nẵng" },
-                  ],
                 },
                 {
                   label: "Loại xe",

@@ -4,7 +4,6 @@ export interface DriverInterviewRequest {
   full_name: string;
   phone: string;
   email: string;
-  city: "hcm" | "hn" | "dn";
   vehicle_type: string;
   preferred_day: Date;
   time_slot: "morning" | "afternoon";
@@ -28,7 +27,6 @@ const DriverInterviewRequestSchema = new Schema<DriverInterviewRequest>(
     full_name: { type: String, required: true, trim: true },
     phone: { type: String, required: true, trim: true },
     email: { type: String, required: true, trim: true },
-    city: { type: String, required: true, enum: ["hcm", "hn", "dn"] },
 
     vehicle_type: {
       type: String,

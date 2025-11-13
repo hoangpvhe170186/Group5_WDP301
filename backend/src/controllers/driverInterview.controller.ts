@@ -17,7 +17,6 @@ export async function applyInterview(req: Request, res: Response) {
     payload.full_name = String(payload.full_name || "").trim();
     payload.phone = String(payload.phone || "").trim();
     payload.email = String(payload.email || "").trim();
-    payload.city = String(payload.city || "").trim();
     payload.vehicle_type = String(payload.vehicle_type || "truck").trim();
     payload.notes = String(payload.notes || "").trim();
 
