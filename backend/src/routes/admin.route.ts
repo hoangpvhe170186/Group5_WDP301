@@ -17,7 +17,11 @@ import {
   createCarrier,
   createVehicle,
   getAdminOrderDetail,
-  getCustomerOrders
+  getCustomerOrders,
+  getFeedbackOverview,
+  getFeedbackList,
+  updateFeedbackStatus,
+  updateIncidentStatusAdmin
 } from "../controllers/admin.controller";
 import { requireAuth } from "../middleware/requireAuth";
 
@@ -48,5 +52,9 @@ router.get("/sellers/pagination", getPaginationSellers);
 router.get("/customers/pagination", getPaginationCustomers);
 router.get("/customers/:customerId/orders", getCustomerOrders);
 router.put("/customers/:id/status", updateStatusCustomer);
+router.get("/feedback/overview", getFeedbackOverview);
+router.get("/feedback", getFeedbackList);
+router.patch("/feedback/reviews/:id", updateFeedbackStatus);
+router.patch("/feedback/incidents/:id", updateIncidentStatusAdmin);
 
 export default router;

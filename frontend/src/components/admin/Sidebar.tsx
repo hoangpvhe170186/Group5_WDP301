@@ -1,17 +1,25 @@
 // src/components/admin/Sidebar.tsx
 import { useSearchParams } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  Package, 
-  Users, 
-  MessageSquare, 
-  Star, 
+import {
+  LayoutDashboard,
+  Package,
+  Users,
+  MessageSquare,
   LogOut,
-  X
+  X,
 } from "lucide-react";
 import { clearAuthData } from "@/lib/auth";
 
-type AdminSection = "dashboard" | "orders" | "carriers" | "sellers" | "users" | "complaints" | "quality" | "finance" | "vehicles";
+type AdminSection =
+  | "dashboard"
+  | "orders"
+  | "carriers"
+  | "sellers"
+  | "users"
+  | "feedback"
+  | "finance"
+  | "vehicles"
+  | "driver-applications";
 
 interface SidebarProps {
   activeSection: AdminSection;
@@ -30,8 +38,7 @@ const menuItems = [
     label: "Hồ sơ ứng viên", 
     icon: Users 
   },
-  { id: "complaints" as AdminSection, label: "Xử lý sự cố", icon: MessageSquare },
-  { id: "quality" as AdminSection, label: "Quản lý chất lượng", icon: Star }
+  { id: "feedback" as AdminSection, label: "Quản lý phản hồi", icon: MessageSquare }
 ];
 
 export default function Sidebar({ 
