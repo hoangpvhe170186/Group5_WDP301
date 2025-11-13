@@ -22,7 +22,8 @@ import {
   resolveIncident,
   getCompletedAndCancelledOrders,
   claimSellerOrder,
-  cancelOrder
+  cancelOrder,
+  getOrderBySeller
 } from "../controllers/user.controller";
 
 import { requireAuth } from "../middleware/requireAuth";
@@ -37,6 +38,7 @@ router.use(requireAuth);
 // 📦 QUẢN LÝ ĐƠN HÀNG
 // ---------------------------
 router.get("/orders/history", getCompletedAndCancelledOrders);
+router.get("/orders/seller", getOrderBySeller);
 router.get("/orders", getAllOrders);
 
 router.get("/orders/:id", getOrderById);
