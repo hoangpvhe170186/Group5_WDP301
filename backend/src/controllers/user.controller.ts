@@ -582,7 +582,7 @@ export const getOrderBySeller = async (req: any, res: Response) => {
       seller_id: sellerId, // ✅ lọc theo seller hiện tại
       status: { $nin: ["COMPLETED", "CANCELLED"] },
     })
-      .populate("customer_id seller_id carrier_id vehicle_id")
+       .populate("customer_id seller_id carrier_id vehicle_id package_id")
       .sort({ createdAt: -1 });
 
     res.json(orders);
