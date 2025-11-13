@@ -81,20 +81,13 @@ export const createUser = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * ➕ Tạo Carrier mới (alias cho createUser với role="Carrier")
- * API: POST /api/admin/carriers
- */
+
 export const createCarrier = async (req: Request, res: Response) => {
   // Force role to be Carrier
   req.body.role = "Carrier";
   return createUser(req, res);
 };
 
-/**
- * 🚗 Tạo Vehicle mới
- * API: POST /api/admin/vehicles
- */
 export const createVehicle = async (req: Request, res: Response) => {
   try {
     const { plate_number, type, capacity, carrier_id, status } = req.body;

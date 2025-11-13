@@ -16,19 +16,19 @@ const orderSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: [
-        "Pending",
-        "CONFIRMED",
-        "AVAILABLE",
-        "ASSIGNED",
-        "ACCEPTED",
-        "ON_THE_WAY",
-        "ARRIVED",
-        "INCIDENT",
-        "DELIVERED",
-        "PAUSED",
-        "DECLINED",
-        "COMPLETED",
-        "CANCELLED",
+        "Pending",//nháp
+        "CONFIRMED",//xác nhận
+        "AVAILABLE",//
+        "ASSIGNED",//đang giao việc
+        "ACCEPTED",//tài xế đã nhận việc
+        "ON_THE_WAY",//đang di chuyển
+        "ARRIVED",//đã đến nơi
+        "INCIDENT",//sự cố
+        "DELIVERED",//đã giao hàng thành công, chờ thanh toán
+        "PAUSED",//tạm dừng
+        "DECLINED",//từ chối
+        "COMPLETED",//hoàn tất
+        "CANCELLED",//hủy
         "NOTE"
       ],
       default: "Pending",
