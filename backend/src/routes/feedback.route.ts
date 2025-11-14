@@ -1,11 +1,13 @@
 import { Router } from "express";
 import Feedback from "../models/Feedback";
 import { requireAuth } from "../middleware/requireAuth";
+import { requireRole } from "../middleware/requireRole";
+import { Role } from "../models/User";
 
 const router = Router();
 
 // POST /api/feedback  { order_id, rating, comment? }
-router.post("/", requireAuth, async (req, res) => {
+router.post("/", requireAuth, requireRole(Role.Customer), async (req, res) => {
   try {
     const { order_id, rating, comment } = req.body || {};
     if (!order_id || !rating) return res.status(400).json({ message: "Thiếu order_id hoặc rating" });
@@ -24,7 +26,7 @@ router.post("/", requireAuth, async (req, res) => {
 });
 
 // GET /api/feedback/my?limit=20
-router.get("/my", requireAuth, async (req, res) => {
+router.get("/my", requireAuth, requireRole(Role.Customer), async (req, res) => {
   const limit = Math.min(Number(req.query.limit || 20), 50);
   const items = await Feedback.find({ customer_id: req.user._id || req.user.id })
     .sort({ createdAt: -1 })

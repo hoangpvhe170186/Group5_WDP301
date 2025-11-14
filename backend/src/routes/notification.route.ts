@@ -1,10 +1,17 @@
 // routes/notification.route.ts
 import { Router } from "express";
 import Notification from "../models/Notification";
+import { requireAuth } from "../middleware/requireAuth";
+import { requireRole } from "../middleware/requireRole";
+import { Role } from "../models/User";
 
 const r = Router();
 
-r.get("/", async (req, res) => {
+r.get(
+  "/",
+  requireAuth,
+  requireRole(Role.Admin, Role.Seller, Role.Customer, Role.Carrier),
+  async (req, res) => {
   const { type, recipient_role } = req.query as { type?: string; recipient_role?: string };
 
   const q: any = {};
@@ -17,12 +24,17 @@ r.get("/", async (req, res) => {
     .lean();            
 
   res.json(items);
-});
+  }
+);
 
-
-r.patch("/:id/read", async (req, res) => {
-  await Notification.findByIdAndUpdate(req.params.id, { is_read: true });
-  res.json({ ok: true });
-});
+r.patch(
+  "/:id/read",
+  requireAuth,
+  requireRole(Role.Admin, Role.Seller, Role.Customer, Role.Carrier),
+  async (req, res) => {
+    await Notification.findByIdAndUpdate(req.params.id, { is_read: true });
+    res.json({ ok: true });
+  }
+);
 
 export default r;

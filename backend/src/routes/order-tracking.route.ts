@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/requireAuth";
+import { requireRole } from "../middleware/requireRole";
+import { Role } from "../models/User";
 import Order from "../models/Order";
 import OrderTracking from "../models/OrderTracking";
 
@@ -11,7 +13,7 @@ const router = Router();
  * Carrier cập nhật tiến độ vận chuyển
  * ======================================================
  */
-router.post("/:orderId", requireAuth, async (req: any, res, next) => {
+router.post("/:orderId", requireAuth, requireRole(Role.Carrier), async (req: any, res, next) => {
   try {
     const { status, note = "" } = req.body || {};
     const orderId = req.params.orderId;
@@ -118,7 +120,11 @@ router.post("/:orderId", requireAuth, async (req: any, res, next) => {
  * Lấy toàn bộ lịch sử tracking cho 1 đơn hàng (Carrier hoặc Seller)
  * ======================================================
  */
-router.get("/:orderId", requireAuth, async (req: any, res, next) => {
+router.get(
+  "/:orderId",
+  requireAuth,
+  requireRole(Role.Admin, Role.Seller, Role.Customer, Role.Carrier),
+  async (req: any, res, next) => {
   try {
     const orderId = req.params.orderId;
 
@@ -147,6 +153,7 @@ router.get("/:orderId", requireAuth, async (req: any, res, next) => {
     console.error("❌ Error fetching tracking:", err);
     next(err);
   }
-});
+  }
+);
 
 export default router;

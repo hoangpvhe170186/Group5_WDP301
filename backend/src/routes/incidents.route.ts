@@ -1,12 +1,18 @@
 import { Router } from "express";
 import Incident from "../models/Incident";
 import { requireAuth } from "../middleware/requireAuth";
+import { requireRole } from "../middleware/requireRole";
+import { Role } from "../models/User";
 
 const router = Router();
 
 // POST /api/incidents
 // body: { order_id, type, description?, evidence_files?: [{public_id,url}] }
-router.post("/", requireAuth, async (req, res) => {
+router.post(
+  "/",
+  requireAuth,
+  requireRole(Role.Customer, Role.Seller, Role.Carrier),
+  async (req, res) => {
   try {
     const { order_id, type = "Damage", description, evidence_files } = req.body || {};
     if (!order_id) return res.status(400).json({ message: "Thiếu order_id" });
@@ -24,12 +30,18 @@ router.post("/", requireAuth, async (req, res) => {
   } catch (err) {
     return res.status(500).json({ message: "Lỗi khi gửi incident." });
   }
-});
+  }
+);
 
 // GET /api/incidents/:orderId
-router.get("/:orderId", requireAuth, async (req, res) => {
+router.get(
+  "/:orderId",
+  requireAuth,
+  requireRole(Role.Admin, Role.Seller, Role.Customer, Role.Carrier),
+  async (req, res) => {
   const data = await Incident.find({ order_id: req.params.orderId }).sort({ createdAt: -1 });
   res.json(data);
-});
+  }
+);
 
 export default router;

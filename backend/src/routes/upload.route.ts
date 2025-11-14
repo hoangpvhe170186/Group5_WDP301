@@ -2,6 +2,8 @@ import { Router } from "express";
 import multer from "multer";
 import cloudinary from "../lib/cloudinary";
 import { requireAuth } from "../middleware/requireAuth";
+import { requireRole } from "../middleware/requireRole";
+import { Role } from "../models/User";
 import streamifier from "streamifier";
 
 const router = Router();
@@ -13,7 +15,12 @@ const upload = multer({
 });
 
 // ✅ FIXED: Upload multiple images với memoryStorage
-router.post("/images", requireAuth, upload.array("files", 10), async (req, res) => {
+router.post(
+  "/images",
+  requireAuth,
+  requireRole(Role.Admin, Role.Seller, Role.Customer, Role.Carrier),
+  upload.array("files", 10),
+  async (req, res) => {
   try {
     const folder = (req.body.folder as string) || "orders";
     const files = (req.files as Express.Multer.File[]) || [];
@@ -85,7 +92,8 @@ router.post("/images", requireAuth, upload.array("files", 10), async (req, res) 
       details: "Internal server error"
     });
   }
-});
+  }
+);
 
 // ✅ FIXED: Upload single file
 router.post("/", upload.single("file"), async (req, res) => {
@@ -121,7 +129,12 @@ router.post("/", upload.single("file"), async (req, res) => {
 });
 
 // ✅ FIXED: Upload vehicle image
-router.post("/vehicle", requireAuth, upload.single("file"), async (req, res) => {
+router.post(
+  "/vehicle",
+  requireAuth,
+  requireRole(Role.Admin, Role.Seller),
+  upload.single("file"),
+  async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file" });
     const { plate_number } = req.body;
@@ -151,10 +164,16 @@ router.post("/vehicle", requireAuth, upload.single("file"), async (req, res) => 
     console.error("❌ Lỗi upload vehicle:", e);
     return res.status(500).json({ error: e.message || "Upload failed" });
   }
-});
+  }
+);
 
 // ✅ FIXED: Upload avatar
-router.post("/avatar", requireAuth, upload.single("file"), async (req, res) => {
+router.post(
+  "/avatar",
+  requireAuth,
+  requireRole(Role.Admin, Role.Seller, Role.Customer, Role.Carrier),
+  upload.single("file"),
+  async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file" });
     const { user_id } = req.body;
@@ -188,6 +207,7 @@ router.post("/avatar", requireAuth, upload.single("file"), async (req, res) => {
       error: e.message || "Upload failed" 
     });
   }
-});
+  }
+);
 
 export default router;
