@@ -309,9 +309,16 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
+    
+    // ✅ Nếu cập nhật trạng thái thành COMPLETED, tự động đánh dấu đã thanh toán
+    const updateData: any = { status };
+    if (status === "COMPLETED") {
+      updateData.isPaid = true;
+    }
+    
     const order = await Order.findByIdAndUpdate(
       id,
-      { status },
+      updateData,
       { new: true }
     );
 

@@ -172,9 +172,14 @@ export default function HomeHeader() {
       <div className="flex w-full items-center justify-between px-4 sm:px-8 lg:px-12 py-4">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-3 font-bold">
-          <div className="flex h-10 w-10 sm:h-12 sm:w-12 text-lg items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white">
-            HE
-          </div>
+          <svg
+                viewBox="0 0 24 24"
+                className="w-10 h-10 text-orange-500"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path d="M13 2L3 14h8l-2 8 10-12h-8l2-8z" />
+              </svg>
           <span className="hidden sm:inline text-xl sm:text-2xl lg:text-3xl">
             <span className={`bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent ${isScrolled ? "" : "drop-shadow"}`}>
               Home Express

@@ -7,7 +7,6 @@ type AppItem = {
   full_name: string;
   phone: string;
   email: string;
-  city: string;
   vehicle_type: string;
   preferred_day: string;
   time_slot: string;
@@ -75,7 +74,7 @@ export default function SellerDriverApplications() {
                   {it.full_name} — {it.phone}
                 </div>
                 <div className="text-sm text-gray-600">
-                  {it.email} • {it.city} • {it.vehicle_type}
+                  {it.email} • {it.vehicle_type}
                 </div>
                 <div className="text-sm text-gray-600">
                   Hẹn: {new Date(it.preferred_day).toLocaleDateString()} •{" "}

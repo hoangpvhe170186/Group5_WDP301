@@ -56,7 +56,6 @@ const statusText: Record<string, string> = {
   ACCEPTED: "Đã chấp nhận",
   CONFIRMED: "Đã xác nhận hợp đồng",
   ON_THE_WAY: "Đang di chuyển",
-  ARRIVED: "Đã tới nơi",
   DELIVERING: "Đang giao",
   DELIVERED: "Đã giao",
   COMPLETED: "Hoàn tất",
@@ -69,7 +68,6 @@ const statusText: Record<string, string> = {
 
 const trackingOptions = [
   { value: "ON_THE_WAY", label: "Đang di chuyển" },
-  { value: "ARRIVED", label: "Đã tới nơi" },
   { value: "INCIDENT", label: "Đang gặp sự cố" },
   { value: "PAUSED", label: "Tạm dừng" },
   { value: "NOTE_ONLY", label: "Chỉ lưu ghi chú" },
@@ -87,7 +85,6 @@ const statusTone = (s: string) => {
     case "COMPLETED":
       return "bg-emerald-100 text-emerald-700 border-emerald-200";
     case "ON_THE_WAY":
-    case "ARRIVED":
     case "DELIVERING":
       return "bg-blue-100 text-blue-700 border-blue-200";
     default:
@@ -433,7 +430,7 @@ export function JobDetails({
 
             {/* 3️⃣ Sau khi chấp nhận (ACCEPTED) hoặc đang vận chuyển */}
             {!isReadOnly &&
-              ["ACCEPTED", "ON_THE_WAY", "ARRIVED", "DELIVERING"].includes(job.status) && (
+              ["ACCEPTED", "ON_THE_WAY", "DELIVERING"].includes(job.status) && (
                 <div className="space-y-2">
                   <Button onClick={onUploadBefore}>
                     <Camera className="h-4 w-4 mr-2" /> Chụp trước khi lấy hàng

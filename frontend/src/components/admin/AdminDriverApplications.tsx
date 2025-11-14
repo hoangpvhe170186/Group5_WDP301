@@ -7,7 +7,6 @@ type AppItem = {
   full_name: string;
   phone: string;
   email: string;
-  city: string;
   vehicle_type: string;
   preferred_day: string;
   time_slot: string;
@@ -67,7 +66,6 @@ export default function AdminDriverApplications() {
           full_name: "Nguyễn Văn A",
           phone: "0123456789",
           email: "nguyenvana@example.com",
-          city: "hcm",
           vehicle_type: "Xe tải 1.25 tấn",
           preferred_day: "2024-01-15",
           time_slot: "morning",
@@ -80,7 +78,6 @@ export default function AdminDriverApplications() {
           full_name: "Trần Thị B",
           phone: "0987654321",
           email: "tranthib@example.com",
-          city: "hn",
           vehicle_type: "Xe bán tải",
           preferred_day: "2024-01-16",
           time_slot: "afternoon",
@@ -172,15 +169,6 @@ export default function AdminDriverApplications() {
     }
   }
 
-  function formatCity(city: string) {
-    const cityMap: { [key: string]: string } = {
-      "hcm": "TP. Hồ Chí Minh",
-      "hn": "Hà Nội", 
-      "dn": "Đà Nẵng"
-    };
-    return cityMap[city] || city;
-  }
-
   function getStatusBadge(status: string) {
     const statusConfig = {
       pending: { label: "Đang chờ", class: "bg-yellow-50 text-yellow-700 border border-yellow-200" },
@@ -251,10 +239,6 @@ export default function AdminDriverApplications() {
                       <div className="flex items-center gap-1">
                         <span>📧</span>
                         <span>{item.email}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span>📍</span>
-                        <span>{formatCity(item.city)}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <span>🚗</span>

@@ -24,6 +24,7 @@ import {
   claimSellerOrder,
   cancelOrder,
   getCurrentUser
+  getOrderBySeller
 } from "../controllers/user.controller";
 
 import { requireAuth } from "../middleware/requireAuth";
@@ -43,7 +44,7 @@ router.get("/me", getCurrentUser);
 // ---------------------------
 router.get("/orders/history", requireRole(Role.Admin, Role.Seller), getCompletedAndCancelledOrders);
 router.get("/orders", requireRole(Role.Admin, Role.Seller), getAllOrders);
-
+router.get("/orders/seller",requireRole(Role.Seller),getOrderBySeller);
 router.get("/orders/:id", requireRole(Role.Admin, Role.Seller), getOrderById);
 router.get("/orders/customer/:customer_id", requireRole(Role.Admin, Role.Customer), getOrdersByCustomer);
 router.put("/orders/:id", requireRole(Role.Admin), updateOrder);
