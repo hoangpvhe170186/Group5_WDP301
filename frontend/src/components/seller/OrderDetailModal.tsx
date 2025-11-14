@@ -264,7 +264,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ orderId, onClose })
                   <p className="text-gray-900">{order.carrier_id?.full_name || "Chưa phân công"}</p>
                 </div>
                 <div className="bg-white border rounded-lg p-4">
-                  <h4 className="font-semibold text-gray-700 mb-2">Người tạo đơn</h4>
+                  <h4 className="font-semibold text-gray-700 mb-2">Nhân viên tư vấn</h4>
                   <p className="text-gray-900">{order.seller_id?.full_name || "—"}</p>
                 </div>
               </div>

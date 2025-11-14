@@ -6,7 +6,6 @@ import HomeFooter from '../components/HomeFooter';
 const UserProfilePage: React.FC = () => {
   return (
     <>
-      <HomeHeader />
       <main className="min-h-screen bg-gray-50">
         <UserProfile />
       </main>
