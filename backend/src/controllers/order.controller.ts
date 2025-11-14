@@ -101,6 +101,14 @@ export const addOrderItems = async (req, res) => {
     console.log("🔍 DEBUG - Max Capacity:", maxCapacity);
     console.log("🔍 DEBUG - Total Weight:", totalWeight);
 
+    // ✅ Validate - Không phù hợp với gói giá dịch vụ nếu > 3000kg
+    if (totalWeight > 3000) {
+      return res.status(400).json({
+        success: false,
+        message: `Tổng khối lượng ${totalWeight}kg vượt quá khối lượng cho phép, không phù hợp với gói giá dịch vụ.`,
+      });
+    }
+
     // ✅ Validate - Nếu package có capacity thì phải check
     if (maxCapacity > 0 && totalWeight > maxCapacity) {
       return res.status(400).json({
