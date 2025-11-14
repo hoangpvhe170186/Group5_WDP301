@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import axios from "axios";
 import { createPortal } from "react-dom";
-import { getCurrentUserId } from "../lib/auth";
+import { getCurrentUserId, clearAuthData } from "../lib/auth";
 
 type Role = "Admin" | "Seller" | "Customer" | "Carrier";
 type Status = "Active" | "Inactive" | "Suspended";
@@ -64,6 +64,12 @@ export default function UserProfile() {
   const [editAvatarPreview, setEditAvatarPreview] = useState<string | null>(null);
   const [editLoading, setEditLoading] = useState(false);
   const [editMessage, setEditMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Change password modal state
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [passwordFields, setPasswordFields] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const handleBack = () => {
   if (!user) return;
@@ -168,6 +174,73 @@ export default function UserProfile() {
     }
   };
 
+  // === Open change password modal ===
+  const openChangePassword = () => {
+    setPasswordFields({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    setPasswordMessage(null);
+    setIsChangePasswordOpen(true);
+  };
+
+  // === Submit change password ===
+  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordLoading(true);
+    setPasswordMessage(null);
+
+    try {
+      // Validation
+      if (!passwordFields.currentPassword || !passwordFields.newPassword || !passwordFields.confirmPassword) {
+        setPasswordMessage({ type: "error", text: "Vui lòng điền đầy đủ thông tin" });
+        setPasswordLoading(false);
+        return;
+      }
+
+      if (passwordFields.newPassword !== passwordFields.confirmPassword) {
+        setPasswordMessage({ type: "error", text: "Mật khẩu mới và xác nhận mật khẩu không khớp" });
+        setPasswordLoading(false);
+        return;
+      }
+
+      if (passwordFields.newPassword.length < 6) {
+        setPasswordMessage({ type: "error", text: "Mật khẩu mới phải có ít nhất 6 ký tự" });
+        setPasswordLoading(false);
+        return;
+      }
+
+      const res = await axios.post<ApiResponse<any>>(
+        `${import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api"}/users/change-password`,
+        passwordFields,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (res.data.success) {
+        setPasswordMessage({ type: "success", text: res.data.message || "Đổi mật khẩu thành công!" });
+        setTimeout(() => {
+          setIsChangePasswordOpen(false);
+          setPasswordFields({ currentPassword: "", newPassword: "", confirmPassword: "" });
+        }, 1500);
+      } else {
+        throw new Error(res.data.message || "Đổi mật khẩu thất bại");
+      }
+    } catch (err: any) {
+      setPasswordMessage({
+        type: "error",
+        text: err?.response?.data?.message || err?.message || "Lỗi server",
+      });
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  // === Handle logout ===
+  const handleLogout = () => {
+    if (window.confirm("Bạn có chắc chắn muốn đăng xuất?")) {
+      clearAuthData();
+      navigate("/");
+      window.location.reload();
+    }
+  };
+
   // === Conditional renders ===
   if (!currentUserId) return <ErrorBox text="Cần đăng nhập để xem thông tin hồ sơ." color="yellow" />;
   if (loading) return <LoadingBox text="Đang tải thông tin..." />;
@@ -200,14 +273,29 @@ export default function UserProfile() {
           document.body
         )}
 
+      {isChangePasswordOpen &&
+        createPortal(
+          <ChangePasswordModal
+            passwordFields={passwordFields}
+            setPasswordFields={setPasswordFields}
+            passwordMessage={passwordMessage}
+            handleSubmit={handleChangePasswordSubmit}
+            onClose={() => setIsChangePasswordOpen(false)}
+            loading={passwordLoading}
+          />,
+          document.body
+        )}
+
       <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Sidebar */}
         <div className="bg-white shadow-xl rounded-2xl border p-6">
           <h3 className="font-semibold text-orange-700 mb-4">Chức năng</h3>
-          <SidebarButton icon={<Edit3 />} label="Chỉnh sửa thông tin" onClick={openEdit} />
-          <SidebarButton icon={<Key />} label="Đổi mật khẩu" />
-          <SidebarButton icon={<Settings />} label="Đăng xuất" />
-          <SidebarButton icon={<Trash2 />} label="Xóa tài khoản" danger />
+          <div className="space-y-2">
+            <SidebarButton icon={<Edit3 />} label="Chỉnh sửa thông tin" onClick={openEdit} />
+            <SidebarButton icon={<Key />} label="Đổi mật khẩu" onClick={openChangePassword} />
+            <SidebarButton icon={<Settings />} label="Đăng xuất" onClick={handleLogout} />
+            <SidebarButton icon={<Trash2 />} label="Xóa tài khoản" danger />
+          </div>
         </div>
 
         {/* Profile content */}
@@ -351,6 +439,66 @@ const EditModal = ({
         className="w-full flex items-center justify-center gap-2 bg-orange-600 text-white py-2 rounded hover:bg-orange-700"
       >
         {loading && <Loader2 className="animate-spin w-5 h-5" />} Lưu thay đổi
+      </button>
+    </form>
+  </div>
+);
+
+const ChangePasswordModal = ({
+  passwordFields,
+  setPasswordFields,
+  passwordMessage,
+  handleSubmit,
+  onClose,
+  loading,
+}: any) => (
+  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <form
+      onSubmit={handleSubmit}
+      className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md relative animate-fadeIn"
+    >
+      <button type="button" onClick={onClose} className="absolute top-2 right-2 text-gray-400 hover:text-gray-700">
+        <X className="w-6 h-6" />
+      </button>
+      <h2 className="text-xl font-bold mb-6 text-orange-600 flex items-center gap-2">
+        <Key className="w-5 h-5" /> Đổi mật khẩu
+      </h2>
+
+      {[
+        { key: "currentPassword", label: "Mật khẩu hiện tại" },
+        { key: "newPassword", label: "Mật khẩu mới" },
+        { key: "confirmPassword", label: "Xác nhận mật khẩu mới" },
+      ].map((field) => (
+        <div key={field.key} className="mb-4">
+          <label className="block text-sm font-medium mb-1 text-gray-700">{field.label}</label>
+          <input
+            type="password"
+            value={(passwordFields as any)[field.key]}
+            onChange={(e) => setPasswordFields((f: any) => ({ ...f, [field.key]: e.target.value }))}
+            className="w-full px-3 py-2 border rounded focus:ring-1 focus:ring-orange-400"
+            disabled={loading}
+            placeholder={`Nhập ${field.label.toLowerCase()}`}
+          />
+        </div>
+      ))}
+
+      {passwordMessage && (
+        <div
+          className={`mb-3 flex items-center gap-2 text-${
+            passwordMessage.type === "error" ? "red" : "green"
+          }-600`}
+        >
+          {passwordMessage.type === "error" ? <X className="w-4 h-4" /> : <Check className="w-4 h-4" />}
+          {passwordMessage.text}
+        </div>
+      )}
+
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full flex items-center justify-center gap-2 bg-orange-600 text-white py-2 rounded hover:bg-orange-700 disabled:opacity-50"
+      >
+        {loading && <Loader2 className="animate-spin w-5 h-5" />} Đổi mật khẩu
       </button>
     </form>
   </div>

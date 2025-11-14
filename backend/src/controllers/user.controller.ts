@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
 import User from "../models/User";
 import Order from "../models/Order";
 import Feedback from "../models/Feedback";
@@ -119,6 +120,99 @@ export const deleteUser = async (req : Request, res: Response) => {
     res.json({ message: "Đã xóa user thành công" });
   } catch {
     res.status(500).json({ error: "Không thể xóa user" });
+  }
+};
+
+// POST /api/users/change-password - Đổi mật khẩu
+export const changePassword = async (req: any, res: Response) => {
+  try {
+    const userId = req.user?._id || req.user?.id;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    // Kiểm tra các trường bắt buộc
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Vui lòng điền đầy đủ thông tin",
+      });
+    }
+
+    // Kiểm tra mật khẩu mới và xác nhận mật khẩu khớp
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Mật khẩu mới và xác nhận mật khẩu không khớp",
+      });
+    }
+
+    // Kiểm tra độ dài mật khẩu mới
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Mật khẩu mới phải có ít nhất 6 ký tự",
+      });
+    }
+
+    // Lấy thông tin user (bao gồm password_hash)
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy người dùng",
+      });
+    }
+
+    // Kiểm tra nếu user đăng nhập bằng Google (không có password_hash)
+    if (!user.password_hash) {
+      return res.status(400).json({
+        success: false,
+        message: "Tài khoản này không sử dụng mật khẩu. Vui lòng sử dụng Google để đăng nhập.",
+      });
+    }
+
+    // Xác thực mật khẩu hiện tại
+    const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: "Mật khẩu hiện tại không chính xác",
+      });
+    }
+
+    // Kiểm tra mật khẩu mới không trùng với mật khẩu cũ
+    const isSamePassword = await bcrypt.compare(newPassword, user.password_hash);
+    if (isSamePassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Mật khẩu mới phải khác với mật khẩu hiện tại",
+      });
+    }
+
+    // Mã hóa mật khẩu mới
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Cập nhật mật khẩu
+    user.password_hash = hashedPassword;
+    user.updated_at = new Date();
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Đổi mật khẩu thành công",
+    });
+  } catch (error) {
+    console.error("Error changing password:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server khi đổi mật khẩu",
+    });
   }
 };
 

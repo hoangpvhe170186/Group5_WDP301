@@ -24,7 +24,8 @@ import {
   claimSellerOrder,
   cancelOrder,
   getCurrentUser,
-  getOrderBySeller
+  getOrderBySeller,
+  changePassword
 } from "../controllers/user.controller";
 
 import { requireAuth } from "../middleware/requireAuth";
@@ -38,6 +39,11 @@ const router = express.Router();
 router.use(requireAuth);
 
 router.get("/me", getCurrentUser);
+
+// ---------------------------
+// 🔐 ĐỔI MẬT KHẨU
+// ---------------------------
+router.post("/change-password", changePassword);
 
 // ---------------------------
 // 📦 QUẢN LÝ ĐƠN HÀNG
@@ -82,5 +88,4 @@ router.get("/incidents/order/:order_id", requireRole(Role.Admin, Role.Seller, Ro
 router.get("/incidents", requireRole(Role.Admin, Role.Seller), getAllIncidents);
 router.patch("/incidents/:id/resolve", requireRole(Role.Admin, Role.Seller), resolveIncident);
 router.get("/:id", requireRole(Role.Admin,Role.Customer,Role.Seller), getUserById);
-
 export default router;
