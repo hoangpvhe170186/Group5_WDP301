@@ -6,6 +6,37 @@ import Feedback from "../models/Feedback";
 import Incident from "../models/Incident";
 import OrderItem from "../models/OrderItem";
 import OrderStatusLog from "../models/OrderStatusLog";
+
+export const getCurrentUser = async (req: any, res: Response) => {
+  try {
+    if (!req.user?._id) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const user = await User.findById(req.user._id).select("-password_hash");
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    console.error("Error getting current user:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server khi lấy thông tin người dùng",
+    });
+  }
+};
+
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
     const users = await User.find({}).select("-password_hash");

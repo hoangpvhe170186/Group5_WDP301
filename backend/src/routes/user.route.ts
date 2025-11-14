@@ -22,7 +22,8 @@ import {
   resolveIncident,
   getCompletedAndCancelledOrders,
   claimSellerOrder,
-  cancelOrder
+  cancelOrder,
+  getCurrentUser
 } from "../controllers/user.controller";
 
 import { requireAuth } from "../middleware/requireAuth";
@@ -34,6 +35,8 @@ const router = express.Router();
 
 // 🛡 Middleware xác thực
 router.use(requireAuth);
+
+router.get("/me", getCurrentUser);
 
 // ---------------------------
 // 📦 QUẢN LÝ ĐƠN HÀNG

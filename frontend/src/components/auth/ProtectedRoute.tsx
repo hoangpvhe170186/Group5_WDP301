@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
+import api from "@/lib/axios";
+import { clearAuthData } from "@/lib/auth";
 
 type ProtectedRouteProps = {
   children: React.ReactNode;
@@ -24,38 +26,96 @@ export default function ProtectedRoute({
   >("checking");
   const [redirectPath, setRedirectPath] = useState<string>("/");
 
+  const allowedRolesKey = useMemo(
+    () => JSON.stringify(allowedRoles ?? []),
+    [allowedRoles]
+  );
+  const normalizedAllowedRoles = useMemo(() => {
+    try {
+      const parsed: string[] = JSON.parse(allowedRolesKey);
+      return parsed.map((role) => role.toLowerCase());
+    } catch {
+      return [];
+    }
+  }, [allowedRolesKey]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const token =
+    let cancelled = false;
+
+    const getStoredToken = () =>
       localStorage.getItem("auth_token") ||
       localStorage.getItem("token") ||
       sessionStorage.getItem("auth_token");
-    const role = localStorage.getItem("user_role") || "";
-    const normalizedRole = role.toLowerCase();
 
-    if (!token) {
-      setStatus("unauthenticated");
-      setRedirectPath("/auth/login");
-      return;
-    }
+    const verifyAuthorization = async () => {
+      const token = getStoredToken();
 
-    if (!allowedRoles.length) {
-      setStatus("authorized");
-      return;
-    }
+      if (!token) {
+        setStatus("unauthenticated");
+        setRedirectPath("/auth/login");
+        return;
+      }
 
-    const normalizedAllowed = allowedRoles.map((r) => r.toLowerCase());
+      try {
+        const response = await api.get("/users/me");
+        if (cancelled) return;
 
-    if (normalizedAllowed.includes(normalizedRole)) {
-      setStatus("authorized");
-      return;
-    }
+        const user = response.data?.data || response.data?.user || null;
+        const normalizedRole = String(user?.role || "").toLowerCase();
 
-    const fallback = fallbackByRole[normalizedRole] || "/";
-    setRedirectPath(fallback);
-    setStatus("forbidden");
-  }, [allowedRoles]);
+        if (!normalizedRole) {
+          setStatus("unauthenticated");
+          setRedirectPath("/auth/login");
+          return;
+        }
+
+        if (user?._id) {
+          localStorage.setItem("user_id", user._id);
+        }
+        if (user?.role) {
+          localStorage.setItem("user_role", user.role);
+        }
+        if (user) {
+          localStorage.setItem("user", JSON.stringify(user));
+        }
+
+        if (
+          !normalizedAllowedRoles.length ||
+          normalizedAllowedRoles.includes(normalizedRole)
+        ) {
+          setStatus("authorized");
+          return;
+        }
+
+        const fallback = fallbackByRole[normalizedRole] || "/";
+        setRedirectPath(fallback);
+        setStatus("forbidden");
+      } catch (error: any) {
+        if (cancelled) return;
+
+        console.error("ProtectedRoute authorization error:", error);
+        if (error?.response?.status === 401) {
+          clearAuthData();
+          setRedirectPath("/auth/login");
+          setStatus("unauthenticated");
+          return;
+        }
+
+        const storedRole = localStorage.getItem("user_role") || "";
+        const fallback = fallbackByRole[storedRole.toLowerCase()] || "/";
+        setRedirectPath(fallback);
+        setStatus("forbidden");
+      }
+    };
+
+    verifyAuthorization();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [allowedRolesKey, normalizedAllowedRoles]);
 
   if (status === "checking") {
     return (
@@ -77,4 +137,3 @@ export default function ProtectedRoute({
 
   return <>{children}</>;
 }
-
