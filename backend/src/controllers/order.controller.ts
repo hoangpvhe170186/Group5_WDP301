@@ -91,12 +91,26 @@ export const addOrderItems = async (req, res) => {
       order.extra_fees = validExtraFees;
     }
 
-    // ✅ Kiểm tra khối lượng
-    const maxCapacity = Number(order.package_id?.capacity || 0);
+    // ✅ Kiểm tra khối lượng - Lấy từ capacity của PricePackage
+    const packageData = order.package_id as any;
+    const maxCapacity = Number(packageData?.capacity || 0);
     const totalWeight = items.reduce((sum, item) => sum + Number(item.weight || 0), 0);
 
-    // ✅ Validate
-    if (maxCapacity && totalWeight > maxCapacity) {
+    console.log("🔍 DEBUG - Package ID:", packageData);
+    console.log("🔍 DEBUG - Capacity:", packageData?.capacity);
+    console.log("🔍 DEBUG - Max Capacity:", maxCapacity);
+    console.log("🔍 DEBUG - Total Weight:", totalWeight);
+
+    // ✅ Validate - Không phù hợp với gói giá dịch vụ nếu > 3000kg
+    if (totalWeight > 3000) {
+      return res.status(400).json({
+        success: false,
+        message: `Tổng khối lượng ${totalWeight}kg vượt quá khối lượng cho phép, không phù hợp với gói giá dịch vụ.`,
+      });
+    }
+
+    // ✅ Validate - Nếu package có capacity thì phải check
+    if (maxCapacity > 0 && totalWeight > maxCapacity) {
       return res.status(400).json({
         success: false,
         message: `Tổng khối lượng ${totalWeight}kg vượt quá giới hạn ${maxCapacity}kg của gói.`,
