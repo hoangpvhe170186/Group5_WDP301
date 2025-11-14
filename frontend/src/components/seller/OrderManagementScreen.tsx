@@ -171,7 +171,7 @@ const OrderManagementScreen = () => {
       );
       if (res.data.success) {
         setMessage("✅ Đơn hàng đã được xác nhận!");
-        await fetchOrders();
+        await fetchSellerOrders();
         setTimeout(() => setMessage(""), 3000);
       } else {
         setMessage("⚠️ Không thể xác nhận đơn!");
@@ -198,7 +198,7 @@ const OrderManagementScreen = () => {
       );
       if (res.data.success) {
         setMessage("✅ Đơn hàng đã được hủy!");
-        await fetchOrders();
+        await fetchSellerOrders();
         setTimeout(() => setMessage(""), 3000);
       } else {
         setMessage("⚠️ Không thể hủy đơn!");
@@ -401,12 +401,7 @@ const OrderManagementScreen = () => {
                   <td className="px-4 py-3 text-sm text-gray-600">
                     <div className="flex flex-col">
                       <span>{order.total_price.toLocaleString()}₫</span>
-                      <span
-                        className={`text-xs font-medium ${order.isPaid ? "text-green-600" : "text-red-500"
-                          }`}
-                      >
-                        {order.isPaid ? "Đã TT" : "Chưa TT"}
-                      </span>
+                      
                     </div>
                   </td>
                   <td className="px-4 py-3 text-sm">
@@ -491,7 +486,7 @@ const OrderManagementScreen = () => {
                       <button
                         onClick={() => handleCancelOrder(order._id)}
                         className="text-green-600 hover:text-green-900"
-                        title="Xác nhận đơn"
+                        title="Hủy đơn"
                       >
                         <XCircle className="w-5 h-5 cursor-pointer" />
                       </button>
