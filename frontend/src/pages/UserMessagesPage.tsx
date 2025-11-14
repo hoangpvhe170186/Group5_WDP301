@@ -25,42 +25,39 @@ export default function UserMessagesPage() {
 
   // ✅ FIX: Dùng đúng key từ localStorage
   const customerId = localStorage.getItem("user_id") || localStorage.getItem("userId") || localStorage.getItem("customer_id");
-  const roomId = `customer:${customerId}`;
+  const roomId = customerId ? `customer:${customerId}` : null;
   const userName = localStorage.getItem("user")
     ? JSON.parse(localStorage.getItem("user")!).full_name
     : localStorage.getItem("fullName") || localStorage.getItem("username") || "Khách hàng";
 
   // ✅ Kết nối socket
   useEffect(() => {
-    if (!customerId) {
+    if (!roomId) {
       setLoading(false);
       return;
     }
 
-    socket.emit("join_room", roomId);
-    console.log("🔌 Customer joined room:", roomId);
-
-    socket.on("connect", () => {
+    const handleConnect = () => {
       console.log("🔌 Connected to chat server");
       setConnected(true);
-      // Re-join room sau khi reconnect
       socket.emit("join_room", roomId);
-    });
+    };
 
-    socket.on("connect_error", (err) => {
-      console.error("⚠️ Connection error:", err);
+    const handleDisconnect = (err?: Error) => {
+      if (err) {
+        console.error("⚠️ Connection issue:", err);
+      }
       setConnected(false);
-    });
+    };
 
-    socket.on("receive_message", (data) => {
+    const handleReceive = (data: any) => {
       console.log("📨 Received message:", data);
-      
+
       if (data.roomId && data.roomId !== roomId) {
         console.log("⚠️ Wrong room:", data.roomId, "expected:", roomId);
         return;
       }
 
-      // ✅ Dedupe logic
       if (data.tempId) {
         if (seenIdsRef.current.has(data.tempId)) {
           console.log("⚠️ Duplicate tempId:", data.tempId);
@@ -77,7 +74,7 @@ export default function UserMessagesPage() {
         }
         recentKeyRef.current.set(key, now);
       }
-      
+
       setMessages((prev) => [
         ...prev,
         {
@@ -87,18 +84,30 @@ export default function UserMessagesPage() {
           senderName: data.name || data.senderName,
         },
       ]);
-    });
+    };
+
+    socket.on("connect", handleConnect);
+    socket.on("disconnect", handleDisconnect);
+    socket.on("connect_error", handleDisconnect);
+    socket.on("receive_message", handleReceive);
+
+    if (socket.connected) {
+      handleConnect();
+    }
+
+    console.log("🔌 Customer joined room:", roomId);
 
     return () => {
-      socket.off("connect");
-      socket.off("connect_error");
-      socket.off("receive_message");
+      socket.off("connect", handleConnect);
+      socket.off("disconnect", handleDisconnect);
+      socket.off("connect_error", handleDisconnect);
+      socket.off("receive_message", handleReceive);
     };
-  }, [roomId, customerId]);
+  }, [roomId]);
 
   // ✅ Load lịch sử chat
   useEffect(() => {
-    if (!customerId) return;
+    if (!roomId) return;
 
     const loadHistory = async () => {
       try {
@@ -130,7 +139,7 @@ export default function UserMessagesPage() {
   // ✅ Gửi tin nhắn
   const sendMessage = () => {
     const text = input.trim();
-    if (!text) return;
+    if (!text || !roomId || !socket.connected) return;
 
     const tempId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
     seenIdsRef.current.add(tempId);
