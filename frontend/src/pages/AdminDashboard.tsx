@@ -9,7 +9,8 @@ import {
   X,
   LogOut,
   User,
-  Bell // Thêm icon Bell
+  Bell,
+  Calendar
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { clearAuthData, getCurrentUserRole } from "../lib/auth";
@@ -175,43 +176,44 @@ function DashboardOverview() {
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const currentDate = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth());
+  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const stats = await adminApi.getDashboard();
+        const stats = await adminApi.getDashboard({
+          month: selectedMonth + 1,
+          year: selectedYear,
+        });
         
-        // Tính tổng tài khoản người dùng
         const totalUsers = stats.totalCustomers + stats.totalDrivers + stats.totalSellers;
-        
-        // Tính doanh thu tháng (giả sử lấy từ revenueByTime, hoặc dùng totalRevenue nếu không có)
-        // Để chính xác hơn, có thể gọi getRevenueStats với ngày đầu/thuôi tháng
-        const currentDate = new Date();
-        const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString().split('T')[0];
-        const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).toISOString().split('T')[0];
+        const startDate = new Date(selectedYear, selectedMonth, 1);
+        const endDate = new Date(selectedYear, selectedMonth + 1, 0);
+        const startOfMonth = startDate.toISOString().split('T')[0];
+        const endOfMonth = endDate.toISOString().split('T')[0];
         const revenueData = await adminApi.getRevenueStats(startOfMonth, endOfMonth);
         
         let monthlyRevenue = 0;
         if (revenueData && Array.isArray(revenueData)) {
           monthlyRevenue = revenueData.reduce((sum, day) => sum + day.totalRevenue, 0);
         } else {
-          monthlyRevenue = stats.totalRevenue; // Fallback
+          monthlyRevenue = stats.totalRevenue;
         }
 
-        // Giả sử "Khiếu nại" chưa có API, giữ mock hoặc thêm sau. Ở đây dùng 0 làm placeholder
-        const complaints = 0; // Thay bằng API nếu có
+        const complaints = typeof stats.totalComplaints === 'number' ? stats.totalComplaints : 0;
 
-        // Cập nhật stats
         setDashboardData({
           totalOrders: stats.totalOrders,
           totalUsers,
           complaints,
           monthlyRevenue,
-          // Có thể thêm change % nếu cần tính toán từ dữ liệu trước, nhưng hiện tại giữ mock change
+          month: stats.month ?? selectedMonth + 1,
+          year: stats.year ?? selectedYear,
         });
 
-        // Lấy recent orders (lấy 3 đơn hàng gần nhất)
         const ordersResponse = await adminApi.getOrders(1, 3);
         setRecentOrders(ordersResponse.orders.map(order => ({
           id: order.code || `#${order.id}`,
@@ -228,7 +230,7 @@ function DashboardOverview() {
     };
 
     fetchDashboardData();
-  }, []);
+  }, [selectedMonth, selectedYear]);
 
   if (loading) {
     return <div className="text-center py-10">Đang tải dữ liệu...</div>;
@@ -238,17 +240,47 @@ function DashboardOverview() {
     return <div className="text-center py-10 text-red-600">{error}</div>;
   }
 
+  const periodLabel = `Tháng ${(dashboardData?.month ?? selectedMonth + 1)
+    .toString()
+    .padStart(2, "0")}/${dashboardData?.year ?? selectedYear}`;
   const stats = [
-    { label: "Tổng đơn hàng", value: dashboardData.totalOrders.toLocaleString(), change: "+12%", color: "blue" }, // Change % mock, có thể tính thực nếu có data trước
-    { label: "Tài khoản người dùng", value: dashboardData.totalUsers.toLocaleString(), change: "+8%", color: "green" },
-    { label: "Khiếu nại", value: dashboardData.complaints.toLocaleString(), change: "-5%", color: "red" },
-    { label: "Doanh thu tháng", value: `₫${dashboardData.monthlyRevenue.toLocaleString()}`, change: "+15%", color: "orange" },
+    { label: "Tổng đơn hàng", value: dashboardData.totalOrders.toLocaleString(), color: "blue" },
+    { label: "Tài khoản mới", value: dashboardData.totalUsers.toLocaleString(), color: "green" },
+    { label: "Khiếu nại", value: dashboardData.complaints.toLocaleString(), color: "red" },
+    { label: "Doanh thu tháng", value: `₫${dashboardData.monthlyRevenue.toLocaleString()}`, color: "orange" },
   ];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-bold text-gray-900">Tổng quan</h1>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 border rounded px-3 py-2 bg-white">
+            <Calendar className="w-4 h-4 text-gray-500" />
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(Number(e.target.value))}
+              className="bg-transparent text-sm focus:outline-none"
+            >
+              {Array.from({ length: 12 }).map((_, idx) => (
+                <option key={idx} value={idx}>
+                  Tháng {idx + 1}
+                </option>
+              ))}
+            </select>
+          </div>
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
+            className="border rounded px-3 py-2 text-sm bg-white"
+          >
+            {[selectedYear - 1, selectedYear, selectedYear + 1].map((yearOption) => (
+              <option key={yearOption} value={yearOption}>
+                {yearOption}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Stats grid */}
@@ -264,13 +296,8 @@ function DashboardOverview() {
                 <div className={`w-6 h-6 bg-${stat.color}-500 rounded`} />
               </div>
             </div>
-            <div className="mt-4">
-              <span className={`text-sm font-medium ${
-                stat.change.startsWith('+') ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {stat.change}
-              </span>
-              <span className="text-sm text-gray-500 ml-2">so với tháng trước</span>
+            <div className="mt-4 text-sm text-gray-500">
+              {periodLabel}
             </div>
           </div>
         ))}

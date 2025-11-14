@@ -159,8 +159,16 @@ export interface DashboardStats {
   totalSellers: number;
   totalOrders: number;
   totalRevenue: number;
+  totalComplaints?: number;
   ordersByTime: { date: string; count: number }[];
   revenueByTime: { date: string; total: number }[];
+  month?: number;
+  year?: number;
+}
+
+export interface DashboardFilters {
+  month?: number;
+  year?: number;
 }
 
 /**
@@ -302,8 +310,13 @@ export const adminApi = {
    * 📈 Lấy thống kê tổng quan Dashboard
    * API: GET /api/admin/dashboard
    */
-  async getDashboard(): Promise<DashboardStats> {
+  async getDashboard(filters?: DashboardFilters): Promise<DashboardStats> {
+    const params: Record<string, number> = {};
+    if (filters?.month) params.month = filters.month;
+    if (filters?.year) params.year = filters.year;
+
     const { data } = await api.get("/admin/dashboard", {
+      params,
       headers: { Authorization: `Bearer ${getAuthToken()}` },
     });
     return data.data;

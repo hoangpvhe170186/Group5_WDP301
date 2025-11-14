@@ -155,55 +155,68 @@ export const createVehicle = async (req: Request, res: Response) => {
  */
 export const getDashboardOverview = async (req: Request, res: Response) => {
   try {
-    // Tổng số user theo vai trò
-    const [totalCustomers, totalDrivers, totalSellers] = await Promise.all([
-      User.countDocuments({ role: "Customer" }),
-      User.countDocuments({ role: "Carrier" }),
-      User.countDocuments({ role: "Seller" }),
-    ]);
+    const now = new Date();
+    const monthParam = parseInt(req.query.month as string, 10);
+    const yearParam = parseInt(req.query.year as string, 10);
 
-    // Tổng đơn hàng và tổng doanh thu
-    const orders = await Order.aggregate([
-      {
-        $group: {
-          _id: null,
-          totalOrders: { $sum: 1 },
-          totalRevenue: { $sum: "$total_price" }, // Giả sử có trường total_price
+    const month = !isNaN(monthParam)
+      ? Math.min(Math.max(monthParam, 1), 12)
+      : now.getMonth() + 1;
+    const year = !isNaN(yearParam) ? yearParam : now.getFullYear();
+
+    const startDate = new Date(year, month - 1, 1);
+    const nextMonthStart = new Date(year, month, 1);
+    const dateRangeMatch = { $gte: startDate, $lt: nextMonthStart };
+
+    const [
+      totalCustomers,
+      totalDrivers,
+      totalSellers,
+      orders,
+      totalComplaints,
+      orderStats,
+    ] = await Promise.all([
+      User.countDocuments({ role: "Customer", created_at: dateRangeMatch }),
+      User.countDocuments({ role: "Carrier", created_at: dateRangeMatch }),
+      User.countDocuments({ role: "Seller", created_at: dateRangeMatch }),
+      Order.aggregate([
+        { $match: { createdAt: dateRangeMatch } },
+        {
+          $group: {
+            _id: null,
+            totalOrders: { $sum: 1 },
+            totalRevenue: { $sum: "$total_price" },
+          },
         },
-      },
+      ]),
+      Incident.countDocuments({ createdAt: dateRangeMatch }),
+      Order.aggregate([
+        { $match: { createdAt: dateRangeMatch } },
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+            },
+            count: { $sum: 1 },
+            totalRevenue: { $sum: "$total_price" },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]),
     ]);
 
     const totalOrders = orders[0]?.totalOrders || 0;
     const totalRevenue = orders[0]?.totalRevenue || 0;
 
-    // Biểu đồ đơn hàng theo ngày (7 ngày gần nhất)
-    const orderStats = await Order.aggregate([
-      {
-        $group: {
-          _id: {
-            $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
-          },
-          count: { $sum: 1 },
-          totalRevenue: { $sum: "$total_price" },
-        },
-      },
-      { $sort: { _id: -1 } },
-      { $limit: 7 },
-    ]);
+    const ordersByTime = orderStats.map((d) => ({
+      date: d._id,
+      count: d.count,
+    }));
 
-    const ordersByTime = orderStats
-      .map((d) => ({
-        date: d._id,
-        count: d.count,
-      }))
-      .reverse();
-
-    const revenueByTime = orderStats
-      .map((d) => ({
-        date: d._id,
-        total: d.totalRevenue,
-      }))
-      .reverse();
+    const revenueByTime = orderStats.map((d) => ({
+      date: d._id,
+      total: d.totalRevenue,
+    }));
 
     return res.status(200).json({
       success: true,
@@ -213,8 +226,11 @@ export const getDashboardOverview = async (req: Request, res: Response) => {
         totalSellers,
         totalOrders,
         totalRevenue,
+        totalComplaints,
         ordersByTime,
         revenueByTime,
+        month,
+        year,
       },
     });
   } catch (error) {

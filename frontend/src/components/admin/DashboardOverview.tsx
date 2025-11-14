@@ -144,7 +144,7 @@ export default function DashboardOverview() {
         setDashboardStats({
           totalOrders: stats.totalOrders,
           totalUsers,
-          complaints: Math.round(stats.totalOrders * 0.02),
+          complaints: stats.totalComplaints ?? 0,
           monthlyRevenue: stats.totalRevenue,
         });
       } catch (err) {

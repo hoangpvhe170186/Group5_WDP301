@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   Mail,
   Phone,
-  Star,
   Calendar,
   MapPin,
   Package,
@@ -127,14 +126,6 @@ export default function SellerDetail({ sellerId, onBack }: SellerDetailProps) {
   
   // Data
   const [orders, setOrders] = useState<OrderLite[]>([]);
-  const [reviews, setReviews] = useState<Array<{
-    id: string;
-    rating: number;
-    comment: string;
-    customerName: string;
-    createdAt: string;
-    orderCode: string;
-  }>>([]);
   const [financials, setFinancials] = useState<SellerFinancials | null>(null);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
@@ -196,29 +187,8 @@ export default function SellerDetail({ sellerId, onBack }: SellerDetailProps) {
 
       setOrders(normalized);
 
-      // 4) Fetch reviews/feedbacks
+      // 4) Calculate financials using 3P formula
       const sellerOrders = normalized.filter((o) => o.sellerId === sellerId && o.status === "COMPLETED");
-      const reviewsData: typeof reviews = [];
-      for (const order of sellerOrders) {
-        try {
-          const { data } = await api.get(`/users/feedback/order/${order.id}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (data && typeof data.rating === "number") {
-            reviewsData.push({
-              id: order.id,
-              rating: Number(data.rating),
-              comment: data.comment || "Không có nhận xét",
-              customerName: data.customerName || "Khách hàng",
-              createdAt: data.createdAt || order.completedAt || order.createdAt,
-              orderCode: order.code,
-            });
-          }
-        } catch {}
-      }
-      setReviews(reviewsData);
-
-      // 5) Calculate financials using 3P formula
       const completed = sellerOrders.filter((o) => {
         const completionDate = o.completedAt || o.createdAt;
         return isSameMonth(completionDate, selectedYear, selectedMonth);
@@ -382,9 +352,6 @@ export default function SellerDetail({ sellerId, onBack }: SellerDetailProps) {
       return new Date(dateB).getTime() - new Date(dateA).getTime();
     })
     .slice(0, 10);
-  const avgRating = reviews.length > 0
-    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
-    : 0;
 
   return (
     <div className="space-y-6">
@@ -489,11 +456,6 @@ export default function SellerDetail({ sellerId, onBack }: SellerDetailProps) {
           <div className="flex-1">
             <div className="flex items-center space-x-4 mb-4">
               <h2 className="text-xl font-bold text-gray-900">{seller.fullName}</h2>
-              <div className="flex items-center space-x-1">
-                <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
-                <span className="font-semibold">{avgRating.toFixed(1)}</span>
-                <span className="text-gray-500">({reviews.length} đánh giá)</span>
-              </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -521,7 +483,6 @@ export default function SellerDetail({ sellerId, onBack }: SellerDetailProps) {
             {[
               { id: "overview", name: "Tổng quan", icon: TrendingUp },
               { id: "orders", name: "Đơn hàng", icon: Package },
-              { id: "reviews", name: "Đánh giá", icon: Star },
               { id: "financial", name: "Tài chính", icon: CreditCard },
             ].map((tab) => {
               const Icon = tab.icon;
@@ -611,34 +572,6 @@ export default function SellerDetail({ sellerId, onBack }: SellerDetailProps) {
                 </div>
               </div>
 
-              {/* Đánh giá gần nhất */}
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Đánh giá gần nhất</h3>
-                <div className="space-y-4">
-                  {reviews.slice(0, 3).length > 0 ? (
-                    reviews.slice(0, 3).map((review) => (
-                      <div key={review.id} className="border rounded-lg p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <div className="font-medium">{review.customerName}</div>
-                            <div className="text-sm text-gray-600">{review.orderCode}</div>
-                          </div>
-                          <div className="flex items-center">
-                            <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                            <span className="ml-1 font-medium">{review.rating}.0</span>
-                          </div>
-                        </div>
-                        <p className="text-gray-700 text-sm">{review.comment}</p>
-                        <div className="text-xs text-gray-500 mt-2">
-                          {new Date(review.createdAt).toLocaleDateString('vi-VN')}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-sm text-gray-500">Chưa có đánh giá</div>
-                  )}
-                </div>
-              </div>
             </div>
           )}
 
@@ -771,53 +704,6 @@ export default function SellerDetail({ sellerId, onBack }: SellerDetailProps) {
                     </tbody>
                   </table>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* Tab: Đánh giá */}
-          {activeTab === "reviews" && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Tất cả đánh giá ({reviews.length})</h3>
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-600">Điểm trung bình:</span>
-                  <div className="flex items-center">
-                    <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
-                    <span className="ml-1 font-bold text-lg">{avgRating.toFixed(1)}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {reviews.length > 0 ? (
-                  reviews.map((review) => (
-                    <div key={review.id} className="border rounded-lg p-6">
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <div className="font-medium text-lg">{review.customerName}</div>
-                          <div className="text-sm text-gray-600">Đơn hàng: {review.orderCode}</div>
-                        </div>
-                        <div className="flex items-center">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`w-5 h-5 ${
-                                i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'
-                              }`}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                      <p className="text-gray-700 mb-3">{review.comment}</p>
-                      <div className="text-sm text-gray-500">
-                        {new Date(review.createdAt).toLocaleString('vi-VN')}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-gray-500">Chưa có đánh giá</div>
-                )}
               </div>
             </div>
           )}

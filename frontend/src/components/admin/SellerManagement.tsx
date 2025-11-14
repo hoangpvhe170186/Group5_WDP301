@@ -7,7 +7,6 @@ import {
 	Package,
 	Search,
 	Eye,
-	Star,
 	Calendar,
 	Trophy,
 	BarChart3,
@@ -47,7 +46,6 @@ type SellerStats = {
 	bonusPoints: number; // P2: điểm thưởng
 	bonusSalary: number; // P2: lương từ điểm thưởng
 	totalPayout: number; // P1 + P2 + P3
-	rating?: number | null; // lazy load by seller
 	rank?: number; // xếp hạng
 };
 
@@ -128,7 +126,7 @@ function calcPayout3P(
 	return { commission, baseAdjusted, bonusPoints, bonusSalary, totalPayout };
 }
 
-type SortField = "fullName" | "rating" | "completedOrders" | "totalPayout" | "createdAt";
+type SortField = "fullName" | "completedOrders" | "totalPayout" | "createdAt";
 type SortOrder = "asc" | "desc";
 
 export default function SellerManagement() {
@@ -279,7 +277,6 @@ export default function SellerManagement() {
 				bonusPoints,
 				bonusSalary,
 				totalPayout,
-				rating: null, // Rating sẽ được tính trong SellerDetail
 			};
 		}
 		
@@ -298,13 +295,7 @@ export default function SellerManagement() {
 		const pageSellers = sellers.map((s) => statsBySeller[s.id]).filter(Boolean);
 		const totalCompletedOrders = pageSellers.reduce((sum, it) => sum + it.completedOrders, 0);
 		const totalPayout = pageSellers.reduce((sum, it) => sum + it.totalPayout, 0);
-		const avgRatingValues = pageSellers
-			.map((it) => (typeof it.rating === "number" ? it.rating : null))
-			.filter((r): r is number => r !== null);
-		const avgRating = avgRatingValues.length
-			? Math.round((avgRatingValues.reduce((a, b) => a + b, 0) / avgRatingValues.length) * 10) / 10
-			: null;
-		return { totalCompletedOrders, totalPayout, avgRating };
+		return { totalCompletedOrders, totalPayout };
 	}, [sellers, statsBySeller]);
 
 	// ===== Handlers =====
@@ -445,10 +436,6 @@ export default function SellerManagement() {
 					aValue = a.fullName;
 					bValue = b.fullName;
 					break;
-				case "rating":
-					aValue = stA?.rating ?? 0;
-					bValue = stB?.rating ?? 0;
-					break;
 				case "completedOrders":
 					aValue = stA?.completedOrders ?? 0;
 					bValue = stB?.completedOrders ?? 0;
@@ -581,12 +568,12 @@ export default function SellerManagement() {
 				<div className="bg-white rounded-lg shadow p-4">
 					<div className="flex items-center justify-between">
 						<div>
-							<p className="text-sm text-gray-600">Trung bình rating</p>
-							<p className="text-2xl font-bold text-yellow-600">
-								{dashboard.avgRating ? dashboard.avgRating.toFixed(1) : "0.0"}
+							<p className="text-sm text-gray-600">Đơn hoàn thành (tháng)</p>
+							<p className="text-2xl font-bold text-indigo-600">
+								{dashboard.totalCompletedOrders}
 							</p>
 						</div>
-						<Star className="w-8 h-8 text-yellow-500 opacity-20" />
+						<Package className="w-8 h-8 text-indigo-500 opacity-20" />
 					</div>
 				</div>
 				<div className="bg-white rounded-lg shadow p-4">
@@ -713,15 +700,6 @@ export default function SellerManagement() {
 								<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Liên hệ</th>
 								<th
 									className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-									onClick={() => handleSort("rating")}
-								>
-									<div className="flex items-center gap-2">
-										Rating
-										<ArrowUpDown className="w-4 h-4" />
-									</div>
-								</th>
-								<th
-									className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
 									onClick={() => handleSort("completedOrders")}
 								>
 									<div className="flex items-center gap-2">
@@ -745,13 +723,13 @@ export default function SellerManagement() {
 						<tbody className="bg-white divide-y divide-gray-200">
 							{loading ? (
 								<tr>
-									<td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+									<td colSpan={7} className="px-6 py-8 text-center text-gray-500">
 										Đang tải...
 									</td>
 								</tr>
 							) : filteredAndSortedSellers.length === 0 ? (
 								<tr>
-									<td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+									<td colSpan={7} className="px-6 py-8 text-center text-gray-500">
 										Không có seller nào
 									</td>
 								</tr>
@@ -807,14 +785,6 @@ export default function SellerManagement() {
 															<Phone className="w-4 h-4 mr-2 text-gray-400" />
 															{seller.phone || "—"}
 														</div>
-													</div>
-												</td>
-												<td className="px-6 py-4 whitespace-nowrap">
-													<div className="flex items-center gap-1">
-														<Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-														<span className="text-sm font-semibold text-gray-900">
-															{typeof st?.rating === "number" ? st.rating.toFixed(1) : "—"}
-														</span>
 													</div>
 												</td>
 												<td className="px-6 py-4 whitespace-nowrap">
