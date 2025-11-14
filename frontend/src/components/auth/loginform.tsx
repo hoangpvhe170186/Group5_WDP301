@@ -136,7 +136,7 @@ export default function LoginPage() {
         setError("Không nhận được thông tin từ Google.");
         return;
       }
-      console.log(credentialResponse.credential);
+      
 
       const response = await loginGoogle(credentialResponse.credential);
       console.log("Google login response:", response.data);
