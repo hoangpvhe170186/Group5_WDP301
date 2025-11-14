@@ -8,7 +8,7 @@ type ProtectedRouteProps = {
   allowedRoles?: string[];
 };
 
-const fallbackByRole: Record<string, string> = {
+export const fallbackByRole: Record<string, string> = {
   admin: "/admin/dashboard",
   seller: "/seller/home",
   carrier: "/carrier/home",

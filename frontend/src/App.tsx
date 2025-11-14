@@ -33,13 +33,21 @@ import UserMessagesPage from "./pages/UserMessagesPage";
 import EstimatePricePage from "./pages/EstimatePricePage";
 import AdminDriverApplications from "./components/admin/AdminDriverApplications";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import CustomerHomeGuard from "./components/auth/CustomerHomeGuard";
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/tra-cuu-don-hang" element={<OrderSearchPage />} />
-        <Route path="/" element={<HomePage />} />
+        <Route
+          path="/"
+          element={
+            <CustomerHomeGuard>
+              <HomePage />
+            </CustomerHomeGuard>
+          }
+        />
         <Route path="/pricing-info" element={<PricingCard packageName="Xe tải nhỏ" title="Bảng giá tham khảo" />} />
         <Route path="/blog/:slug" element={<BlogDetail />} />
         <Route path="/order-preview" element={<OrderPreviewPage />} />

@@ -23,7 +23,7 @@ import {
   getCompletedAndCancelledOrders,
   claimSellerOrder,
   cancelOrder,
-  getCurrentUser
+  getCurrentUser,
   getOrderBySeller
 } from "../controllers/user.controller";
 
