@@ -81,6 +81,6 @@ router.post("/incidents/report", requireRole(Role.Customer), reportIncident);
 router.get("/incidents/order/:order_id", requireRole(Role.Admin, Role.Seller, Role.Customer), getIcidentByOrderId);
 router.get("/incidents", requireRole(Role.Admin, Role.Seller), getAllIncidents);
 router.patch("/incidents/:id/resolve", requireRole(Role.Admin, Role.Seller), resolveIncident);
-router.get("/:id", requireRole(Role.Admin), getUserById);
+router.get("/:id", requireRole(Role.Admin,Role.Customer,Role.Seller), getUserById);
 
 export default router;
