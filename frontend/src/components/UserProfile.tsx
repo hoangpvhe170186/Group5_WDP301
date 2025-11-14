@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { useParams } from "react-router-dom";
 import {
   User as UserIcon,
@@ -46,6 +47,7 @@ const STATUS_COLOR = {
 } as const;
 
 export default function UserProfile() {
+  const navigate = useNavigate();
   const { userId } = useParams<{ userId: string }>();
   const currentUserId = getCurrentUserId();
   const actualUserId = userId || currentUserId;
@@ -62,6 +64,18 @@ export default function UserProfile() {
   const [editAvatarPreview, setEditAvatarPreview] = useState<string | null>(null);
   const [editLoading, setEditLoading] = useState(false);
   const [editMessage, setEditMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const handleBack = () => {
+  if (!user) return;
+
+  if (user.role === "Seller") {
+    navigate("/seller/home");
+  } else if (user.role === "Customer") {
+    navigate("/");
+  } else {
+    navigate("/"); // fallback cho role khác
+  }
+};
 
   const fetchUser = useCallback(async () => {
     try {
@@ -161,7 +175,14 @@ export default function UserProfile() {
   if (!user) return <ErrorBox text="Không tìm thấy người dùng." />;
 
   return (
+    
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50 pb-10 pt-24">
+      <button
+  onClick={handleBack}
+  className="ml-4 mb-4 px-4 py-2 bg-white shadow border rounded-lg flex items-center gap-2 hover:bg-gray-100"
+>
+  <span>←</span> Back
+</button>
       {isEditOpen &&
         createPortal(
           <EditModal

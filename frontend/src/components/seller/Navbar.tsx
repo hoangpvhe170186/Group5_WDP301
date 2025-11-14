@@ -1,12 +1,15 @@
 import React from 'react';
 import { PackageIcon, AlertOctagonIcon, HistoryIcon, SettingsIcon } from './Icons';
+import { useEffect, useState } from "react";
 import SupportInbox from "./SupportInbox";
 import SellerNotifications from "./SellerNotifications";
 import { LogOut } from 'lucide-react';
 import { clearAuthData } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
-
+import axios from "axios";
+import { getCurrentUserId } from "@/lib/auth";
 const Navbar = ({ currentPage, setPage }) => {
+  const [seller, setSeller] = useState(null);
     const handleLogout = () => {
     clearAuthData();
     window.location.href = "/auth/login";
@@ -16,6 +19,21 @@ const Navbar = ({ currentPage, setPage }) => {
     { id: 'complaints', label: 'Quản lý Khiếu nại', icon: <AlertOctagonIcon /> },
     { id: 'history', label: 'Lịch sử Giao dịch', icon: <HistoryIcon /> },
   ];
+  useEffect(() => {
+    const id = getCurrentUserId();
+    const token = localStorage.getItem("auth_token");
+
+    if (id) {
+      axios
+        .get(`${import.meta.env.VITE_API_BASE_URL}/users/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        .then((res) => {
+          if (res.data.success) setSeller(res.data.data);
+        })
+        .catch(() => {});
+    }
+  }, []);
 
   return (
     <nav className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4 sm:px-6 lg:px-8">
@@ -42,7 +60,12 @@ const Navbar = ({ currentPage, setPage }) => {
         <SellerNotifications />
         <button className="text-gray-500 transition-colors hover:text-gray-800"><SettingsIcon /></button>
         <div className="h-9 w-9 cursor-pointer rounded-full bg-gray-200">
-          <img src="https://placehold.co/100x100/orange/white?text=S" alt="Seller Avatar" className="h-full w-full rounded-full object-cover" />
+          <img
+  src={seller?.avatar || "https://placehold.co/100x100?text=No+Avatar"}
+  alt="Seller Avatar"
+  className="h-full w-full rounded-full object-cover cursor-pointer"
+  onClick={() => (window.location.href = `/profile`)}
+/>
         </div>
         <SupportInbox />
          <Button
