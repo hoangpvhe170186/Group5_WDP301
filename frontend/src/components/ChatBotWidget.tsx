@@ -6,13 +6,17 @@ type Sender = "guest" | "seller" | "bot";
 type UiMessage = { sender: Sender; text: string; createdAt?: string };
 
 // --- Helpers env ---
+const DEFAULT_API_BASE =
+  typeof window !== "undefined" ? window.location.origin : "";
+
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
   import.meta.env.VITE_API_URL ||
+  DEFAULT_API_BASE ||
   "http://localhost:4000";
 
 const SOCKET_URL =
-  import.meta.env.VITE_SOCKET_URL || API_BASE || "http://localhost:4000";
+  import.meta.env.VITE_SOCKET_URL || API_BASE || DEFAULT_API_BASE || "http://localhost:4000";
 
 // --- RoomID theo CUSTOMER ID ---
 function useRoomId() {
@@ -186,26 +190,30 @@ export default function ChatBotWidget() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text, userId: roomId }),
       });
+
+      if (!res.ok) {
+        throw new Error(`Bot API failed with status ${res.status}`);
+      }
+
       const data = await res.json();
-      const reply = data.reply || "❌ Bot chưa trả lời được.";
+      const reply =
+        typeof data?.reply === "string" && data.reply.trim().length > 0
+          ? data.reply.trim()
+          : "Bot HE hiện chưa có câu trả lời phù hợp, bạn hãy chuyển sang nhân viên nhé.";
+
       setMessages((prev) => [...prev, { sender: "bot", text: reply }]);
 
-      // ✅ lưu DB (bot)
       persistMessage({
         roomId,
         sender: "bot",
         senderName: "Bot HE",
         text: reply,
       });
-    } catch {
+    } catch (err) {
+      console.error("❌ Chatbot request failed:", err);
       const fallback = "❌ Không thể kết nối server.";
       setMessages((prev) => [...prev, { sender: "bot", text: fallback }]);
-      persistMessage({
-        roomId,
-        sender: "bot",
-        senderName: "Bot HE",
-        text: fallback,
-      });
+      setConnErr("Không thể kết nối server.");
     }
   };
 

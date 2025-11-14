@@ -252,6 +252,7 @@ const onReceive = (data: any) => {
 
   // Extract order code từ roomId
   const orderCode = roomId.startsWith("order:") ? roomId.replace("order:", "") : null;
+  const visibleMessages = messages.filter((m) => m.sender !== "bot");
 
   return (
     <div className="p-4 border rounded-md bg-white h-full flex flex-col">
@@ -277,13 +278,13 @@ const onReceive = (data: any) => {
         ref={boxRef}
         className="flex-1 overflow-y-auto border rounded p-2 mb-2 bg-gray-50 min-h-[300px] max-h-[400px]"
       >
-        {messages.length === 0 ? (
+        {visibleMessages.length === 0 ? (
           <div className="text-center text-gray-500 py-8">
             Chưa có tin nhắn nào. Hãy bắt đầu cuộc trò chuyện!
           </div>
         ) : (
           <>
-            {messages.map((m) => {
+            {visibleMessages.map((m) => {
               const isSeller = m.sender === "seller";
               const who = m.name || (m.sender === "guest" ? "Khách" : "Bot HE");
               

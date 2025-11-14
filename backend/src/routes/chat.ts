@@ -5,6 +5,60 @@ import User from "../models/User";
 
 const router = Router();
 
+const normalize = (text: string) =>
+  text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+const FAQ_REPLIES = [
+  {
+    keywords: ["gia", "bảng giá", "bao nhieu", "bao nhiêu"],
+    reply:
+      "Bảng giá Home Express phụ thuộc quãng đường, khối lượng đồ và dịch vụ kèm theo. Bạn có thể dùng mục Ước tính chi phí hoặc gửi thông tin để nhân viên báo giá chi tiết.",
+  },
+  {
+    keywords: ["dat lich", "đặt lịch", "dat xe", "đặt xe"],
+    reply:
+      "Để đặt xe chuyển nhà, bạn chỉ cần tạo đơn trong mục \"Đặt dịch vụ\" và chọn thời gian mong muốn. Nhân viên sẽ xác nhận trong vòng 15 phút.",
+  },
+  {
+    keywords: ["dong goi", "đóng gói", "bao bi"],
+    reply:
+      "Chúng tôi có gói hỗ trợ đóng gói, tháo lắp và bọc lót đồ dễ vỡ. Vui lòng mô tả nhu cầu để được tư vấn chính xác.",
+  },
+  {
+    keywords: ["thoi gian", "bao lau", "mất bao lâu"],
+    reply:
+      "Thời gian vận chuyển trung bình 2-4 giờ trong nội thành. Lộ trình xa hơn sẽ được thông báo cụ thể khi xác nhận đơn.",
+  },
+];
+
+router.post("/", async (req, res) => {
+  try {
+    const { message } = req.body ?? {};
+
+    if (!message || typeof message !== "string") {
+      return res.status(400).json({ error: "Missing message" });
+    }
+
+    const normalized = normalize(message);
+    const matched =
+      FAQ_REPLIES.find((faq) =>
+        faq.keywords.some((kw) => normalized.includes(normalize(kw)))
+      ) ?? null;
+
+    const reply =
+      matched?.reply ??
+      "Cảm ơn bạn đã liên hệ Home Express. Nhân viên của chúng tôi sẽ hỗ trợ ngay khi bạn chuyển sang chế độ nhân viên.";
+
+    res.json({ reply, matched: Boolean(matched) });
+  } catch (err) {
+    console.error("❌ Error generating bot reply:", err);
+    res.status(500).json({ error: "Failed to generate reply" });
+  }
+});
+
 // ✅ Lấy lịch sử chat theo roomId (hỗ trợ cả order: và customer:)
 router.get("/history", async (req, res) => {
   try {
