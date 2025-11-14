@@ -488,7 +488,7 @@ export const getDebtByOrder = async (req: any, res: Response) => {
       return res.status(403).json({ message: "Forbidden" });
     }
 
-    if (String(order.status).toUpperCase() === "COMPLETED") {
+    if (String(order.status).toUpperCase() === "DELIVERED") {
       const total = decimalToNumber((order as any).total_price);
       const commission = Math.round(total * 0.2);
       debt = await CarrierDebt.create({

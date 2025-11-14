@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Card,
@@ -10,12 +10,10 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   ArrowLeft,
   MapPin,
   Package,
-  FileText,
   Camera,
   AlertTriangle,
   CheckCircle2,
@@ -23,6 +21,7 @@ import {
   ShieldAlert,
   Box,
   Feather,
+  QrCode,
 } from "lucide-react";
 import {
   Dialog,
@@ -40,7 +39,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { carrierApi } from "@/services/carrier.service";
-import type { JobItem, JobStatus } from "@/types/carrier";
+import type { JobItem } from "@/types/carrier";
 import { API_URL } from "@/config/api";
 
 interface JobDetailsProps {
@@ -100,7 +99,7 @@ export function JobDetails({
   onReportIncident,
 }: JobDetailsProps) {
   const navigate = useNavigate();
-  const [job, setJob] = useState<(JobItem & { goods?: any[]; trackings?: any[] }) | null>(null);
+  const [job, setJob] = useState<(JobItem & { goods?: any[]; trackings?: any[]; assignedCarrier?: any }) | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
@@ -110,6 +109,11 @@ export function JobDetails({
   const [openTrackModal, setOpenTrackModal] = useState(false);
   const [nextStatus, setNextStatus] = useState<string>("ON_THE_WAY");
   const [note, setNote] = useState<string>("");
+  const [debtStatus, setDebtStatus] = useState<string | null>(null);
+  const [payLoading, setPayLoading] = useState(false);
+  const [debtLoading, setDebtLoading] = useState(false);
+  const debtStatusRef = useRef<string | null>(null);
+  const autoConfirmRef = useRef(false);
 
   const isReadOnly = useMemo(
     () => (job?.status ? ["DECLINED", "CANCELLED"].includes(job.status) : false),
@@ -117,7 +121,7 @@ export function JobDetails({
   );
 
   // ===================== LOAD DATA =====================
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!jobId) return;
     try {
       setLoading(true);
@@ -130,9 +134,9 @@ export function JobDetails({
     } finally {
       setLoading(false);
     }
-  };
+  }, [jobId]);
 
-  const loadMedias = async () => {
+  const loadMedias = useCallback(async () => {
     if (!jobId) return;
     try {
       const beforeData = await carrierApi.listEvidence(jobId, "BEFORE");
@@ -144,12 +148,45 @@ export function JobDetails({
       setBefore([]);
       setAfter([]);
     }
-  };
+  }, [jobId]);
 
   useEffect(() => {
     load();
     loadMedias();
-  }, [jobId]);
+  }, [load, loadMedias]);
+
+  const fetchDebtStatus = useCallback(async () => {
+    if (!job || job.status !== "DELIVERED") {
+      setDebtStatus(null);
+      debtStatusRef.current = null;
+      return;
+    }
+    try {
+      setDebtLoading(true);
+      const debt = await carrierApi.getDebt(job.id);
+      setDebtStatus(debt.status);
+      debtStatusRef.current = debt.status;
+    } catch (error) {
+      console.warn("Không thể tải trạng thái thanh toán", error);
+    } finally {
+      setDebtLoading(false);
+    }
+  }, [job]);
+
+  useEffect(() => {
+    fetchDebtStatus();
+  }, [fetchDebtStatus]);
+
+  useEffect(() => {
+    if (!job || job.status !== "DELIVERED") return;
+    const handleFocus = () => {
+      if (debtStatusRef.current !== "PAID") {
+        fetchDebtStatus();
+      }
+    };
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [job?.status, job?.id, fetchDebtStatus]);
 
   // ===================== ACTIONS =====================
   const accept = async () => {
@@ -184,17 +221,54 @@ export function JobDetails({
   };
 
 
-  const confirmContract = async () => {
-    if (!job) return;
-    await carrierApi.confirmContract(job.id);
-    await load();
-  };
+  const confirmDelivery = useCallback(async () => {
+    if (!job?.id) return;
+    try {
+      await carrierApi.confirmDelivery(job.id);
+      await load();
+    } catch (error) {
+      console.error("confirmDelivery failed", error);
+    }
+  }, [job?.id, load]);
 
-  const confirmDelivery = async () => {
-    if (!job) return;
-    await carrierApi.confirmDelivery(job.id);
-    await load();
-  };
+  const openPayment = useCallback(async () => {
+    if (!job?.id) return;
+    try {
+      setPayLoading(true);
+      const debt = await carrierApi.getDebt(job.id);
+      setDebtStatus(debt.status);
+      debtStatusRef.current = debt.status;
+      if (debt.status === "PAID") {
+        alert(`Đã thanh toán hoa hồng cho ${debt.orderCode}`);
+        return;
+      }
+      const created = await carrierApi.createCommissionPayment(job.id);
+      if (created.payosLink) {
+        window.open(created.payosLink, "_blank");
+      } else if (created.qrCode) {
+        alert("Không hỗ trợ hiển thị QR trực tiếp. Vui lòng mở PayOS.");
+      } else {
+        alert("Không thể tạo link thanh toán");
+      }
+    } catch (e) {
+      alert("Không thể khởi tạo thanh toán. Thử lại sau.");
+    } finally {
+      setPayLoading(false);
+    }
+  }, [job?.id]);
+
+  useEffect(() => {
+    if (!job || job.status !== "DELIVERED") {
+      autoConfirmRef.current = false;
+      return;
+    }
+    if (debtStatus === "PAID" && !autoConfirmRef.current) {
+      autoConfirmRef.current = true;
+      confirmDelivery().catch(() => {
+        autoConfirmRef.current = false;
+      });
+    }
+  }, [job?.status, debtStatus, confirmDelivery]);
 
   const submitTracking = async () => {
     if (!job) return;
@@ -451,11 +525,47 @@ export function JobDetails({
 
             {/* 4️⃣ Sau khi giao hàng */}
             {job.status === "DELIVERED" && (
+              <div className="space-y-2 rounded-lg border border-dashed p-4">
+                {debtStatus !== "PAID" ? (
+                  <>
+                    <p className="text-sm text-muted-foreground">
+                      Cần thanh toán hoa hồng để hoàn tất đơn hàng.
+                    </p>
+                    <Button
+                      className="gap-2"
+                      onClick={openPayment}
+                      disabled={payLoading || debtLoading}
+                    >
+                      <QrCode className="h-4 w-4" />
+                      {payLoading ? "Đang tạo mã..." : "Thanh toán hoa hồng"}
+                    </Button>
+                    {debtLoading && (
+                      <p className="text-xs text-muted-foreground">
+                        Đang kiểm tra trạng thái thanh toán...
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm text-emerald-700">
+                      <CheckCircle2 className="h-4 w-4" />
+                      Đã thanh toán hoa hồng. Hệ thống sẽ tự xác nhận đơn.
+                    </div>
+                    <Button variant="outline" size="sm" onClick={confirmDelivery}>
+                      Thử xác nhận lại thủ công
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!isReadOnly && (
               <Button
-                className="w-full bg-green-600 hover:bg-green-700 text-white"
-                onClick={confirmDelivery}
+                variant="outline"
+                className="w-full"
+                onClick={onReportIncident}
               >
-                <CheckCircle2 className="h-4 w-4 mr-2" /> Xác nhận giao hàng thành công
+                <AlertTriangle className="h-4 w-4 mr-2" /> Báo sự cố
               </Button>
             )}
 
