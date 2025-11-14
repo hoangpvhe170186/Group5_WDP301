@@ -1,6 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import { requireAuth } from "../middleware/requireAuth";
+import { requireRole } from "../middleware/requireRole";
 import {
   getMe,
   updateMe,
@@ -30,6 +31,7 @@ import crypto from "crypto";
 import path from "path";
 import { withIO } from "../middleware/withIO";
 import Order from "../models/Order";
+import { Role } from "../models/User";
 
 const router = Router();
 const storage = multer.diskStorage({
@@ -42,7 +44,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 /* ============================== AUTH GUARD ============================== */
-router.use(requireAuth);
+router.use(requireAuth, requireRole(Role.Carrier));
 
 /* ============================== PROFILE ============================== */
 router.get("/me", getMe);

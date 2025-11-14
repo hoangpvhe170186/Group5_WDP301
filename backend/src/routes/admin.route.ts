@@ -24,10 +24,12 @@ import {
   updateIncidentStatusAdmin
 } from "../controllers/admin.controller";
 import { requireAuth } from "../middleware/requireAuth";
+import { requireRole } from "../middleware/requireRole";
+import { Role } from "../models/User";
 
 const router = express.Router();
 
-router.use(requireAuth);
+router.use(requireAuth, requireRole(Role.Admin));
 
 router.get("/dashboard", getDashboardOverview);
 router.get("/dashboard/enhanced", getDashboardEnhanced);

@@ -32,6 +32,7 @@ import PricingCard from "./components/PricingCard";
 import UserMessagesPage from "./pages/UserMessagesPage";
 import EstimatePricePage from "./pages/EstimatePricePage";
 import AdminDriverApplications from "./components/admin/AdminDriverApplications";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 export default function App() {
   return (
@@ -48,9 +49,30 @@ export default function App() {
         <Route path="/profile" element={<UserProfilePage />} />
         <Route path="/profile/:userId" element={<UserProfile />} />
         <Route path="/thanh-toan" element={<CheckoutPage />} />
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/carrier/home" element={<CarrierHomePage />} />
-        <Route path="/carrier/compare/:orderId" element={<ComparePage />} />
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={["Admin"]}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/carrier/home"
+          element={
+            <ProtectedRoute allowedRoles={["Carrier", "Driver"]}>
+              <CarrierHomePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/carrier/compare/:orderId"
+          element={
+            <ProtectedRoute allowedRoles={["Carrier", "Driver"]}>
+              <ComparePage />
+            </ProtectedRoute>
+          }
+        />
         
         <Route path="/auth" element={<AuthPage />}>
           <Route path="login" element={<LoginPage />} />
@@ -63,12 +85,40 @@ export default function App() {
         {/* ✅ Route chat độc lập (giữ lại để seller có thể share link) */}
         <Route path="/chat/order/:orderId" element={<CustomerChatPage />} />
         
-        <Route path="/seller/home" element={<Seller />} />
+        <Route
+          path="/seller/home"
+          element={
+            <ProtectedRoute allowedRoles={["Seller"]}>
+              <Seller />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/driver-recruit" element={<DriverInterviewPage />} />
-        <Route path="/seller/driver-applications" element={<SellerDriverApplications />} />
-        <Route path="/admin/driver-applications" element={<AdminDriverApplications />} />
+        <Route
+          path="/seller/driver-applications"
+          element={
+            <ProtectedRoute allowedRoles={["Seller"]}>
+              <SellerDriverApplications />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/driver-applications"
+          element={
+            <ProtectedRoute allowedRoles={["Admin"]}>
+              <AdminDriverApplications />
+            </ProtectedRoute>
+          }
+        />
         {/* ✅ Thêm route Messages vào User Order Layout */}
-        <Route path="/myorder" element={<UserOrderLayout />}>
+        <Route
+          path="/myorder"
+          element={
+            <ProtectedRoute allowedRoles={["Customer"]}>
+              <UserOrderLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route path="tracking" element={<OrderTracking />} />
           <Route path="history" element={<OrderHistoryPage />} />
           <Route path="messages" element={<UserMessagesPage />} /> 
