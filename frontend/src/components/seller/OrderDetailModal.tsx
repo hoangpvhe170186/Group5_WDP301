@@ -154,7 +154,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ orderId, onClose })
                   <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${
                     order.isPaid ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
                   }`}>
-                    {order.isPaid ? "✅ Đã thanh toán" : "❌ Chưa thanh toán"}
+                    {order.isPaid || order.status === "COMPLETED" ? "✅ Đã thanh toán" : "❌ Chưa thanh toán"}
                   </span>
                 </div>
               </div>

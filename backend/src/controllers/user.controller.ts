@@ -581,7 +581,6 @@ export const getOrdersByCustomer = async (req: Request, res: Response) => {
       status: { $in: ["CANCELLED", "COMPLETED"] } // 🔍 Chỉ lấy đơn có status trong 2 loại này
     })
       .populate("seller_id")
-      .populate("carrier_id")
       .populate("package_id")
       .populate("carrier_id")
       .populate("customer_id")

@@ -142,6 +142,7 @@ const OrderManagementScreen = () => {
       if (res.data?.success) {
         setMessage("✅ Nhận đơn thành công!");
         await fetchOrders();
+        await fetchSellerOrders();
         setTimeout(() => setMessage(""), 3000);
       } else {
         setMessage("⚠️ Không thể nhận đơn này");

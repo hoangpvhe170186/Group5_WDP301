@@ -51,7 +51,7 @@ router.post("/change-password", changePassword);
 router.get("/orders/history", requireRole(Role.Admin, Role.Seller), getCompletedAndCancelledOrders);
 router.get("/orders", requireRole(Role.Admin, Role.Seller), getAllOrders);
 router.get("/orders/seller",requireRole(Role.Seller),getOrderBySeller);
-router.get("/orders/:id", requireRole(Role.Admin, Role.Seller), getOrderById);
+router.get("/orders/:id", requireRole(Role.Admin, Role.Seller,Role.Customer), getOrderById);
 router.get("/orders/customer/:customer_id", requireRole(Role.Admin, Role.Customer), getOrdersByCustomer);
 router.put("/orders/:id", requireRole(Role.Admin), updateOrder);
 router.post("/orders/:id/assign", requireRole(Role.Admin), assignOrder);

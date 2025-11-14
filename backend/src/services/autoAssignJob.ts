@@ -6,7 +6,7 @@ import OrderStatusLog from "../models/OrderStatusLog";
 cron.schedule("*/10 * * * * *", async () => {
   try {
     const now = new Date();
-    const tenMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000); // 10 phút trước
+    const tenMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000); // 10 phút trước
 
     // 🔍 Tìm các đơn CONFIRMED mà chưa có carrier
     const confirmedOrders = await Order.find({
