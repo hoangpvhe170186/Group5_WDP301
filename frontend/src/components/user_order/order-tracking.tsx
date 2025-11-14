@@ -87,6 +87,7 @@ export default function OrderTracking() {
     const fetchOrderDetail = async () => {
       try {
         const token = localStorage.getItem("auth_token");
+        // 🟩 Lấy thông tin đơn hàng
         const res = await fetch(`${API_BASE}/api/orders/${selectedOrder}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -96,10 +97,26 @@ export default function OrderTracking() {
           setOrders((prev) =>
             prev.map((o) =>
               o.id === selectedOrder
-                ? { ...o, orderCode: data.orderCode, total_price: data.total_price }
+                ? { ...o, orderCode: data.orderCode || data.data?.orderCode, total_price: data.total_price || data.data?.total_price }
                 : o
             )
           );
+        }
+        
+        // 🟩 Lấy danh sách items của đơn hàng
+        const itemsRes = await fetch(`${API_BASE}/api/orders/${selectedOrder}/items`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const itemsData = await itemsRes.json();
+        if (itemsRes.ok && itemsData.success) {
+          setOrderItems(itemsData.items || []);
+        } else {
+          // Nếu API trả về items trong data chính, sử dụng nó
+          if (data.data?.items && Array.isArray(data.data.items)) {
+            setOrderItems(data.data.items);
+          } else {
+            setOrderItems([]);
+          }
         }
       } catch (err) {
         console.error("❌ Lỗi lấy danh sách items:", err);
