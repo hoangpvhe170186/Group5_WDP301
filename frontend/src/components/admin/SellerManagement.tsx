@@ -15,6 +15,7 @@ import {
 	ArrowUpDown,
 	Ban,
 	User,
+	UserPlus,
 	CheckCircle,
 	AlertCircle,
 	Phone,
@@ -22,6 +23,7 @@ import {
 } from "lucide-react";
 import React from "react";
 import SellerDetail from "./SellerDetail";
+import SellerCreateModal from "./SellerCreateModal";
 // @ts-ignore - recharts types may not be available but package is installed
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
@@ -143,6 +145,8 @@ export default function SellerManagement() {
 	const [showBanModal, setShowBanModal] = useState(false);
 	const [banReason, setBanReason] = useState("");
 	const [sellerToBan, setSellerToBan] = useState<string | null>(null);
+	const [showCreateModal, setShowCreateModal] = useState(false);
+	const [refreshToken, setRefreshToken] = useState(0);
 
 	// period selection (default: current month)
 	const now = new Date();
@@ -232,7 +236,7 @@ export default function SellerManagement() {
 		};
 		fetchData();
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [currentPage, selectedYear, selectedMonth]);
+	}, [currentPage, selectedYear, selectedMonth, refreshToken]);
 
 	// ===== Build stats for current page sellers and selected month =====
 	useEffect(() => {
@@ -503,7 +507,7 @@ export default function SellerManagement() {
 			)}
 
 			{/* Header */}
-			<div className="flex items-center justify-between">
+			<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 				<h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
 					Quản lý Seller
 					<button
@@ -514,7 +518,7 @@ export default function SellerManagement() {
 						?
 					</button>
 				</h1>
-				<div className="flex items-center gap-2">
+				<div className="flex flex-wrap items-center gap-2 justify-end">
 					<div className="flex items-center gap-1 border rounded px-2 py-1">
 						<Calendar className="w-4 h-4 text-gray-500" />
 						<select
@@ -540,6 +544,13 @@ export default function SellerManagement() {
 							</option>
 						))}
 					</select>
+					<button
+						onClick={() => setShowCreateModal(true)}
+						className="px-4 py-2 rounded-lg bg-orange-600 text-white hover:bg-orange-700 transition-colors flex items-center gap-2"
+					>
+						<UserPlus className="w-4 h-4" />
+						Thêm seller
+					</button>
 				</div>
 			</div>
 
@@ -940,6 +951,15 @@ export default function SellerManagement() {
 					</div>
 				</div>
 			</div>
+
+			<SellerCreateModal
+				open={showCreateModal}
+				onClose={() => setShowCreateModal(false)}
+				onCreated={() => {
+					setCurrentPage(1);
+					setRefreshToken((prev) => prev + 1);
+				}}
+			/>
 
 			{showFormulaModal && (
   <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
